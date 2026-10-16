@@ -194,14 +194,14 @@ public class SourceCodeManager
 
                                 if (!CompiledUris.Add(query)) return true;
 
-                                Logger?.LogDebug("Cache hit");
+                                //Logger?.LogDebug("Cache hit");
 
                                 ImportIndex index = initiatorIndex.Next();
 
                                 ParsedFiles.Add(new ParsedFile(query, initiator, cache.TokenizerResult, cache.ParserResult, index, cache.Content));
 
-                                if (cache.ParserResult.Usings.Any())
-                                { Logger?.LogDebug("Loading files ..."); }
+                                //if (cache.ParserResult.Usings.Any())
+                                //{ Logger?.LogDebug("Loading files ..."); }
 
                                 foreach (UsingDefinition @using in cache.ParserResult.Usings)
                                 {

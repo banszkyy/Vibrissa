@@ -562,6 +562,8 @@ public partial class StatementCompiler
             result.Errors.Add(new($"Cannot use function `{query.Identifier}` due it's protection level"));
         }
 
+        static TypeMatch MinTypeMatch(TypeMatch a, TypeMatch b) => a > b ? a : b;
+
         bool TryReplaceArgument2(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed, Dictionary<string, GeneralType> typeArguments, int argumentIndex)
         {
             if (passed is not CompiledExpression passedExpression) return false;

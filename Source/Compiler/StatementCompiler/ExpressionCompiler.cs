@@ -1613,23 +1613,24 @@ public partial class StatementCompiler
                         return false;
                     }
 
-                    if (!GetLiteralType(LiteralType.String, out GeneralType? stringType, out _))
-                    {
-                        stringType = new PointerType(new ArrayType(charType, stringLiteral.Value.Length + 1));
-                    }
+                    var stringType = new ArrayType(charType, stringLiteral.Value.Length + 1);
+                    //if (!GetLiteralType(LiteralType.String, out GeneralType? stringType, out _))
+                    //{
+                    //    stringType = new PointerType(new ArrayType(charType, stringLiteral.Value.Length + 1));
+                    //}
 
-                    if (!CompileAllocation((1 + stringLiteral.Value.Length) * charSize, literal.Location, out CompiledExpression? allocator)) return false;
+                    //if (!CompileAllocation((1 + stringLiteral.Value.Length) * charSize, literal.Location, out CompiledExpression? allocator)) return false;
 
                     SetStatementType(literal, stringType);
 
-                    compiledStatement = new CompiledString()
+                    compiledStatement = new CompiledStackString()
                     {
                         Value = stringLiteral.Value,
                         IsUTF8 = charSize == 1,
                         Location = literal.Location,
                         SaveValue = true,
                         Type = stringType,
-                        Allocator = allocator,
+                        IsNullTerminated = true,
                     };
                     return true;
                 }

@@ -6,7 +6,8 @@ public class CompiledLambda : CompiledExpression,
     ICompiledFunctionDefinition,
     IHaveCompiledType,
     IHaveInstructionOffset,
-    ICallableDefinition
+    ICallableDefinition,
+    IHaveAllocator
 {
     public bool IsMsilCompatible { get; set; } = true;
     public FunctionFlags Flags { get; set; }

@@ -74,6 +74,17 @@ public class BytecodeProcessor
         HotFunctions = HotFunctions,
     };
 
+    public ReadOnlyProcessorState GetReadOnlyState() => new(
+        Settings,
+        Registers,
+        Memory,
+        Code.AsSpan(),
+#if !UNITY_BURST
+        ExternalFunctions.Values.AsSpan(),
+#endif
+        ScopedExternalFunctions.AsSpan()
+    );
+
     public bool Tick()
     {
         ProcessorState state = GetState();

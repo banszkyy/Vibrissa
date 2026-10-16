@@ -1,6 +1,6 @@
 namespace LanguageCore.Compiler;
 
-public class CompiledString : CompiledExpression
+public class CompiledString : CompiledExpression, IHaveAllocator
 {
     public required string Value { get; init; }
     public required bool IsUTF8 { get; init; }

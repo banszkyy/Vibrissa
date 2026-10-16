@@ -1,6 +1,6 @@
 namespace LanguageCore.Compiler;
 
-public class CompiledCast : CompiledExpression
+public class CompiledCast : CompiledExpression, IHaveAllocator
 {
     public required CompiledExpression? Allocator { get; init; }
     public required CompiledExpression Value { get; init; }

@@ -1633,6 +1633,25 @@ public partial class StatementCompiler
                     return true;
                 }
 
+                if (destination.Is(out ArrayType? arrayType1)
+                    && value.Type.Is(out PointerType? pointerType1)
+                    && pointerType1.To.Is(out ArrayType? arrayType2)
+                    && CanCastImplicitly(arrayType1.Of, arrayType2.Of, null, out _, out _))
+                {
+                    Debugger.Break();
+                    assignedValue = new CompiledStackString()
+                    {
+                        IsUTF8 = arrayType2.Of.SameAs(BasicType.U8),
+                        Value = stringInstance.Value,
+                        Type = new ArrayType(arrayType2.Of, stringInstance.Value.Length + 1),
+                        Location = value.Location,
+                        SaveValue = value.SaveValue,
+                        IsNullTerminated = true,
+                    };
+                    castLevel = CastLevel.SameCast;
+                    return true;
+                }
+
                 break;
             }
 
@@ -4654,7 +4673,7 @@ public partial class StatementCompiler
             }
             case CompiledGenericTypeExpression v:
             {
-                type = new GenericType(v.Identifier, v.File);
+                type = v.Definition is null ? new GenericType(v.Identifier, v.File) : new GenericType(v.Definition, v.File);
                 return true;
             }
             case CompiledPointerTypeExpression v:

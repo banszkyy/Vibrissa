@@ -2,7 +2,7 @@ namespace LanguageCore.Tests;
 
 //[Ignore]
 [DoNotParallelize]
-[TestClass, TestCategory("IL"), TestCategory("Generic")]
+[TestClass, TestCategory("MSIL"), TestCategory("Generic")]
 public class ILTests
 {
     const int Timeout = 5000 * 1000;

@@ -45,7 +45,7 @@
 			"Tests": true,
 			"Debugger": true,
 			"Analysis": true,
-			"Unity": true,
+			"Unity/Runtime": true,
 			"Utility": true,
 			"**/*.meta": true,
 		},
@@ -61,8 +61,7 @@
 		},
 		"csharp.debug.justMyCode": true,
 		"csharp.debug.enableStepFiltering": true,
-		"javascript.format.semicolons": "remove",
-		"typescript.format.semicolons": "remove"
+		"dotnet.defaultSolution": "Core/Vibrissa.slnx"
 	},
 	"tasks": {
 		"version": "2.0.0",

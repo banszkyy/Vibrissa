@@ -1,127 +1,132 @@
 # Test Results
 
-![216 passed, 8 failed, 293 skipped](https://svg.test-summary.com/dashboard.svg?p=216&f=8&s=293)
-![216 passed](https://img.shields.io/badge/Passing-216-brightgreen?style=plastic]) ![8 failed](https://img.shields.io/badge/Failing-8-red?style=plastic]) ![293 skipped](https://img.shields.io/badge/Skipped-293-silver?style=plastic])
+![277 passed, 64 failed, 176 skipped](https://svg.test-summary.com/dashboard.svg?p=277&f=64&s=176)
+![277 passed](https://img.shields.io/badge/Passing-277-brightgreen?style=plastic]) ![64 failed](https://img.shields.io/badge/Failing-64-red?style=plastic]) ![176 skipped](https://img.shields.io/badge/Skipped-176-silver?style=plastic])
+ - ✅ Passed
+ - ❌ Failed
+ - ✖️ Not supported
+ - ➖ Skipped
 
-| File | Bytecode | Brainfuck |
-| :--: | :------: | :-------: |
-| [1](https://github.com/banszkyy/BBLang/blob/master/TestFiles/01.bbc) | ✅ | ✅ |
-| [2](https://github.com/banszkyy/BBLang/blob/master/TestFiles/02.bbc) | ✅ | ✅ |
-| [3](https://github.com/banszkyy/BBLang/blob/master/TestFiles/03.bbc) | ✅ | ✅ |
-| [4](https://github.com/banszkyy/BBLang/blob/master/TestFiles/04.bbc) | ✅ | ✅ |
-| [5](https://github.com/banszkyy/BBLang/blob/master/TestFiles/05.bbc) | ✅ | ✅ |
-| [6](https://github.com/banszkyy/BBLang/blob/master/TestFiles/06.bbc) | ✅ | ✅ |
-| [7](https://github.com/banszkyy/BBLang/blob/master/TestFiles/07.bbc) | ✅ | ✅ |
-| [8](https://github.com/banszkyy/BBLang/blob/master/TestFiles/08.bbc) | ✅ | ✅ |
-| [9](https://github.com/banszkyy/BBLang/blob/master/TestFiles/09.bbc) | ✅ | ✅ |
-| [10](https://github.com/banszkyy/BBLang/blob/master/TestFiles/10.bbc) | ✅ | ✅ |
-| [11](https://github.com/banszkyy/BBLang/blob/master/TestFiles/11.bbc) | ✅ | ✅ |
-| [12](https://github.com/banszkyy/BBLang/blob/master/TestFiles/12.bbc) | ✅ | ✅ |
-| [13](https://github.com/banszkyy/BBLang/blob/master/TestFiles/13.bbc) | ✅ | ✅ |
-| [14](https://github.com/banszkyy/BBLang/blob/master/TestFiles/14.bbc) | ✅ | ✅ |
-| [15](https://github.com/banszkyy/BBLang/blob/master/TestFiles/15.bbc) | ✅ | ✅ |
-| [16](https://github.com/banszkyy/BBLang/blob/master/TestFiles/16.bbc) | ✅ | ✅ |
-| [17](https://github.com/banszkyy/BBLang/blob/master/TestFiles/17.bbc) | ✅ | ✅ |
-| [18](https://github.com/banszkyy/BBLang/blob/master/TestFiles/18.bbc) | ✅ | ✅ |
-| [19](https://github.com/banszkyy/BBLang/blob/master/TestFiles/19.bbc) | ✅ | ✅ |
-| [20](https://github.com/banszkyy/BBLang/blob/master/TestFiles/20.bbc) | ✅ | ✅ |
-| [21](https://github.com/banszkyy/BBLang/blob/master/TestFiles/21.bbc) | ✅ | ✅ |
-| [22](https://github.com/banszkyy/BBLang/blob/master/TestFiles/22.bbc) | ✅ | ✅ |
-| [23](https://github.com/banszkyy/BBLang/blob/master/TestFiles/23.bbc) | ✅ | ✅ |
-| [24](https://github.com/banszkyy/BBLang/blob/master/TestFiles/24.bbc) | ✅ | ✅ |
-| [25](https://github.com/banszkyy/BBLang/blob/master/TestFiles/25.bbc) | ✅ | ✅ |
-| [26](https://github.com/banszkyy/BBLang/blob/master/TestFiles/26.bbc) | ✅ | ✅ |
-| [27](https://github.com/banszkyy/BBLang/blob/master/TestFiles/27.bbc) | ✅ | ✅ |
-| [28](https://github.com/banszkyy/BBLang/blob/master/TestFiles/28.bbc) | ✅ | ✅ |
-| [29](https://github.com/banszkyy/BBLang/blob/master/TestFiles/29.bbc) | ✅ | ✅ |
-| [30](https://github.com/banszkyy/BBLang/blob/master/TestFiles/30.bbc) | ✅ | ✅ |
-| [31](https://github.com/banszkyy/BBLang/blob/master/TestFiles/31.bbc) | ✅ | ✅ |
-| [32](https://github.com/banszkyy/BBLang/blob/master/TestFiles/32.bbc) | ✅ | ✅ |
-| [33](https://github.com/banszkyy/BBLang/blob/master/TestFiles/33.bbc) | ✅ | ✅ |
-| [34](https://github.com/banszkyy/BBLang/blob/master/TestFiles/34.bbc) | ✅ | ✅ |
-| [35](https://github.com/banszkyy/BBLang/blob/master/TestFiles/35.bbc) | ✅ | ✅ |
-| [36](https://github.com/banszkyy/BBLang/blob/master/TestFiles/36.bbc) | ✅ | ✅ |
-| [37](https://github.com/banszkyy/BBLang/blob/master/TestFiles/37.bbc) | ✅ | ✅ |
-| [38](https://github.com/banszkyy/BBLang/blob/master/TestFiles/38.bbc) | ✅ | ✅ |
-| [39](https://github.com/banszkyy/BBLang/blob/master/TestFiles/39.bbc) | ✅ | ✅ |
-| [40](https://github.com/banszkyy/BBLang/blob/master/TestFiles/40.bbc) | ✅ | ❌ |
-| [41](https://github.com/banszkyy/BBLang/blob/master/TestFiles/41.bbc) | ✅ | ✅ |
-| [42](https://github.com/banszkyy/BBLang/blob/master/TestFiles/42.bbc) | ✅ | ✅ |
-| [43](https://github.com/banszkyy/BBLang/blob/master/TestFiles/43.bbc) | ✅ | ➖ |
-| [44](https://github.com/banszkyy/BBLang/blob/master/TestFiles/44.bbc) | ✅ | ✅ |
-| [45](https://github.com/banszkyy/BBLang/blob/master/TestFiles/45.bbc) | ✅ | ✅ |
-| [46](https://github.com/banszkyy/BBLang/blob/master/TestFiles/46.bbc) | ✅ | ✅ |
-| [47](https://github.com/banszkyy/BBLang/blob/master/TestFiles/47.bbc) | ✅ | ✅ |
-| [48](https://github.com/banszkyy/BBLang/blob/master/TestFiles/48.bbc) | ✅ | ✅ |
-| [49](https://github.com/banszkyy/BBLang/blob/master/TestFiles/49.bbc) | ✅ | ➖ |
-| [50](https://github.com/banszkyy/BBLang/blob/master/TestFiles/50.bbc) | ✅ | ➖ |
-| [51](https://github.com/banszkyy/BBLang/blob/master/TestFiles/51.bbc) | ✅ | ✅ |
-| [52](https://github.com/banszkyy/BBLang/blob/master/TestFiles/52.bbc) | ✅ | ✅ |
-| [53](https://github.com/banszkyy/BBLang/blob/master/TestFiles/53.bbc) | ✅ | ✅ |
-| [54](https://github.com/banszkyy/BBLang/blob/master/TestFiles/54.bbc) | ✅ | ✅ |
-| [55](https://github.com/banszkyy/BBLang/blob/master/TestFiles/55.bbc) | ✅ | ➖ |
-| [56](https://github.com/banszkyy/BBLang/blob/master/TestFiles/56.bbc) | ✅ | ✅ |
-| [57](https://github.com/banszkyy/BBLang/blob/master/TestFiles/57.bbc) | ✅ | ✅ |
-| [58](https://github.com/banszkyy/BBLang/blob/master/TestFiles/58.bbc) | ✅ | ✅ |
-| [59](https://github.com/banszkyy/BBLang/blob/master/TestFiles/59.bbc) | ✅ | ❌ |
-| [60](https://github.com/banszkyy/BBLang/blob/master/TestFiles/60.bbc) | ✅ | ✅ |
-| [61](https://github.com/banszkyy/BBLang/blob/master/TestFiles/61.bbc) | ✅ | ✅ |
-| [62](https://github.com/banszkyy/BBLang/blob/master/TestFiles/62.bbc) | ✅ | ➖ |
-| [63](https://github.com/banszkyy/BBLang/blob/master/TestFiles/63.bbc) | ✅ | ➖ |
-| [64](https://github.com/banszkyy/BBLang/blob/master/TestFiles/64.bbc) | ✅ | ➖ |
-| [70](https://github.com/banszkyy/BBLang/blob/master/TestFiles/70.bbc) | ✅ | ✅ |
-| [71](https://github.com/banszkyy/BBLang/blob/master/TestFiles/71.bbc) | ✅ | ❌ |
-| [72](https://github.com/banszkyy/BBLang/blob/master/TestFiles/72.bbc) | ✅ | ✅ |
-| [73](https://github.com/banszkyy/BBLang/blob/master/TestFiles/73.bbc) | ✅ | ➖ |
-| [74](https://github.com/banszkyy/BBLang/blob/master/TestFiles/74.bbc) | ✅ | ➖ |
-| [75](https://github.com/banszkyy/BBLang/blob/master/TestFiles/75.bbc) | ✅ | ➖ |
-| [76](https://github.com/banszkyy/BBLang/blob/master/TestFiles/76.bbc) | ✅ | ➖ |
-| [77](https://github.com/banszkyy/BBLang/blob/master/TestFiles/77.bbc) | ✅ | ➖ |
-| [78](https://github.com/banszkyy/BBLang/blob/master/TestFiles/78.bbc) | ✅ | ✅ |
-| [79](https://github.com/banszkyy/BBLang/blob/master/TestFiles/79.bbc) | ✅ | ➖ |
-| [80](https://github.com/banszkyy/BBLang/blob/master/TestFiles/80.bbc) | ✅ | ➖ |
-| [81](https://github.com/banszkyy/BBLang/blob/master/TestFiles/81.bbc) | ✅ | ➖ |
-| [82](https://github.com/banszkyy/BBLang/blob/master/TestFiles/82.bbc) | ✅ | ➖ |
-| [83](https://github.com/banszkyy/BBLang/blob/master/TestFiles/83.bbc) | ✅ | ➖ |
-| [84](https://github.com/banszkyy/BBLang/blob/master/TestFiles/84.bbc) | ✅ | ➖ |
-| [85](https://github.com/banszkyy/BBLang/blob/master/TestFiles/85.bbc) | ✅ | ✅ |
-| [86](https://github.com/banszkyy/BBLang/blob/master/TestFiles/86.bbc) | ✅ | ➖ |
-| [87](https://github.com/banszkyy/BBLang/blob/master/TestFiles/87.bbc) | ✅ | ✅ |
-| [88](https://github.com/banszkyy/BBLang/blob/master/TestFiles/88.bbc) | ✅ | ✅ |
-| [89](https://github.com/banszkyy/BBLang/blob/master/TestFiles/89.bbc) | ✅ | ✅ |
-| [90](https://github.com/banszkyy/BBLang/blob/master/TestFiles/90.bbc) | ✅ | ✅ |
-| [91](https://github.com/banszkyy/BBLang/blob/master/TestFiles/91.bbc) | ✅ | ❌ |
-| [92](https://github.com/banszkyy/BBLang/blob/master/TestFiles/92.bbc) | ✅ | ✅ |
-| [93](https://github.com/banszkyy/BBLang/blob/master/TestFiles/93.bbc) | ✅ | ✅ |
-| [95](https://github.com/banszkyy/BBLang/blob/master/TestFiles/95.bbc) | ✅ | ❌ |
-| [96](https://github.com/banszkyy/BBLang/blob/master/TestFiles/96.bbc) | ✅ | ✅ |
-| [97](https://github.com/banszkyy/BBLang/blob/master/TestFiles/97.bbc) | ✅ | ➖ |
-| [98](https://github.com/banszkyy/BBLang/blob/master/TestFiles/98.bbc) | ✅ | ➖ |
-| [99](https://github.com/banszkyy/BBLang/blob/master/TestFiles/99.bbc) | ✅ | ✅ |
-| [100](https://github.com/banszkyy/BBLang/blob/master/TestFiles/100.bbc) | ✅ | ✅ |
-| [101](https://github.com/banszkyy/BBLang/blob/master/TestFiles/101.bbc) | ✅ | ✅ |
-| [102](https://github.com/banszkyy/BBLang/blob/master/TestFiles/102.bbc) | ✅ | ✅ |
-| [103](https://github.com/banszkyy/BBLang/blob/master/TestFiles/103.bbc) | ✅ | ➖ |
-| [104](https://github.com/banszkyy/BBLang/blob/master/TestFiles/104.bbc) | ✅ | ❌ |
-| [105](https://github.com/banszkyy/BBLang/blob/master/TestFiles/105.bbc) | ✅ | ✅ |
-| [106](https://github.com/banszkyy/BBLang/blob/master/TestFiles/106.bbc) | ✅ | ✅ |
-| [107](https://github.com/banszkyy/BBLang/blob/master/TestFiles/107.bbc) | ✅ | ✅ |
-| [108](https://github.com/banszkyy/BBLang/blob/master/TestFiles/108.bbc) | ✅ | ✅ |
-| [109](https://github.com/banszkyy/BBLang/blob/master/TestFiles/109.bbc) | ✅ | ❌ |
-| [110](https://github.com/banszkyy/BBLang/blob/master/TestFiles/110.bbc) | ✅ | ❌ |
-| [111](https://github.com/banszkyy/BBLang/blob/master/TestFiles/111.bbc) | ✅ | ✅ |
-| [112](https://github.com/banszkyy/BBLang/blob/master/TestFiles/112.bbc) | ✅ | ✅ |
-| [113](https://github.com/banszkyy/BBLang/blob/master/TestFiles/113.bbc) | ✅ | ✅ |
-| [115](https://github.com/banszkyy/BBLang/blob/master/TestFiles/115.bbc) | ✅ | ✅ |
-| [116](https://github.com/banszkyy/BBLang/blob/master/TestFiles/116.bbc) | ✅ | ➖ |
-| [118](https://github.com/banszkyy/BBLang/blob/master/TestFiles/118.bbc) | ✅ | ➖ |
-| [121](https://github.com/banszkyy/BBLang/blob/master/TestFiles/121.bbc) | ✅ | ✅ |
-| [122](https://github.com/banszkyy/BBLang/blob/master/TestFiles/122.bbc) | ✅ | ✅ |
-| [123](https://github.com/banszkyy/BBLang/blob/master/TestFiles/123.bbc) | ✅ | ➖ |
-| [124](https://github.com/banszkyy/BBLang/blob/master/TestFiles/124.bbc) | ✅ | ✅ |
-| [126](https://github.com/banszkyy/BBLang/blob/master/TestFiles/126.bbc) | ✅ | ✅ |
-| [127](https://github.com/banszkyy/BBLang/blob/master/TestFiles/127.bbc) | ✅ | ✅ |
-| [128](https://github.com/banszkyy/BBLang/blob/master/TestFiles/128.bbc) | ✅ | ➖ |
-| [129](https://github.com/banszkyy/BBLang/blob/master/TestFiles/129.bbc) | ✅ | ➖ |
-| [130](https://github.com/banszkyy/BBLang/blob/master/TestFiles/130.bbc) | ✅ | ➖ |
-| [135](https://github.com/banszkyy/BBLang/blob/master/TestFiles/135.bbc) | ✅ | ✅ |
+| File | Bytecode | Brainfuck | MSIL |
+| :--: | :------: | :-------: | :-------: |
+| [1](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/01.vi) | ✅ | ✅ | ✅ |
+| [2](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/02.vi) | ✅ | ✅ | ✅ |
+| [3](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/03.vi) | ✅ | ✅ | ✅ |
+| [4](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/04.vi) | ✅ | ✅ | ✅ |
+| [5](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/05.vi) | ✅ | ✅ | ✅ |
+| [6](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/06.vi) | ✅ | ✅ | ✅ |
+| [7](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/07.vi) | ✅ | ✅ | ✅ |
+| [8](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/08.vi) | ✅ | ✅ | ✅ |
+| [9](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/09.vi) | ✅ | ✅ | ✅ |
+| [10](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/10.vi) | ✅ | ✅ | ✅ |
+| [11](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/11.vi) | ✅ | ✅ | ✅ |
+| [12](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/12.vi) | ✅ | ✅ | ✅ |
+| [13](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/13.vi) | ✅ | ✅ | ✅ |
+| [14](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/14.vi) | ✅ | ✅ | ✅ |
+| [15](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/15.vi) | ✅ | ✅ | ✅ |
+| [16](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/16.vi) | ✅ | ✅ | ✅ |
+| [17](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/17.vi) | ✅ | ✅ | ✅ |
+| [18](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/18.vi) | ✅ | ✅ | ✅ |
+| [19](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/19.vi) | ✅ | ✅ | ✅ |
+| [20](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/20.vi) | ✅ | ✅ | ✅ |
+| [21](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/21.vi) | ✅ | ✅ | ✅ |
+| [22](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/22.vi) | ✅ | ✅ | ✅ |
+| [23](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/23.vi) | ✅ | ✅ | ✅ |
+| [24](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/24.vi) | ✅ | ✅ | ✅ |
+| [25](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/25.vi) | ✅ | ✅ | ✅ |
+| [26](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/26.vi) | ✅ | ✅ | ✅ |
+| [27](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/27.vi) | ✅ | ✅ | ✅ |
+| [28](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/28.vi) | ✅ | ✅ | ✅ |
+| [29](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/29.vi) | ✅ | ✅ | ✅ |
+| [30](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/30.vi) | ✅ | ✅ | ✅ |
+| [31](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/31.vi) | ✅ | ✅ | ✅ |
+| [32](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/32.vi) | ✅ | ✅ | ✅ |
+| [33](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/33.vi) | ✅ | ✅ | ✅ |
+| [34](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/34.vi) | ✅ | ✅ | ✖️ |
+| [35](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/35.vi) | ✅ | ❌ | ❌ |
+| [36](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/36.vi) | ✅ | ✅ | ✖️ |
+| [37](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/37.vi) | ✅ | ✅ | ✖️ |
+| [38](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/38.vi) | ✅ | ✅ | ✖️ |
+| [39](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/39.vi) | ✅ | ✅ | ✅ |
+| [40](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/40.vi) | ✅ | ❌ | ✖️ |
+| [41](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/41.vi) | ✅ | ✅ | ✖️ |
+| [42](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/42.vi) | ✅ | ✅ | ✖️ |
+| [43](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/43.vi) | ✅ | ➖ | ✖️ |
+| [44](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/44.vi) | ✅ | ✅ | ✖️ |
+| [45](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/45.vi) | ✅ | ❌ | ✖️ |
+| [46](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/46.vi) | ✅ | ✅ | ✅ |
+| [47](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/47.vi) | ✅ | ✅ | ✖️ |
+| [48](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/48.vi) | ✅ | ✅ | ✅ |
+| [49](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/49.vi) | ✅ | ➖ | ✅ |
+| [50](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/50.vi) | ✅ | ➖ | ✅ |
+| [51](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/51.vi) | ✅ | ✅ | ✅ |
+| [52](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/52.vi) | ✅ | ✅ | ✅ |
+| [53](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/53.vi) | ✅ | ✅ | ✅ |
+| [54](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/54.vi) | ✅ | ✅ | ✅ |
+| [55](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/55.vi) | ✅ | ➖ | ➖ |
+| [56](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/56.vi) | ✅ | ✅ | ✅ |
+| [57](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/57.vi) | ✅ | ✅ | ✅ |
+| [58](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/58.vi) | ✅ | ✅ | ✅ |
+| [59](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/59.vi) | ✅ | ❌ | ✅ |
+| [60](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/60.vi) | ✅ | ✅ | ✅ |
+| [61](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/61.vi) | ✅ | ✅ | ✅ |
+| [62](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/62.vi) | ✅ | ➖ | ➖ |
+| [63](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/63.vi) | ✅ | ➖ | ➖ |
+| [64](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/64.vi) | ✅ | ➖ | ➖ |
+| [65](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/65.vi) | ✅ | ➖ | ➖ |
+| [70](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/70.vi) | ✅ | ✅ | ✖️ |
+| [71](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/71.vi) | ✅ | ❌ | ✖️ |
+| [72](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/72.vi) | ✅ | ✅ | ✖️ |
+| [73](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/73.vi) | ✅ | ➖ | ✖️ |
+| [74](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/74.vi) | ✅ | ➖ | ✖️ |
+| [75](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/75.vi) | ✅ | ➖ | ✖️ |
+| [76](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/76.vi) | ✅ | ➖ | ✖️ |
+| [77](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/77.vi) | ✅ | ➖ | ✖️ |
+| [78](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/78.vi) | ✅ | ✅ | ✖️ |
+| [79](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/79.vi) | ✅ | ➖ | ✖️ |
+| [80](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/80.vi) | ✅ | ➖ | ✖️ |
+| [81](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/81.vi) | ✅ | ➖ | ✖️ |
+| [82](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/82.vi) | ✅ | ➖ | ✖️ |
+| [83](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/83.vi) | ✅ | ➖ | ✖️ |
+| [84](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/84.vi) | ✅ | ➖ | ✖️ |
+| [85](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/85.vi) | ✅ | ✅ | ✖️ |
+| [86](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/86.vi) | ✅ | ➖ | ✅ |
+| [87](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/87.vi) | ✅ | ✅ | ✖️ |
+| [88](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/88.vi) | ✅ | ✅ | ✖️ |
+| [89](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/89.vi) | ✅ | ✅ | ✖️ |
+| [90](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/90.vi) | ✅ | ✅ | ✖️ |
+| [91](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/91.vi) | ✅ | ❌ | ✖️ |
+| [92](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/92.vi) | ✅ | ✅ | ✅ |
+| [93](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/93.vi) | ✅ | ✅ | ✅ |
+| [95](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/95.vi) | ✅ | ✖️ | ✖️ |
+| [96](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/96.vi) | ✅ | ✅ | ✖️ |
+| [97](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/97.vi) | ✅ | ➖ | ✖️ |
+| [98](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/98.vi) | ✅ | ➖ | ✖️ |
+| [99](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/99.vi) | ✅ | ✅ | ✖️ |
+| [100](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/100.vi) | ✅ | ✅ | ✅ |
+| [101](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/101.vi) | ✅ | ✅ | ✅ |
+| [102](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/102.vi) | ✅ | ✅ | ✅ |
+| [103](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/103.vi) | ✅ | ➖ | ✖️ |
+| [104](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/104.vi) | ✅ | ❌ | ✖️ |
+| [105](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/105.vi) | ✅ | ✅ | ✖️ |
+| [106](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/106.vi) | ✅ | ✅ | ✖️ |
+| [107](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/107.vi) | ✅ | ✅ | ✅ |
+| [108](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/108.vi) | ✅ | ✅ | ✅ |
+| [109](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/109.vi) | ✅ | ❌ | ✖️ |
+| [110](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/110.vi) | ✅ | ❌ | ✖️ |
+| [111](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/111.vi) | ✅ | ✅ | ✅ |
+| [112](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/112.vi) | ✅ | ✅ | ✅ |
+| [113](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/113.vi) | ✅ | ✅ | ✅ |
+| [115](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/115.vi) | ✅ | ✅ | ✅ |
+| [116](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/116.vi) | ✅ | ➖ | ✖️ |
+| [118](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/118.vi) | ✅ | ➖ | ❌ |
+| [121](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/121.vi) | ✅ | ✅ | ✖️ |
+| [122](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/122.vi) | ✅ | ✅ | ✅ |
+| [123](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/123.vi) | ✅ | ➖ | ❌ |
+| [124](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/124.vi) | ✅ | ✅ | ✅ |
+| [126](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/126.vi) | ✅ | ✅ | ✅ |
+| [127](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/127.vi) | ✅ | ❌ | ✖️ |
+| [128](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/128.vi) | ✅ | ➖ | ✖️ |
+| [129](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/129.vi) | ✅ | ➖ | ❌ |
+| [130](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/130.vi) | ✅ | ➖ | ❌ |
+| [135](https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/135.vi) | ✅ | ✅ | ✖️ |

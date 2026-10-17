@@ -48,7 +48,7 @@ echo ''
 
 cd Core
 cd Github
-dotnet run -- --repository BBLang ../Utility/out
-dotnet run -- --repository BBLang-LanguageServer ../../LanguageServer/out/
-dotnet run -- --repository BBLang-DebugHost ../../DebugServer/out
-dotnet run -- --repository InterpreterVSCodeExtension ../../VSCodeExtension/VibrissaExtension.vsix
+dotnet run -- --repository Vibrissa ../Utility/out
+dotnet run -- --repository Vibrissa-LanguageServer ../../LanguageServer/out/
+dotnet run -- --repository Vibrissa-DebugHost ../../DebugServer/out
+dotnet run -- --repository Vibrissa-VSCodeExtension ../../VSCodeExtension/VibrissaExtension.vsix

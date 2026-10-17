@@ -6,16 +6,16 @@
 
 A **bytecode interpreted, statically-typed, embedded** language for mostly scripting purposes or simulations. It can also generate Brainfuck, and optimize functions into MSIL, or compile the whole script into a [DynamicMethod](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.emit.dynamicmethod).
 
-[Read more in the wiki](https://github.com/banszkyy/BBLang/wiki)
+[Read more in the wiki](https://github.com/banszkyy/Vibrissa/wiki)
 
 - [VSCode Extension](https://github.com/banszkyy/InterpreterVSCodeExtension) 
-- [Language Server](https://github.com/banszkyy/BBLang-LanguageServer)
-- [Debugger Host](https://github.com/banszkyy/BBLang-DebugHost)
+- [Language Server](https://github.com/banszkyy/Vibrissa-LanguageServer)
+- [Debugger Host](https://github.com/banszkyy/Vibrissa-DebugHost)
 
 ## Hello World
 
 ```cs
-using "https://raw.githubusercontent.com/banszkyy/BBLang/master/StandardLibrary/System.Console.vi";
+using "https://raw.githubusercontent.com/banszkyy/Vibrissa/master/StandardLibrary/System.Console.vi";
 
 printline("hello, world");
 ```
@@ -51,7 +51,7 @@ printline("hello, world");
 - `--throw-errors` Crashes the program whenever an exception thrown. This is useful for me for debugging.
 - `--print-instructions` Prints the generated instructions before execution
 - `--print-memory` Prints the memory after execution
-- `--basepath directory` Sets the path where source files will be searched for `using` statements. [read more](https://github.com/banszkyy/BBLang/wiki/Basic-Features#imports)
+- `--basepath directory` Sets the path where source files will be searched for `using` statements. [read more](https://github.com/banszkyy/Vibrissa/wiki/Basic-Features#imports)
 - `--dont-optimize` Disables all optimization
 - `--no-debug-info` Disables debug information (if you compiling into brainfuck, generating debug information will take a lot of time)
 - `--stack-size size` Specifies the stack size
@@ -68,8 +68,8 @@ printline("hello, world");
 ## Building
 
 ```sh
-git clone https://github.com/banszkyy/BBLang
-cd BBLang
+git clone https://github.com/banszkyy/Vibrissa
+cd Vibrissa
 dotnet publish Utility/Utility.csproj --configuration Release --output ./out/linux-x64
 ```
 
@@ -86,7 +86,7 @@ dotnet publish Utility/Utility.csproj --configuration Release --output ./out/lin
     mklink /J "Runtime" "..\Source"
     ```
 3. In Unity, navigate to `Edit > Project Settings... > Player > Other Settings > Scripting Define Symbols` and add the `UNITY` variable. [read more](https://docs.unity3d.com/2022.3/Documentation//Manual/CustomScriptingSymbols.html)
-    - If you are using the [Burst compiler](https://docs.unity3d.com/Packages/com.unity.burst@latest), add `UNITY_BURST` too. You must also add a reference to `Unity.Burst` in `/Unity/BBLang.asmdef`:
+    - If you are using the [Burst compiler](https://docs.unity3d.com/Packages/com.unity.burst@latest), add `UNITY_BURST` too. You must also add a reference to `Unity.Burst` in `/Unity/Vibrissa.asmdef`:
     ```json
     {
       ...
@@ -113,4 +113,4 @@ install [this](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc
 - `/Utility` The command line interface.
 - `/Debugger` A terminal based debugger.
 
-## [Tests](https://github.com/banszkyy/BBLang/blob/master/Tests.md)
+## [Tests](https://github.com/banszkyy/Vibrissa/blob/master/Tests.md)

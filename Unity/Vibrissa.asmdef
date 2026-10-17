@@ -1,7 +1,9 @@
 {
-    "name": "BBLang",
+    "name": "Vibrissa",
     "rootNamespace": "LanguageCore",
-    "references": [],
+    "references": [
+        "Unity.Burst"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": true,

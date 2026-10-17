@@ -1,7 +1,7 @@
 ﻿using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
-namespace LanguageCore.BBLang.Generator;
+namespace LanguageCore.Bytecode.Generator;
 
 public readonly struct LabelInstructionOperand : IEquatable<LabelInstructionOperand>
 {

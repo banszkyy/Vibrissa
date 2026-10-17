@@ -5,7 +5,7 @@ set -e
 rm -rf ./out
 
 dotnet publish --configuration Release --output ./out -r linux-x64 -p:DebugType=None -p:PublishSingleFile=true --self-contained true
-mv ./out/bblang ./out/linux-x64
+mv ./out/vibrissa ./out/linux-x64
 
 dotnet publish --configuration Release --output ./out -r win-x64 -p:DebugType=None -p:PublishSingleFile=true --self-contained true
-mv ./out/bblang.exe ./out/win-x64.exe
+mv ./out/vibrissa.exe ./out/win-x64.exe

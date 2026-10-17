@@ -1,4 +1,4 @@
-# BBLang
+# Vibrissa
 
 [![.Net 11.0](https://img.shields.io/badge/.NET-11.0-5C2D91?style=flat-square)](#)
 
@@ -15,7 +15,7 @@ A **bytecode interpreted, statically-typed, embedded** language for mostly scrip
 ## Hello World
 
 ```cs
-using "https://raw.githubusercontent.com/banszkyy/BBLang/master/StandardLibrary/System.Console.bbc";
+using "https://raw.githubusercontent.com/banszkyy/BBLang/master/StandardLibrary/System.Console.vi";
 
 printline("hello, world");
 ```
@@ -41,7 +41,7 @@ printline("hello, world");
 
 ## Command Line Arguments
 
-`BBLang [options...] source`
+`vibrissa [options...] source`
 
 - `--help` Prints some information about the program
 - `--verbose` Prints some information about the compilation process

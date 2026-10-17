@@ -36,7 +36,7 @@ public class CallbackSourceProviderSync : ISourceProviderSync, ISourceQueryProvi
 
     public IEnumerable<Uri> GetQuery(string requestedFile, Uri? currentFile)
     {
-        if (!requestedFile.EndsWith($".{LanguageConstants.LanguageExtension}", StringComparison.Ordinal)) requestedFile += $".{LanguageConstants.LanguageExtension}";
+        if (!requestedFile.EndsWith(LanguageConstants.LanguageExtension, StringComparison.Ordinal)) requestedFile += LanguageConstants.LanguageExtension;
 
         if (Uri.TryCreate(currentFile, requestedFile, out Uri? file))
         { yield return file; }

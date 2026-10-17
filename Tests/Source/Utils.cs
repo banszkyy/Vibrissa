@@ -8,7 +8,7 @@ static class Utils
     public static CompilerSettings GetCompilerSettings(CompilerSettings settigns) => new(settigns)
     {
         AdditionalImports = ImmutableArray.Create(
-            $"{Project.Path}/StandardLibrary/Primitives.bbc"
+            $"{Project.Path}/StandardLibrary/Primitives{LanguageConstants.LanguageExtension}"
         ),
         SourceProviders = ImmutableArray.Create<ISourceProvider>(
             new FileSourceProvider()

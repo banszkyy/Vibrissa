@@ -1,0 +1,10 @@
+using System;
+
+temp i32[]* arr = new i32[10]*;
+
+resize(arr, 5 * sizeof(i32));
+
+int f = free_memory();
+temp any* big = alloc(f);
+
+resize(big, f / 2);

@@ -1,7 +1,7 @@
 using System.IO;
 using LanguageCore.Runtime;
 
-namespace LanguageCore.BBLang.Generator;
+namespace LanguageCore.Bytecode.Generator;
 
 public class BytecodeEmitter
 {

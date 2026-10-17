@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>bblang_lib</AssemblyName>
+    <AssemblyName>vibrissa_lib</AssemblyName>
     <OutputType>Library</OutputType>
     <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>

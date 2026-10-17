@@ -130,9 +130,8 @@ public static class StatementKeywords
 
 public static class LanguageConstants
 {
-    public const string LanguageName = "BBLang";
-    public const string LanguageId = "bbc";
-    public const string LanguageExtension = "bbc";
+    public const string LanguageExtension = ".vi";
+    public const string LanguageId = "vibrissa";
 
     public static ImmutableArray<string> KeywordList { get; } = ImmutableArray.Create
     (

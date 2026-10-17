@@ -1,6 +1,6 @@
 namespace LanguageCore.Tests;
 
-[Ignore]
+//[Ignore]
 [DoNotParallelize]
 [TestClass, TestCategory("IL"), TestCategory("Generic")]
 public class ILTests

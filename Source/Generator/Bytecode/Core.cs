@@ -2,7 +2,7 @@
 using LanguageCore.IL.Generator;
 using LanguageCore.Runtime;
 
-namespace LanguageCore.BBLang.Generator;
+namespace LanguageCore.Bytecode.Generator;
 
 public class InstructionLabel
 {
@@ -280,7 +280,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         };
     }
 
-    public static BBLangGeneratorResult Generate(
+    public static BytecodeGeneratorResult Generate(
         CompilerResult compilerResult,
         MainGeneratorSettings settings,
         ITraceLogger? logger,

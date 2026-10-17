@@ -2,7 +2,7 @@
 using LanguageCore.IL.Generator;
 using LanguageCore.Runtime;
 
-namespace LanguageCore.BBLang.Generator;
+namespace LanguageCore.Bytecode.Generator;
 
 [Flags]
 public enum GeneratorOptimizationSettings : uint

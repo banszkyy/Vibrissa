@@ -18,9 +18,9 @@ public class FileSourceProvider : ISourceProviderSync, ISourceQueryProvider, IVe
             requestedFile = requestedFile["file://".Length..];
         }
 
-        if (!requestedFile.EndsWith($".{LanguageConstants.LanguageExtension}", StringComparison.Ordinal))
+        if (!requestedFile.EndsWith(LanguageConstants.LanguageExtension, StringComparison.Ordinal))
         {
-            requestedFile += $".{LanguageConstants.LanguageExtension}";
+            requestedFile += LanguageConstants.LanguageExtension;
         }
 
         if (requestedFile.StartsWith("/~")) requestedFile = requestedFile[1..];

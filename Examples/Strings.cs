@@ -5,7 +5,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using LanguageCore;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -14,7 +14,7 @@ namespace Examples;
 public static class Strings
 {
     static string GetScriptPath([CallerFilePath] string path = null!)
-        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "strings.bbc"));
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "strings.vi"));
 
     static string GetStandardLibraryPath([CallerFilePath] string path = null!)
         => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "..", "StandardLibrary"));
@@ -48,7 +48,7 @@ public static class Strings
                 }
             ),
         }, diagnostics);
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
         diagnostics.Print(ConsoleDiagnosticsLogger.Default);
         diagnostics.Throw();
 

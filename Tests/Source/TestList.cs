@@ -25,7 +25,7 @@ static class TestList
 
         for (int i = 1; i <= TestCount; i++)
         {
-            string sourceFile = $"{TestFilesPath}{i.ToString().PadLeft(TestFileNameWidth, '0')}.{LanguageConstants.LanguageExtension}";
+            string sourceFile = $"{TestFilesPath}{i.ToString().PadLeft(TestFileNameWidth, '0')}{LanguageConstants.LanguageExtension}";
             string resultFile = $"{TestFilesPath}{i.ToString().PadLeft(TestFileNameWidth, '0')}.result";
 
             if (!File.Exists(sourceFile))
@@ -42,7 +42,7 @@ static class TestList
     {
         int maxTestIndex = 0;
         List<(int Index, string SourceFile, string ResultFile, string? InputFile)> cases = new();
-        foreach (string sourceFile in Directory.GetFiles(TestFilesPath, $"*.{LanguageConstants.LanguageExtension}"))
+        foreach (string sourceFile in Directory.GetFiles(TestFilesPath, $"*{LanguageConstants.LanguageExtension}"))
         {
             string name = Path.GetFileNameWithoutExtension(sourceFile);
             if (!int.TryParse(name, out int i)) continue;

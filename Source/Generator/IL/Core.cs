@@ -46,10 +46,10 @@ public partial class CodeGeneratorForIL : CodeGenerator
         {
             AssemblyBuilder assemBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName()
             {
-                Name = "BBLangGeneratedAssembly",
+                Name = "VibrissaGeneratedAssembly",
             }, AssemblyBuilderAccess.RunAndCollect);
 
-            Module = assemBuilder.DefineDynamicModule("BBLangGeneratedModule");
+            Module = assemBuilder.DefineDynamicModule("VibrissaGeneratedModule");
         }
         else
         {

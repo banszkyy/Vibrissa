@@ -12,9 +12,9 @@ public class HttpSourceProvider : ISourceProviderAsync, ISourceQueryProvider
 
     public IEnumerable<Uri> GetQuery(string requestedFile, Uri? currentFile)
     {
-        if (!requestedFile.EndsWith($".{LanguageConstants.LanguageExtension}", StringComparison.Ordinal))
+        if (!requestedFile.EndsWith(LanguageConstants.LanguageExtension, StringComparison.Ordinal))
         {
-            requestedFile += $".{LanguageConstants.LanguageExtension}";
+            requestedFile += LanguageConstants.LanguageExtension;
         }
 
         if (!Uri.TryCreate(currentFile, requestedFile, out Uri? file))
@@ -35,7 +35,7 @@ public class HttpSourceProvider : ISourceProviderAsync, ISourceQueryProvider
         foreach (Uri file in GetQuery(requestedFile, currentFile))
         {
             using HttpClient client = new();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd($"BBLang Compiler Source Collector");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"Vibrissa Compiler Source Collector");
             using Task<HttpResponseMessage> getTask = client.GetAsync(file, cancellationToken);
 
             try

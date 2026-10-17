@@ -3,6 +3,7 @@
   <Project Path="Analysis/Analysis.csproj" />
   <Project Path="Debugger/Debugger.csproj" />
   <Project Path="Examples/Examples.csproj" />
+  <Project Path="Github/Github.csproj" />
   <Project Path="Source/Core.csproj" />
   <Project Path="Tests/Tests.csproj" />
   <Project Path="Utility/Utility.csproj" />

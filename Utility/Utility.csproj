@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <AssemblyName>bblang</AssemblyName>
+    <AssemblyName>vibrissa</AssemblyName>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 

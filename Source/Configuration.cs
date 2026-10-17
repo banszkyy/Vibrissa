@@ -27,7 +27,7 @@ public static class ConfigurationManager
 
 public sealed class Configuration
 {
-    public const string FileName = "bbl.conf";
+    public const string FileName = "vi.conf";
 
     public required bool IsProject { get; init; }
     public required ImmutableArray<string> ExtraDirectories { get; init; }

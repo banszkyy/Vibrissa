@@ -10,90 +10,40 @@ export void clear()
     print("\e[H");
 }
 
-export inline void printline<T1>(temp string format, temp T1 arg1)
+export void printf(temp string format, any[] args)
 {
-    int arg = 0;
+    int offset = 0;
     for (int i = 0; format[i]; i++)
     {
-        char c = format[i];
-        if (c == '%')
+        if (format[i] == '%')
         {
-            if (arg == 0) print(arg1);
-            else crash "Invalid format";
-            arg++;
+            i++;
+            if (format[i] == 'd')
+            {
+                print(*((&args + offset) as int*));
+                offset += sizeof(int);
+            }
+            else if (format[i] == 'f')
+            {
+                print(*((&args + offset) as float*));
+                offset += sizeof(float);
+            }
+            else if (format[i] == 's')
+            {
+                print(*((&args + offset) as string*));
+                offset += sizeof(string);
+            }
+            else
+            {
+                print('%');
+                print(format[i]);
+            }
         }
         else
         {
-            print(c);
+            print(format[i]);
         }
     }
-    printline();
-}
-
-export inline void printline<T1, T2>(temp string format, temp T1 arg1, temp T2 arg2)
-{
-    int arg = 0;
-    for (int i = 0; format[i]; i++)
-    {
-        char c = format[i];
-        if (c == '%')
-        {
-            if (arg == 0) print(arg1);
-            else if (arg == 1) print(arg2);
-            else crash "Invalid format";
-            arg++;
-        }
-        else
-        {
-            print(c);
-        }
-    }
-    printline();
-}
-
-export inline void printline<T1, T2, T3>(temp string format, temp T1 arg1, temp T2 arg2, temp T3 arg3)
-{
-    int arg = 0;
-    for (int i = 0; format[i]; i++)
-    {
-        char c = format[i];
-        if (c == '%')
-        {
-            if (arg == 0) print(arg1);
-            else if (arg == 1) print(arg2);
-            else if (arg == 2) print(arg3);
-            else crash "Invalid format";
-            arg++;
-        }
-        else
-        {
-            print(c);
-        }
-    }
-    printline();
-}
-
-export inline void printline<T1, T2, T3, T4>(temp string format, temp T1 arg1, temp T2 arg2, temp T3 arg3, temp T4 arg4)
-{
-    int arg = 0;
-    for (int i = 0; format[i]; i++)
-    {
-        char c = format[i];
-        if (c == '%')
-        {
-            if (arg == 0) print(arg1);
-            else if (arg == 1) print(arg2);
-            else if (arg == 2) print(arg3);
-            else if (arg == 3) print(arg4);
-            else crash "Invalid format";
-            arg++;
-        }
-        else
-        {
-            print(c);
-        }
-    }
-    printline();
 }
 
 [External("stdout")]
@@ -226,7 +176,7 @@ export void print(i8 message)
         print('-');
         message = message * (i8)(-1);
     }
-    
+
     i8 pow10 = find_max_pow_of_10(message);
     while (pow10)
     {
@@ -298,7 +248,7 @@ export void print(i32 message)
         print('-');
         message = message * -1;
     }
-    
+
     i32 pow10 = find_max_pow_of_10(message);
     while (pow10)
     {
@@ -359,6 +309,23 @@ export void print(temp string message)
     }
 }
 
+export void print(char[] message)
+{
+    for (int i = 0; message[i]; i++)
+    {
+        print(message[i]);
+    }
+}
+
+export void printline(char[] message)
+{
+    for (int i = 0; message[i]; i++)
+    {
+        print(message[i]);
+    }
+    print('\n');
+}
+
 export void print<T>(List<T>* list)
 {
 	if (!list)
@@ -366,7 +333,7 @@ export void print<T>(List<T>* list)
 		print("{ }");
 		return;
 	}
-	
+
     int length = list.length();
 
 	if (!length)
@@ -374,9 +341,9 @@ export void print<T>(List<T>* list)
 		print("{ }");
 		return;
 	}
-	
+
 	print("{ ");
-	
+
     for (int i = 0; i < length; i++)
     {
         if (i > 0)
@@ -395,15 +362,15 @@ export void print<T>(T[]* list, int length)
 		print("{ }");
 		return;
 	}
-	
+
 	if (!length)
 	{
 		print("{ }");
 		return;
 	}
-	
+
 	print("{ ");
-	
+
     for (int i = 0; i < length; i++)
     {
         if (i > 0)

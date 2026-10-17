@@ -15,7 +15,7 @@ public class UnityResourcesSourceProvider : ISourceProviderSync
             requestedFile = Path.Combine(BaseDirectory, requestedFile);
         }
 
-        if (requestedFile.EndsWith(".bbc"))
+        if (requestedFile.EndsWith(LanguageConstants.LanguageExtension))
         {
             requestedFile = $"{requestedFile[..^4]}";
         }

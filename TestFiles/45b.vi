@@ -1,0 +1,11 @@
+using System;
+
+void bruh()
+{
+  printline("ok");
+}
+
+export inline void a()
+{
+  bruh();
+}

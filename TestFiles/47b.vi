@@ -1,0 +1,12 @@
+using System;
+
+struct Bruh
+{
+	int hello;
+}
+
+export void a()
+{
+  Bruh bruh = new Bruh;
+  printline(bruh.hello);
+}

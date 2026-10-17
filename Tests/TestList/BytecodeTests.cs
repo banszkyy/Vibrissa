@@ -2,8 +2,8 @@ using LanguageCore.Runtime;
 
 namespace LanguageCore.Tests;
 
-[TestClass, TestCategory("Main"), TestCategory("Generic")]
-public class MainTests
+[TestClass, TestCategory("Bytecode"), TestCategory("Generic")]
+public class BytecodeTests
 {
     const int Timeout = 20 * 1000;
 

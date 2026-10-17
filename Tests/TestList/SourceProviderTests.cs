@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using LanguageCore;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -15,7 +15,7 @@ public class SourceProviderTests
         using HttpServer server = new("http://localhost:6789/", new Dictionary<string, string>()
         {
             {
-                "/main.bbc",
+                "/main.vi",
                 """
                 using stdlib;
                 using stdlib;
@@ -25,7 +25,7 @@ public class SourceProviderTests
                 """
             },
             {
-                "/stdlib.bbc",
+                "/stdlib.vi",
                 """
                 [External("stdout")]
                 void Print(u8 c);
@@ -47,7 +47,7 @@ public class SourceProviderTests
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 
-        CompilerResult compiled = StatementCompiler.CompileFile("http://localhost:6789/main.bbc", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
+        CompilerResult compiled = StatementCompiler.CompileFile("http://localhost:6789/main.vi", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
         {
             ExternalFunctions = externalFunctions.ToImmutableArray(),
             PreprocessorVariables = PreprocessorVariables.Normal,
@@ -56,7 +56,7 @@ public class SourceProviderTests
             ),
         }, diagnostics);
 
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
         //diagnostics.Print(ConsoleLogger.Default);
         diagnostics.Throw();
 
@@ -88,7 +88,7 @@ public class SourceProviderTests
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 
-        CompilerResult compiled = StatementCompiler.CompileFile("https://raw.githubusercontent.com/banszkyy/BBLang/refs/heads/master/Examples/hello_world.bbc", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
+        CompilerResult compiled = StatementCompiler.CompileFile("https://raw.githubusercontent.com/banszkyy/BBLang/refs/heads/master/Examples/hello_world.vi", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
         {
             ExternalFunctions = externalFunctions.ToImmutableArray(),
             PreprocessorVariables = PreprocessorVariables.Normal,
@@ -98,13 +98,13 @@ public class SourceProviderTests
                 {
                     AllowLocalFilesFromWeb = true,
                     ExtraDirectories = [
-                        "/home/bb/Projects/BBLang/Core/StandardLibrary"
+                        $"{Project.Path}/StandardLibrary"
                     ],
                 }
             ),
         }, diagnostics);
 
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
         //diagnostics.Print(ConsoleLogger.Default);
         diagnostics.Throw();
 
@@ -134,7 +134,7 @@ public class SourceProviderTests
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 
-        CompilerResult compiled = StatementCompiler.CompileFile("/home/bb/Projects/BBLang/Core/Examples/hello_world.bbc", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
+        CompilerResult compiled = StatementCompiler.CompileFile($"{Project.Path}/Examples/hello_world.vi", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
         {
             ExternalFunctions = externalFunctions.ToImmutableArray(),
             PreprocessorVariables = PreprocessorVariables.Normal,
@@ -144,11 +144,11 @@ public class SourceProviderTests
                     if (!file.IsFile) return null;
                     if (!File.Exists(file.AbsolutePath)) return null;
                     return Task.FromResult<Stream>(File.OpenRead(file.AbsolutePath));
-                }, "/home/bb/Projects/BBLang/Core/StandardLibrary")
+                }, $"{Project.Path}/StandardLibrary")
             ),
         }, diagnostics);
 
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
         //diagnostics.Print(ConsoleLogger.Default);
         diagnostics.Throw();
 
@@ -185,18 +185,18 @@ public class SourceProviderTests
             SourceProviders = ImmutableArray.Create<ISourceProvider>(
                 new MemorySourceProvider(new Dictionary<string, string>()
                 {
-                    { "/script", File.ReadAllText("/home/bb/Projects/BBLang/Core/Examples/hello_world.bbc") }
+                    { "/script", File.ReadAllText($"{Project.Path}/Examples/hello_world.vi") }
                 }),
                 new FileSourceProvider()
                 {
                     ExtraDirectories = [
-                        "/home/bb/Projects/BBLang/Core/StandardLibrary"
+                        $"{Project.Path}/StandardLibrary"
                     ],
                 }
             ),
         }, diagnostics);
 
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
         //diagnostics.Print(ConsoleLogger.Default);
         diagnostics.Throw();
 

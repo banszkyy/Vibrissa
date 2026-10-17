@@ -2,7 +2,7 @@
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
-namespace LanguageCore.BBLang.Generator;
+namespace LanguageCore.Bytecode.Generator;
 
 public partial class CodeGeneratorForMain : CodeGenerator
 {
@@ -2979,7 +2979,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     #endregion
 
-    BBLangGeneratorResult GenerateCode(CompilerResult compilerResult, MainGeneratorSettings settings)
+    BytecodeGeneratorResult GenerateCode(CompilerResult compilerResult, MainGeneratorSettings settings)
     {
         ScopeSizes.Push(0);
 
@@ -3028,7 +3028,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         failed2:
 
-            return new BBLangGeneratorResult()
+            return new BytecodeGeneratorResult()
             {
                 Code = Code.Compile(new Dictionary<string, int>()
                 {
@@ -3255,7 +3255,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         }
 
-        return new BBLangGeneratorResult()
+        return new BytecodeGeneratorResult()
         {
             Code = code,
             CodeEmitter = Code,

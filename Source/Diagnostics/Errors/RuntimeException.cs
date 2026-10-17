@@ -54,7 +54,7 @@ public class RuntimeException : LanguageException
         //{
         //    StackFrame? frame = stackTrace.GetFrame(i);
         //    if (frame is null) continue;
-        //    if (frame.HasMethod() && frame.GetMethod()!.DeclaringType != null && frame.GetMethod()!.DeclaringType!.Assembly.GetName().Name != "BBLangGeneratedAssembly")
+        //    if (frame.HasMethod() && frame.GetMethod()!.DeclaringType != null && frame.GetMethod()!.DeclaringType!.Assembly.GetName().Name != "VibrissaGeneratedAssembly")
         //    { break; }
         //    callStack = callStack.Add(new FunctionInformation()
         //    {

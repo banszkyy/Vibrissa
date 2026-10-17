@@ -17,7 +17,7 @@ public static class Program
             helpText = HelpText.AutoBuild(result, h =>
             {
                 h.AdditionalNewLineAfterOption = false;
-                h.Heading = "BBLang";
+                h.Heading = "Vibrissa CLI";
                 h.Copyright = string.Empty;
                 return HelpText.DefaultParsingErrorsHandler(result, h);
             }, e => e);

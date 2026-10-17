@@ -84,7 +84,7 @@ public class PerfProfiler : Profiler
 
         foreach (ProfilerSample sample in _samples)
         {
-            writer.WriteLine($"bblang 0/0 {TickToTimestamp(sample.Tick).TotalMilliseconds.ToString("0.000000", CultureInfo.InvariantCulture)}: 1 cpu/cycles/Pu:");
+            writer.WriteLine($"{LanguageConstants.LanguageId} 0/0 {TickToTimestamp(sample.Tick).TotalMilliseconds.ToString("0.000000", CultureInfo.InvariantCulture)}: 1 cpu/cycles/Pu:");
             foreach (ProfilerStackTraceItem item in sample.Trace)
             {
                 writer.WriteLine($"	    0x{Convert.ToString(item.Instruction, 16)} {item.FunctionName} ({item.Source})");

@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -65,7 +65,7 @@ static class InterpreterRunner
         }, diagnostics);
         diagnostics.Throw();
 
-        BBLangGeneratorResult generatedOptimized = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings, null, diagnostics);
+        BytecodeGeneratorResult generatedOptimized = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings, null, diagnostics);
         diagnostics.Throw();
 
         compiled = StatementCompiler.CompileFile(file, new CompilerSettings(Utils.GetCompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings))
@@ -76,7 +76,7 @@ static class InterpreterRunner
             CompileEverything = true,
         }, diagnostics);
         diagnostics.Throw();
-        BBLangGeneratorResult generatedUnoptimized = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings)
+        BytecodeGeneratorResult generatedUnoptimized = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings)
         {
             Optimizations = GeneratorOptimizationSettings.None,
         }, null, diagnostics);
@@ -99,7 +99,7 @@ static class InterpreterRunner
                 }
             ),
         }, diagnostics);
-        BBLangGeneratorResult generatedCodeIL = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings)
+        BytecodeGeneratorResult generatedCodeIL = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings)
         {
             ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
             {
@@ -125,7 +125,7 @@ static class InterpreterRunner
                 }
             ),
         }, diagnostics);
-        BBLangGeneratorResult generatedCodeILUnoptimized = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings)
+        BytecodeGeneratorResult generatedCodeILUnoptimized = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings)
         {
             DontOptimize = true,
             ILGeneratorSettings = new LanguageCore.IL.Generator.ILGeneratorSettings()
@@ -139,7 +139,7 @@ static class InterpreterRunner
 
         GC.Collect();
 
-        MainResult Execute(BBLangGeneratorResult code)
+        MainResult Execute(BytecodeGeneratorResult code)
         {
             io.Reset();
 

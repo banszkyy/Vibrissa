@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 using LanguageCore;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -29,7 +29,7 @@ public static class CustomSourceProvider
         // The `requestedFile` is what after the `using` statement.
         //    For example:
         //      `using System` will produce "System"
-        //      `using "~/StandardLibrary/System.bbc"` will produce "~/StandardLibrary/System.bbc"
+        //      `using "~/StandardLibrary/System"` will produce "~/StandardLibrary/System"
         //      `using "http://localhost/System"` will produce "http://localhost/System"
         // The `currentFile` is the location of the script where the `using` statement is,
         // or `null` if it is the entry point of the application.
@@ -118,7 +118,7 @@ public static class CustomSourceProvider
             ),
         }, diagnostics);
 
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
         diagnostics.Print(ConsoleDiagnosticsLogger.Default);
         diagnostics.Throw();
 

@@ -1,5 +1,5 @@
 /*
-This demonstrates how you can provide constants from C# to the BBC compiler.
+This demonstrates how you can provide constants from C# to the Vibrissa compiler.
 */
 
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Runtime.CompilerServices;
 using LanguageCore;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -16,7 +16,7 @@ namespace Examples;
 public static class ExternalConstants
 {
     static string GetScriptPath([CallerFilePath] string path = null!)
-        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "external_constants.bbc"));
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "external_constants.vi"));
 
     static string GetStandardLibraryPath([CallerFilePath] string path = null!)
         => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "..", "StandardLibrary"));
@@ -49,7 +49,7 @@ public static class ExternalConstants
                 }
             ),
         }, diagnostics);
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, MainGeneratorSettings.Default, null, diagnostics);
         diagnostics.Print(ConsoleDiagnosticsLogger.Default);
         diagnostics.Throw();
 

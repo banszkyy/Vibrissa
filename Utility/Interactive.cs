@@ -1,4 +1,4 @@
-﻿using LanguageCore.BBLang.Generator;
+﻿using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -21,7 +21,7 @@ public static class Interactive
     {
         source ??= string.Empty;
         DiagnosticsCollection diagnostics = new();
-        BBLangGeneratorResult generated;
+        BytecodeGeneratorResult generated;
 
         ImmutableArray<ISourceProvider> sourceProviders = ImmutableArray.Create<ISourceProvider>(
             new MemorySourceProvider(new Dictionary<string, string>()

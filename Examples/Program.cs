@@ -6,7 +6,7 @@ static class Program
 {
     static void Main()
     {
-        Console.WriteLine(" === BBL Examples ===");
+        Console.WriteLine(" === Examples ===");
 
         Console.WriteLine();
         Console.WriteLine($" --- {nameof(HelloWorld)} ---");

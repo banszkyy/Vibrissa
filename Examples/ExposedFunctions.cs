@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Runtime.CompilerServices;
 using LanguageCore;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -17,7 +17,7 @@ namespace Examples;
 public static class ExposedFunctions
 {
     static string GetScriptPath([CallerFilePath] string path = null!)
-        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "exposed_functions.bbc"));
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "exposed_functions.vi"));
 
     static string GetStandardLibraryPath([CallerFilePath] string path = null!)
         => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "..", "StandardLibrary"));
@@ -42,7 +42,7 @@ public static class ExposedFunctions
                 }
             ),
         }, diagnostics);
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
         {
             // The global variables would be cleaned up at the end of the top-level statements.
             // To prevent undefined behavior when accessing global variables from an exposed function,

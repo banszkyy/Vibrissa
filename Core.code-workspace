@@ -87,7 +87,7 @@
 				"type": "coreclr",
 				"request": "launch",
 				"preLaunchTask": "build",
-				"program": "${workspaceFolder:Core}/Utility/bin/Debug/net11.0/linux-x64/bblang",
+				"program": "${workspaceFolder:Core}/Utility/bin/Debug/net11.0/vibrissa",
 				"args": [],
 				"cwd": "${workspaceFolder:Core}",
 				"stopAtEntry": false,

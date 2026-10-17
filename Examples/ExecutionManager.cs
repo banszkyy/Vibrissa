@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.CompilerServices;
 using LanguageCore;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Compiler;
 using LanguageCore.Runtime;
 
@@ -13,7 +13,7 @@ namespace Examples;
 public static class ExecutionManager
 {
     static string GetScriptPath([CallerFilePath] string path = null!)
-        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "execution_manager.bbc"));
+        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "execution_manager.vi"));
 
     static string GetStandardLibraryPath([CallerFilePath] string path = null!)
         => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path)!, "..", "StandardLibrary"));
@@ -44,7 +44,7 @@ public static class ExecutionManager
                 }
             ),
         }, diagnostics);
-        BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
+        BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings.Default)
         {
             CleanupGlobalVaraibles = false,
         }, null, diagnostics);

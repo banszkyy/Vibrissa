@@ -2,7 +2,7 @@ using LanguageCore.Compiler;
 using LanguageCore.IR;
 using LanguageCore.Runtime;
 
-namespace LanguageCore.BBLang.Generator;
+namespace LanguageCore.Bytecode.Generator;
 
 public partial class CodeGeneratorForMain : CodeGenerator
 {
@@ -253,45 +253,52 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         ILocated loc = new Location();
 
-        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, statement.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, statement.Function.TypeArguments));
-        if (f is null)
+        if (statement.Function is IRFunctionRef functionRef)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{statement.Function.Template.ToReadable()}\" wasn't compiled", loc));
-            return;
-        }
-
-        if (statement.Function.Template.ReturnSomething)
-        {
-            StackAlloc(FindSize(GeneralType.TryInsertTypeParameters(statement.Function.Template.Type, statement.Function.TypeArguments), loc), false);
-        }
-
-        foreach (IRValue item in statement.Arguments)
-        {
-            EmitIR(item);
-        }
-
-        InstructionLabel label = LabelForDefinition(statement.Function);
-        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
-
-        if (!label.IsMarked)
-        { UndefinedFunctionOffsets.Add(new(loc, statement.Function.UnsafeTo<IHaveInstructionOffset>())); }
-
-        if (statement.ReturnValue is not null)
-        {
-            if (!Temporaries.TryGetValue(statement.ReturnValue, out int target))
+            CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, functionRef.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, functionRef.Function.TypeArguments));
+            if (f is null)
             {
-                target = Temporaries.Keys.Sum(v => FindSize(v.Type)) + BasePointerSize;
-                Temporaries.Add(statement.ReturnValue, target);
+                Diagnostics.Add(DiagnosticAt.Internal($"Function `{functionRef.Function.Template.ToReadable()}` wasn't compiled", loc));
+                return;
             }
 
-            if (ScopeSizes.Last != target)
+            if (functionRef.Function.Template.ReturnSomething)
             {
-                PopTo(new AddressOffset(Register.BasePointer, -target), FindSize(statement.ReturnValue.Type));
+                StackAlloc(FindSize(GeneralType.TryInsertTypeParameters(functionRef.Function.Template.Type, functionRef.Function.TypeArguments), loc), false);
+            }
+
+            foreach (IRValue item in statement.Arguments)
+            {
+                EmitIR(item);
+            }
+
+            InstructionLabel label = LabelForDefinition(functionRef.Function);
+            Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
+
+            if (!label.IsMarked)
+            { UndefinedFunctionOffsets.Add(new(loc, functionRef.Function.UnsafeTo<IHaveInstructionOffset>())); }
+
+            if (statement.ReturnValue is not null)
+            {
+                if (!Temporaries.TryGetValue(statement.ReturnValue, out int target))
+                {
+                    target = Temporaries.Keys.Sum(v => FindSize(v.Type)) + BasePointerSize;
+                    Temporaries.Add(statement.ReturnValue, target);
+                }
+
+                if (ScopeSizes.Last != target)
+                {
+                    PopTo(new AddressOffset(Register.BasePointer, -target), FindSize(statement.ReturnValue.Type));
+                }
+            }
+            else if (functionRef.Function.Template.ReturnSomething)
+            {
+                Pop(FindSize(GeneralType.TryInsertTypeParameters(functionRef.Function.Template.Type, functionRef.Function.TypeArguments), loc));
             }
         }
-        else if (statement.Function.Template.ReturnSomething)
+        else
         {
-            Pop(FindSize(GeneralType.TryInsertTypeParameters(statement.Function.Template.Type, statement.Function.TypeArguments), loc));
+            throw new NotImplementedException();
         }
     }
     void EmitIR(IRExternalFunctionCall statement)

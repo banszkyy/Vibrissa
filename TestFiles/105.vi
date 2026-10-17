@@ -1,0 +1,8 @@
+using System;
+
+void A(int a = 5)
+{
+    printline(a);
+}
+
+A();

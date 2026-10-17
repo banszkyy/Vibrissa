@@ -1,0 +1,21 @@
+using System.Console;
+
+string input = readline();
+
+int current = 0;
+for (int i = 0; input[i]; i++)
+{
+    char c = input[i];
+    while (c < current)
+    {
+        print('-');
+        current--;
+    }
+    while (c > current)
+    {
+        print('+');
+        current++;
+    }
+    print('.');
+}
+printline();

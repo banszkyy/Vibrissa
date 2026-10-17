@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using CommandLine;
-using LanguageCore.BBLang.Generator;
+using LanguageCore.Bytecode.Generator;
 using LanguageCore.Brainfuck;
 using LanguageCore.Brainfuck.Generator;
 using LanguageCore.Compiler;
@@ -125,7 +125,7 @@ public static class Entry
 
         };
 
-        BBLangGeneratorResult generatedCode;
+        BytecodeGeneratorResult generatedCode;
         try
         {
             CompilerResult compiled = StatementCompiler.CompileFile(entryFile, compilerSettings, diagnostics);
@@ -212,7 +212,7 @@ public static class Entry
                 BytecodeProcessor.AddStaticExternalFunctions(externalFunctions);
 
                 BytecodeProcessor interpreter = default!;
-                BBLangGeneratorResult generatedCode = default!;
+                BytecodeGeneratorResult generatedCode = default!;
                 DiagnosticsCollection diagnostics = new();
 
                 externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(), "meow", () =>
@@ -1059,7 +1059,7 @@ public static class Entry
                 if (diagnostics.HasErrors) return 1;
 
                 diagnostics.Clear();
-                BBLangGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, mainGeneratorSettings, logger, diagnostics);
+                BytecodeGeneratorResult generatedCode = CodeGeneratorForMain.Generate(compiled, mainGeneratorSettings, logger, diagnostics);
                 diagnostics.Print(logger);
                 if (diagnostics.HasErrors) return 1;
 

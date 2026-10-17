@@ -51,4 +51,4 @@ cd Github
 dotnet run -- --repository BBLang ../Utility/out
 dotnet run -- --repository BBLang-LanguageServer ../../LanguageServer/out/
 dotnet run -- --repository BBLang-DebugHost ../../DebugServer/out
-dotnet run -- --repository InterpreterVSCodeExtension ../../VSCodeExtension/BBLangExtension.vsix
+dotnet run -- --repository InterpreterVSCodeExtension ../../VSCodeExtension/VibrissaExtension.vsix

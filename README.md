@@ -8,7 +8,7 @@ A **bytecode interpreted, statically-typed, embedded** language for mostly scrip
 
 [Read more in the wiki](https://github.com/banszkyy/Vibrissa/wiki)
 
-- [VSCode Extension](https://github.com/banszkyy/InterpreterVSCodeExtension) 
+- [VSCode Extension](https://github.com/banszkyy/Vibrissa-VSCodeExtension) 
 - [Language Server](https://github.com/banszkyy/Vibrissa-LanguageServer)
 - [Debugger Host](https://github.com/banszkyy/Vibrissa-DebugHost)
 

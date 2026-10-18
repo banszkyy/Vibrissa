@@ -2,70 +2,44 @@
 
 [![.Net 11.0](https://img.shields.io/badge/.NET-11.0-5C2D91?style=flat-square)](#)
 
-## About
+**Bytecode interpreted, statically-typed, embedded** language with minimal restrictions. On top of custom bytecode, it can also generate Brainfuck, and optimize functions into MSIL, or compile the whole script into a [DynamicMethod](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.emit.dynamicmethod).
 
-A **bytecode interpreted, statically-typed, embedded** language for mostly scripting purposes or simulations. It can also generate Brainfuck, and optimize functions into MSIL, or compile the whole script into a [DynamicMethod](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.emit.dynamicmethod).
+[Wiki](https://github.com/banszkyy/Vibrissa/wiki) • [VSCode Extension](https://github.com/banszkyy/Vibrissa-VSCodeExtension) • [Language Server](https://github.com/banszkyy/Vibrissa-LanguageServer) • [Debugger Host](https://github.com/banszkyy/Vibrissa-DebugHost)
 
-[Read more in the wiki](https://github.com/banszkyy/Vibrissa/wiki)
+## Goals
 
-- [VSCode Extension](https://github.com/banszkyy/Vibrissa-VSCodeExtension) 
-- [Language Server](https://github.com/banszkyy/Vibrissa-LanguageServer)
-- [Debugger Host](https://github.com/banszkyy/Vibrissa-DebugHost)
+- Familiar syntax (like C)
+- Full control over the runtime
+- Minimal built-in features, maximum flexibility
 
 ## Hello World
 
-```cs
+```cpp
 using "https://raw.githubusercontent.com/banszkyy/Vibrissa/master/StandardLibrary/System.Console.vi";
 
-printline("hello, world");
+print("hello, world\n");
 ```
 
 Without dependencies:
 
-```cs
+```cpp
 [External("stdout")]
-void print(char message);
+void print(u8 message);
 
-void printline(temp string message)
+void print(u8[] message)
 {
-    for (int i = 0; message[i]; i++)
+    for (i32 i = 0; message[i]; i++)
     {
         print(message[i]);
     }
-    print('\r');
-    print('\n');
 }
 
-printline("hello, world");
+print("hello, world\n");
 ```
 
-## Command Line Arguments
-
-`vibrissa [options...] source`
-
-- `--help` Prints some information about the program
-- `--verbose` Prints some information about the compilation process
-- `--format bytecode|brainfuck|il` Specifies which generator to use.
-- `--debug` Launches the debugger screen
-- `--output <file>` Writes the generated code to the specified file (this option only works for brainfuck)
-- `--throw-errors` Crashes the program whenever an exception thrown. This is useful for me for debugging.
-- `--print-instructions` Prints the generated instructions before execution
-- `--print-memory` Prints the memory after execution
-- `--basepath directory` Sets the path where source files will be searched for `using` statements. [read more](https://github.com/banszkyy/Vibrissa/wiki/Basic-Features#imports)
-- `--dont-optimize` Disables all optimization
-- `--no-debug-info` Disables debug information (if you compiling into brainfuck, generating debug information will take a lot of time)
-- `--stack-size size` Specifies the stack size
-- `--heap-size size` Specifies the heap size
-
-> [!NOTE]
-> **Heap size in Brainfuck:**
-> 
-> - If you specify zero the heap will not be initialized and wherever you try to access it, it will not compile.
-> - The heap size cannot be larger than 126, sorry 🤷‍♀️
-
-- `--no-nullcheck` Disables null check generation when dereferencing a pointer
-
 ## Building
+
+It's just a .NET project so you can build it as usual. [read more](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-build)
 
 ```sh
 git clone https://github.com/banszkyy/Vibrissa
@@ -76,14 +50,14 @@ dotnet publish Utility/Utility.csproj --configuration Release --output ./out/lin
 ### Unity
 
 1. Import the `/Unity/package.json` using the Unity Package Manager. [read more](https://docs.unity3d.com/6000.0/Documentation/Manual/upm-ui-local.html)
-2. Create a symlink at `/Unity/Source` pointing at `/Source`. To do so, run this inside the `/Unity` directory:
+2. Create a symlink at `/Unity/Source` pointing at `/Source`. To do so, run this inside the `/Unity` directory:\
     Linux:
     ```sh
     ln -s ../Source Runtime
     ```
-    Windows:
+    Windows: [read more](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/mklink)
     ```sh
-    mklink /J "Runtime" "..\Source"
+    mklink /j "Runtime" "..\Source"
     ```
 3. In Unity, navigate to `Edit > Project Settings... > Player > Other Settings > Scripting Define Symbols` and add the `UNITY` variable. [read more](https://docs.unity3d.com/2022.3/Documentation//Manual/CustomScriptingSymbols.html)
     - If you are using the [Burst compiler](https://docs.unity3d.com/Packages/com.unity.burst@latest), add `UNITY_BURST` too. You must also add a reference to `Unity.Burst` in `/Unity/Vibrissa.asmdef`:

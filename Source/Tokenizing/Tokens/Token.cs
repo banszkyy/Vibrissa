@@ -23,6 +23,15 @@ public class Token :
         AnalyzedType = TokenAnalyzedType.None;
     }
 
+    internal Token(TokenType type, string content, Position position)
+    {
+        TokenType = type;
+        Content = content;
+        IsAnonymous = false;
+        Position = position;
+        AnalyzedType = TokenAnalyzedType.None;
+    }
+
     internal Token(PreparationToken preparationToken) : this(preparationToken.TokenType switch
     {
         PreparationTokenType.Whitespace => TokenType.Whitespace,
@@ -37,9 +46,6 @@ public class Token :
         PreparationTokenType.Operator => TokenType.Operator,
         PreparationTokenType.Comment => TokenType.Comment,
         PreparationTokenType.CommentMultiline => TokenType.CommentMultiline,
-        PreparationTokenType.PREPROCESS_Identifier => TokenType.PreprocessIdentifier,
-        PreparationTokenType.PREPROCESS_Argument => TokenType.PreprocessArgument,
-        PreparationTokenType.PREPROCESS_Skipped => TokenType.PreprocessSkipped,
         _ => throw new InternalExceptionWithoutContext($"Token `{preparationToken}` isn't finished (type is `{preparationToken.TokenType}`)"),
     }, preparationToken.Content.ToString(), false, preparationToken.Position)
     { }

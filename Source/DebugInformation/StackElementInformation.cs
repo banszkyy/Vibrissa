@@ -8,6 +8,7 @@ public struct StackElementInformation
     public StackElementKind Kind;
     public GeneralType Type;
     public string Identifier;
+    public Range<int> Valid;
 
     public int Address;
     public bool BasePointerRelative;

@@ -275,7 +275,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 {
                     if (Utils.ReferenceEquals(capturedLocal.Variable, variable))
                     {
-                        address = new AddressOffset(new AddressPointer(GetParameterAddress(0)), offset);
+                        if (!GetParameterAddress(0, 0, out Address? parameterAddress, out PossibleDiagnostic? _error))
+                        {
+                            error = _error;
+                            return false;
+                        }
+                        address = new AddressOffset(new AddressPointer(parameterAddress), offset);
                         return true;
                     }
                 }
@@ -310,7 +315,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 {
                     if (Utils.ReferenceEquals(capturedLocal.Parameter, parameter))
                     {
-                        address = new AddressOffset(new AddressPointer(GetParameterAddress(0)), _offset + offset);
+                        if (!GetParameterAddress(0, 0, out Address? parameterAddress, out PossibleDiagnostic? _error))
+                        {
+                            error = _error;
+                            return false;
+                        }
+                        address = new AddressOffset(new AddressPointer(parameterAddress), _offset + offset);
                         return true;
                     }
                 }
@@ -323,36 +333,46 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return false;
         }
 
-        address = GetParameterAddress(parameterIndex, offset);
+        if (!GetParameterAddress(parameterIndex, offset, out address, out error))
+        {
+            return false;
+        }
         return true;
     }
 
-    int GetParameterOffset(int index)
+    bool GetParameterOffset(int index, out int offset, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        int sum = 0;
+        offset = 0;
+        error = null;
 
         for (int i = 0; i < CompiledParameters.Count; i++)
         {
             if (i >= index) continue;
             CompiledParameter parameter = CompiledParameters[i];
-            sum += FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), parameter.Definition);
+            if (!FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), out int size, out PossibleDiagnostic? _error))
+            {
+                error = new PossibleDiagnostic($"Cannot get the size of parameter `{parameter.Identifier}`", parameter.Definition, _error.Populated(parameter.Definition.Type));
+                return false;
+            }
+            offset += size;
         }
 
-        return sum;
+        return true;
     }
 
-    public AddressOffset GetParameterAddress(int index, int offset = 0)
+    public bool GetParameterAddress(int index, int offset, [NotNullWhen(true)] out Address? address, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        return new(
-            Register.BasePointer,
-            0 // We start at the saved base pointer
-            - ((
-                GetParameterOffset(index) // ???
-                + StackFrameTags // Offset by the stack frame stuff
-            ) * ProcessorState.StackDirection)
-            + offset
-        //  + 1 // Stack pointer offset (???)
-            );
+        address = null;
+        error = null;
+
+        if (!GetParameterOffset(index, out int _offset, out PossibleDiagnostic? _error))
+        {
+            error = new PossibleDiagnostic($"Cannot get the address of parameter `{CompiledParameters[index].Identifier}`", _error);
+            return false;
+        }
+
+        address = new AddressOffset(Register.BasePointer, -((_offset + StackFrameTags) * ProcessorState.StackDirection) + offset);
+        return true;
     }
 
     void Pop(int size)

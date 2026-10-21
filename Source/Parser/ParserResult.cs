@@ -17,6 +17,11 @@ public readonly struct ParserResult
 
     public readonly bool IsNotEmpty;
 
+    public IEnumerable<FunctionThingDefinition> AllFunctions =>
+        Functions
+        .Append(Operators)
+        .Append(Structs.SelectMany(v => v.Functions.Cast<FunctionThingDefinition>().Append(v.Operators).Append(v.Constructors).Append(v.GeneralFunctions)));
+
     public static ParserResult Empty => new(
         ImmutableArray<FunctionDefinition>.Empty,
         ImmutableArray<FunctionDefinition>.Empty,

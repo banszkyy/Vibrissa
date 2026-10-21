@@ -562,9 +562,7 @@ public partial class StatementCompiler
             result.Errors.Add(new($"Cannot use function `{query.Identifier}` due it's protection level"));
         }
 
-        static TypeMatch MinTypeMatch(TypeMatch a, TypeMatch b) => a > b ? a : b;
-
-        bool TryReplaceArgument2(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed, Dictionary<string, GeneralType> typeArguments, int argumentIndex)
+        bool TryReplaceArgument2(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed, Dictionary<string, GeneralType> typeArguments)
         {
             if (passed is not CompiledExpression passedExpression) return false;
             if (!definition.Modifiers.Contains(ModifierKeywords.This)) return false;
@@ -582,7 +580,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        void GetArgumentMatch(ref TypeMatch typeMatch, ref CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, TArgument passed, List<PossibleDiagnostic> errors, int argumentIndex)
+        void GetArgumentMatch(ref TypeMatch typeMatch, ref CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, TArgument passed, List<PossibleDiagnostic> errors)
         {
             if (typeMatch == TypeMatch.None) return;
 
@@ -682,7 +680,7 @@ public partial class StatementCompiler
                 }
             }
 
-            if (error is not null) errors.Add(new PossibleDiagnostic($"Invalid argument passed at {argumentIndex}", passed as ILocated, error));
+            if (error is not null) errors.Add(new PossibleDiagnostic($"Invalid argument passed to `{definition.Identifier}`", passed as ILocated, error));
             typeMatch = TypeMatch.None;
         }
 
@@ -726,7 +724,7 @@ public partial class StatementCompiler
                     GeneralType defined = function.Parameters[i].Type;
                     GeneralType passed = query.Converter.Invoke(query.Arguments.Value[i]);
 
-                    if (TryReplaceArgument2(ref argumentValues[i], passed, defined, function.Parameters[i].Definition, query.Arguments.Value[i], _typeArguments, i))
+                    if (TryReplaceArgument2(ref argumentValues[i], passed, defined, function.Parameters[i].Definition, query.Arguments.Value[i], _typeArguments))
                     {
                         // yay
                     }
@@ -748,7 +746,7 @@ public partial class StatementCompiler
                     GeneralType defined = GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, _typeArguments);
                     TArgument passed = query.Arguments.Value[i];
                     TypeMatch v = result.ParameterTypeMatch.Value;
-                    GetArgumentMatch(ref v, ref argumentValues[i], defined, function.Parameters[i].Definition, passed, result.Errors, i);
+                    GetArgumentMatch(ref v, ref argumentValues[i], defined, function.Parameters[i].Definition, passed, result.Errors);
                     if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
                 }
 
@@ -781,7 +779,7 @@ public partial class StatementCompiler
                     GeneralType defined = function.Parameters[i].Type;
                     TArgument passed = query.Arguments.Value[i];
                     TypeMatch v = result.ParameterTypeMatch.Value;
-                    GetArgumentMatch(ref v, ref arguments[i], defined, function.Parameters[i].Definition, passed, result.Errors, i);
+                    GetArgumentMatch(ref v, ref arguments[i], defined, function.Parameters[i].Definition, passed, result.Errors);
                     if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
                 }
                 result.Arguments = arguments.AsImmutableUnsafe();

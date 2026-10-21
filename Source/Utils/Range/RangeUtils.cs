@@ -52,6 +52,28 @@ public static class RangeUtils
         { return new Range<int>(start, end); }
     }
 
+    public static Range<SinglePosition> Intersect(Range<SinglePosition> a, Range<SinglePosition> b)
+    {
+        bool isBackward = a.IsBackward();
+
+        if (a.IsBackward() != b.IsBackward())
+        { b = new Range<SinglePosition>(b.End, b.Start); }
+
+        if (isBackward)
+        {
+            a = new Range<SinglePosition>(a.End, a.Start);
+            b = new Range<SinglePosition>(b.End, b.Start);
+        }
+
+        SinglePosition start = SinglePosition.Max(a.Start, b.Start);
+        SinglePosition end = SinglePosition.Min(a.End, b.End);
+
+        if (isBackward)
+        { return new Range<SinglePosition>(end, start); }
+        else
+        { return new Range<SinglePosition>(start, end); }
+    }
+
     public static MutableRange<int> Union(MutableRange<int> a, int b)
         => new(Math.Min(a.Start, b), Math.Max(a.End, b));
 

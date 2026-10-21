@@ -14,7 +14,7 @@ static class TestResults
     }
 
     record struct TrxTestDefinition(string Name, string[] Categories, string? ExecutionId, string? MethodClassName, string? MethodName);
-    record struct TrxTestResult(string Id, string Name, string Outcome, string? ErrorMessage);
+    record struct TrxTestResult(string Id, string Name, string Outcome, string? ErrorMessage, string? StackTrace);
 
     static (Dictionary<string, TrxTestDefinition> Definitions, TrxTestResult[] Results) LoadTestResults(string trxFile)
     {
@@ -86,7 +86,12 @@ static class TestResults
                     if (errorMessage_ is not null && errorMessage_.FirstChild?.NodeType == XmlNodeType.Text)
                     { errorMessage = errorMessage_.FirstChild.Value; }
 
-                    results.Add(new TrxTestResult(id, name, outcome, errorMessage));
+                    XmlElement? stackTrace_ = _result["Output"]?["ErrorInfo"]?["StackTrace"];
+                    string? stackTrace = null;
+                    if (stackTrace_ is not null && stackTrace_.FirstChild?.NodeType == XmlNodeType.Text)
+                    { stackTrace = stackTrace_.FirstChild.Value; }
+
+                    results.Add(new TrxTestResult(id, name, outcome, errorMessage, stackTrace));
                 }
             }
         }
@@ -100,13 +105,13 @@ static class TestResults
 
         (Dictionary<string, TrxTestDefinition> definitions, TrxTestResult[] results) = LoadTestResults(latest);
 
-        Dictionary<string, List<(string? Category, string Outcome, string? ErrorMessage)>> testFiles = new();
+        Dictionary<string, List<(string? Category, string Outcome, string? ErrorMessage, string? StackTrace)>> testFiles = [];
 
         int passingTestCount = 0;
         int failedTestCount = 0;
         int notRunTestCount = 0;
 
-        foreach ((string id, string name, string outcome, string? errorMessage) in results)
+        foreach ((string id, string name, string outcome, string? errorMessage, string? stackTrace) in results)
         {
             string[] categories = definitions[id].Categories;
 
@@ -129,16 +134,16 @@ static class TestResults
 
             if (!isFileTest) continue;
 
-            if (!testFiles.TryGetValue(name, out List<(string? Category, string Outcome, string? ErrorMessage)>? fileResults))
+            if (!testFiles.TryGetValue(name, out List<(string? Category, string Outcome, string? ErrorMessage, string? StackTrace)>? fileResults))
             {
-                fileResults = new List<(string? Category, string Outcome, string? ErrorMessage)>();
+                fileResults = [];
                 testFiles[name] = fileResults;
             }
 
-            fileResults.Add((category, outcome, errorMessage));
+            fileResults.Add((category, outcome, errorMessage, stackTrace));
         }
 
-        (int SerialNumber, List<(string? Category, string Outcome, string? ErrorMessage)> Value)[] sortedTestFiles = testFiles.Select(v => (int.Parse(v.Key[4..]), v.Value)).ToArray();
+        (int SerialNumber, List<(string? Category, string Outcome, string? ErrorMessage, string? StackTrace)> Value)[] sortedTestFiles = testFiles.Select(v => (int.Parse(v.Key[4..]), v.Value)).ToArray();
         Array.Sort(sortedTestFiles, (a, b) => a.SerialNumber.CompareTo(b.SerialNumber));
 
         using StreamWriter file = File.CreateText(resultFile);
@@ -153,41 +158,54 @@ static class TestResults
         file.Write($"![{notRunTestCount} skipped](https://img.shields.io/badge/Skipped-{notRunTestCount}-silver?style=plastic])");
         file.WriteLine();
 
+        file.WriteLine(" - ✅ Passed");
+        file.WriteLine(" - ❌ Failed");
+        file.WriteLine(" - ✖️ Not supported");
+        file.WriteLine(" - ➖ Skipped");
+
         file.WriteLine();
 
-        file.WriteLine("| File | Bytecode | Brainfuck |");
-        file.WriteLine("| :--: | :------: | :-------: |");
+        file.WriteLine("| File | Bytecode | Brainfuck | MSIL |");
+        file.WriteLine("| :--: | :------: | :-------: | :-------: |");
 
-        foreach ((int serialNumber, List<(string? Category, string Outcome, string? ErrorMessage)>? fileResults) in sortedTestFiles)
+        foreach ((int serialNumber, List<(string? Category, string Outcome, string? ErrorMessage, string? StackTrace)>? fileResults) in sortedTestFiles)
         {
-            (string? Outcome, string? ErrorMessage) bytecodeResult = (null, null);
-            (string? Outcome, string? ErrorMessage) brainfuckResult = (null, null);
+            (string? Outcome, string? ErrorMessage, string? StackTrace) bytecodeResult = (null, null, null);
+            (string? Outcome, string? ErrorMessage, string? StackTrace) brainfuckResult = (null, null, null);
+            (string? Outcome, string? ErrorMessage, string? StackTrace) msilResult = (null, null, null);
 
-            foreach ((string? category, string outcome, string? errorMessage) in fileResults)
+            foreach ((string? category, string outcome, string? errorMessage, string? stackTrace) in fileResults)
             {
                 switch (category)
                 {
-                    case "Main": bytecodeResult = (outcome, errorMessage); break;
-                    case "Brainfuck": brainfuckResult = (outcome, errorMessage); break;
+                    case "Bytecode": bytecodeResult = (outcome, errorMessage, stackTrace); break;
+                    case "Brainfuck": brainfuckResult = (outcome, errorMessage, stackTrace); break;
+                    case "MSIL": msilResult = (outcome, errorMessage, stackTrace); break;
                 }
             }
 
             if (bytecodeResult.Outcome == "NotExecuted" &&
-                brainfuckResult.Outcome == "NotExecuted")
+                brainfuckResult.Outcome == "NotExecuted" &&
+                msilResult.Outcome == "NotExecuted")
             { continue; }
 
-            static string? TranslateOutcome(string? outcome) => outcome switch
+            static string? TranslateOutcome(string? outcome, string? errorMessage, string? stackTrace) => outcome switch
             {
                 "Passed" => "✅",
-                "Failed" => "❌",
+                "Failed" =>
+                    (stackTrace?.Contains("not supported", StringComparison.InvariantCultureIgnoreCase) ?? false) ||
+                    (errorMessage?.Contains("not supported", StringComparison.InvariantCultureIgnoreCase) ?? false)
+                    ? "✖️"
+                    : "❌",
                 "NotExecuted" => "➖",
                 _ => outcome,
             };
 
-            bytecodeResult.Outcome = TranslateOutcome(bytecodeResult.Outcome);
-            brainfuckResult.Outcome = TranslateOutcome(brainfuckResult.Outcome);
+            bytecodeResult.Outcome = TranslateOutcome(bytecodeResult.Outcome, bytecodeResult.ErrorMessage, bytecodeResult.StackTrace);
+            brainfuckResult.Outcome = TranslateOutcome(brainfuckResult.Outcome, brainfuckResult.ErrorMessage, brainfuckResult.StackTrace);
+            msilResult.Outcome = TranslateOutcome(msilResult.Outcome, msilResult.ErrorMessage, msilResult.StackTrace);
 
-            string translatedName = $"https://github.com/banszkyy/BBLang/blob/master/TestFiles/{serialNumber.ToString().PadLeft(2, '0')}{LanguageConstants.LanguageExtension}";
+            string translatedName = $"https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/{serialNumber.ToString().PadLeft(2, '0')}{LanguageConstants.LanguageExtension}";
             translatedName = $"[{serialNumber}]({translatedName})";
 
             file.Write("| ");
@@ -199,6 +217,10 @@ static class TestResults
             file.Write(" | ");
 
             file.Write(brainfuckResult.Outcome);
+
+            file.Write(" | ");
+
+            file.Write(msilResult.Outcome);
 
             file.Write(" |");
             file.WriteLine();

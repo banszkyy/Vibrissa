@@ -227,10 +227,10 @@ public partial class StatementCompiler
 
     void AddCompilable(TemplateInstance<CompiledFunctionDefinition> compilable)
     {
-        for (int i = 0; i < CompilableFunctions.Count; i++)
+        foreach (TemplateInstance<CompiledFunctionDefinition> v in CompilableFunctions)
         {
-            if (CompilableFunctions[i].Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(CompilableFunctions[i].TypeArguments, compilable.TypeArguments))
+            if (v.Template.IsSame(compilable.Template)
+                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
             { return; }
         }
         CompilableFunctions.Add(compilable);
@@ -238,10 +238,10 @@ public partial class StatementCompiler
 
     void AddCompilable(TemplateInstance<CompiledOperatorDefinition> compilable)
     {
-        for (int i = 0; i < CompilableOperators.Count; i++)
+        foreach (TemplateInstance<CompiledOperatorDefinition> v in CompilableOperators)
         {
-            if (CompilableOperators[i].Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(CompilableFunctions[i].TypeArguments, compilable.TypeArguments))
+            if (v.Template.IsSame(compilable.Template)
+                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
             { return; }
         }
         CompilableOperators.Add(compilable);
@@ -249,10 +249,10 @@ public partial class StatementCompiler
 
     void AddCompilable(TemplateInstance<CompiledGeneralFunctionDefinition> compilable)
     {
-        for (int i = 0; i < CompilableGeneralFunctions.Count; i++)
+        foreach (TemplateInstance<CompiledGeneralFunctionDefinition> v in CompilableGeneralFunctions)
         {
-            if (CompilableGeneralFunctions[i].Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(CompilableFunctions[i].TypeArguments, compilable.TypeArguments))
+            if (v.Template.IsSame(compilable.Template)
+                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
             { return; }
         }
         CompilableGeneralFunctions.Add(compilable);
@@ -260,11 +260,11 @@ public partial class StatementCompiler
 
     TemplateInstance<CompiledConstructorDefinition> AddCompilable(TemplateInstance<CompiledConstructorDefinition> compilable)
     {
-        for (int i = 0; i < CompilableConstructors.Count; i++)
+        foreach (TemplateInstance<CompiledConstructorDefinition> v in CompilableConstructors)
         {
-            if (CompilableConstructors[i].Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(CompilableFunctions[i].TypeArguments, compilable.TypeArguments))
-            { return CompilableConstructors[i]; }
+            if (v.Template.IsSame(compilable.Template)
+                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
+            { return v; }
         }
         CompilableConstructors.Add(compilable);
         return compilable;

@@ -342,8 +342,6 @@ public class InterpreterRenderer
                             Tokenizing.TokenType.LiteralCharacter => AnsiColor.BrightYellow,
                             Tokenizing.TokenType.LiteralFloat => AnsiColor.BrightCyan,
                             Tokenizing.TokenType.Operator => AnsiColor.BrightBlack,
-                            Tokenizing.TokenType.PreprocessIdentifier => AnsiColor.BrightBlack,
-                            Tokenizing.TokenType.PreprocessArgument => AnsiColor.BrightBlack,
                             Tokenizing.TokenType.PreprocessSkipped => AnsiColor.BrightBlack,
                             Tokenizing.TokenType.Comment => AnsiColor.BrightBlack,
                             Tokenizing.TokenType.CommentMultiline => AnsiColor.BrightBlack,
@@ -735,6 +733,7 @@ public class InterpreterRenderer
 
                 foreach (StackElementInformation item in stackDebugInfo.Stack)
                 {
+                    if (item.Valid != 0 && !item.Valid.Contains(processor.Registers.CodePointer)) continue;
                     int a = item.AbsoluteAddress(processor.Registers.BasePointer, processor.StackStart);
                     if (a == i)
                     {
@@ -972,7 +971,7 @@ public class InterpreterRenderer
 
         ReadOnlySpan<CallTraceItem> callTrace = DebugUtils.TraceStack(processor.Memory, processor.Registers.BasePointer, processor.DebugInformation.IsEmpty ? null : processor.DebugInformation.StackOffsets);
 
-        if (processor.DebugInformation.TryGetFunctionInformation(processor.Registers.CodePointer, out var meow)
+        if (processor.DebugInformation.TryGetFunctionInformation(processor.Registers.CodePointer, out FunctionInformation meow)
             && meow.FrameInstructions.Contains(processor.Registers.CodePointer))
         {
             List<CallTraceItem> _callTrace = new(callTrace.ToArray());

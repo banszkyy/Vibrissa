@@ -54,8 +54,8 @@ public class BytecodeEmitter
                     writer.WriteLine();
                 }
 
-                writer.Write(i.ToString().PadLeft(marginLeft, ' '));
-                writer.Write(':');
+                //writer.Write(i.ToString().PadLeft(marginLeft, ' '));
+                //writer.Write(':');
                 writer.Write("  ");
                 writer.Write(Code[i].ToString());
                 writer.WriteLine();

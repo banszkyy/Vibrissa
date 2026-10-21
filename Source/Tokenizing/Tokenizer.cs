@@ -6,8 +6,15 @@ public partial class Tokenizer
     {
         get
         {
-            foreach (Token token in Tokens)
+            if (CurrentToken.Position.Range.End.Line != CurrentLine ||
+                CurrentToken.TokenType is
+                PreparationTokenType.LineBreak or
+                PreparationTokenType.Whitespace)
+            { return true; }
+
+            for (int i = Tokens.Count - 1; i >= 0; i--)
             {
+                Token token = Tokens[i];
                 if (token.Position.Range.End.Line != CurrentLine ||
                     token.TokenType is
                     TokenType.LineBreak or
@@ -16,20 +23,9 @@ public partial class Tokenizer
                 return false;
             }
 
-            if (CurrentToken.Position.Range.End.Line != CurrentLine ||
-                CurrentToken.TokenType is
-                PreparationTokenType.LineBreak or
-                PreparationTokenType.Whitespace)
-            { return true; }
-
             return false;
         }
     }
-
-    readonly TokenizerPreprocessorContext PreprocessorContext;
-
-    Token? CurrentPreprocess;
-    Token? CurrentPreprocessArgument;
 
     void ProcessCharacter(char currChar, int offsetTotal)
     {
@@ -96,107 +92,6 @@ public partial class Tokenizer
                 SavedUnicode += currChar;
                 goto FinishCharacter;
             }
-        }
-
-        if (IsBeginningOfLine &&
-            currChar == '#' &&
-            CurrentToken.TokenType is
-            PreparationTokenType.Whitespace or
-            PreparationTokenType.PREPROCESS_Skipped)
-        {
-            EndToken(offsetTotal);
-            CurrentToken.TokenType = PreparationTokenType.PREPROCESS_Operator;
-            CurrentToken.Content.Append(currChar);
-            goto FinishCharacter;
-        }
-        else if (CurrentToken.TokenType == PreparationTokenType.PREPROCESS_Operator)
-        {
-#if NET_STANDARD
-            if (CompatibilityUtils.IsAsciiLetter(currChar))
-#else
-            if (char.IsAsciiLetter(currChar))
-#endif
-            {
-                CurrentToken.TokenType = PreparationTokenType.PREPROCESS_Identifier;
-                CurrentToken.Content.Append(currChar);
-            }
-            else
-            {
-                CurrentToken.TokenType = PreparationTokenType.Operator;
-                EndToken(offsetTotal);
-            }
-            goto FinishCharacter;
-        }
-        else if (CurrentToken.TokenType == PreparationTokenType.PREPROCESS_Identifier)
-        {
-#if NET_STANDARD
-            if (CompatibilityUtils.IsAsciiLetterOrDigit(currChar))
-#else
-            if (char.IsAsciiLetterOrDigit(currChar))
-#endif
-            {
-                CurrentToken.Content.Append(currChar);
-            }
-            else if (currChar is '\r' or '\n')
-            {
-                CurrentPreprocess = EndToken(offsetTotal);
-                CurrentPreprocessArgument = null;
-
-                PreprocessorContext.HandlePreprocess(CurrentPreprocess ?? throw new UnreachableException(), CurrentPreprocessArgument);
-
-                CurrentPreprocess = null;
-                CurrentPreprocessArgument = null;
-            }
-            else
-            {
-                CurrentPreprocess = EndToken(offsetTotal);
-                CurrentPreprocessArgument = null;
-
-                CurrentToken.TokenType = PreparationTokenType.PREPROCESS_Argument;
-                CurrentToken.Content.Append(currChar);
-            }
-            goto FinishCharacter;
-        }
-        else if (CurrentToken.TokenType == PreparationTokenType.PREPROCESS_Argument)
-        {
-#if NET_STANDARD
-            if (CompatibilityUtils.IsAsciiLetter(currChar))
-#else
-            if (char.IsAsciiLetter(currChar))
-#endif
-            {
-                CurrentToken.TokenType = PreparationTokenType.PREPROCESS_Argument;
-                CurrentToken.Content.Append(currChar);
-                goto FinishCharacter;
-            }
-
-            if (char.IsWhiteSpace(currChar))
-            {
-                CurrentPreprocessArgument = EndToken(offsetTotal);
-
-                PreprocessorContext.HandlePreprocess(CurrentPreprocess ?? throw new UnreachableException(), CurrentPreprocessArgument);
-
-                CurrentPreprocess = null;
-                CurrentPreprocessArgument = null;
-            }
-            else
-            { Diagnostics.Add(DiagnosticAt.Error($"Unexpected character \'{currChar.Escape()}\'", GetCurrentPosition(offsetTotal), File)); }
-        }
-
-        if (PreprocessorContext.IsPreprocessSkipping)
-        {
-            if (currChar is '\r' or '\n' ||
-                CurrentLine != CurrentToken.Position.Range.End.Line)
-            {
-                EndToken(offsetTotal);
-                CurrentToken.TokenType = PreparationTokenType.PREPROCESS_Skipped;
-            }
-            else
-            {
-                CurrentToken.Content.Append(currChar);
-                CurrentToken.TokenType = PreparationTokenType.PREPROCESS_Skipped;
-            }
-            goto FinishCharacter;
         }
 
         if (CurrentToken.TokenType == PreparationTokenType.STRING_EscapeSequence)
@@ -619,8 +514,7 @@ public partial class Tokenizer
         // Skip empty tokens
         if (CurrentToken.Content.Length == 0 &&
             CurrentToken.TokenType is
-            PreparationTokenType.Whitespace or
-            PreparationTokenType.PREPROCESS_Skipped)
+            PreparationTokenType.Whitespace)
         { goto Finish; }
 
         if (CurrentToken.TokenType == PreparationTokenType.LiteralFloat)

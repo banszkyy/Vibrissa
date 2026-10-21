@@ -164,10 +164,6 @@ public partial class StatementCompiler
                     Diagnostics.Add(DiagnosticAt.Internal($"Can't explain this error", parameter.Definition));
                     return false;
                 }
-                else
-                {
-                    Diagnostics.Add(DiagnosticAt.Warning($"WIP", argument));
-                }
 
                 if (!CompileExpression(argument, out CompiledExpression? compiledArgument, parameterType)) return false;
 
@@ -394,7 +390,7 @@ public partial class StatementCompiler
 
                         if (complexity.HasFlag(StatementComplexity.Bruh))
                         {
-                            Debugger.Break();
+                            //Debugger.Break();
                             Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline `{callee.ToReadable()}` because of this argument", argument));
                             goto bad;
                         }
@@ -1948,26 +1944,33 @@ public partial class StatementCompiler
 
         if (GetFunction(variable.Content, expectedType, out FunctionQueryResult<CompiledFunctionDefinition>? compiledFunction, out PossibleDiagnostic? functionNotFoundError, AddCompilable))
         {
-            if (compiledFunction.Function.Definition.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
+            if (compiledFunction.Function.Definition.Block is null)
             {
-                Frames.LastRef.IsMsilCompatible = false;
+                functionNotFoundError = new PossibleDiagnostic($"Cannot take the address of an external function declaration", variable);
             }
-
-            FunctionType functionType = new(compiledFunction.Function.Type, compiledFunction.Function.Parameters.ToImmutableArray(v => v.Type), false);
-
-            compiledFunction.Function.AddReference(variable);
-            variable.AnalyzedType = TokenAnalyzedType.FunctionName;
-            SetStatementReference(variable, compiledFunction.Function);
-            SetStatementType(variable, functionType);
-
-            compiledStatement = new CompiledFunctionReference()
+            else
             {
-                Function = TemplateInstance.New<ICompiledFunctionDefinition>(compiledFunction.Function, compiledFunction.TypeArguments),
-                Type = functionType,
-                Location = variable.Location,
-                SaveValue = variable.SaveValue,
-            };
-            return true;
+                if (compiledFunction.Function.Definition.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
+                {
+                    Frames.LastRef.IsMsilCompatible = false;
+                }
+
+                FunctionType functionType = new(compiledFunction.Function.Type, compiledFunction.Function.Parameters.ToImmutableArray(v => v.Type), false);
+
+                compiledFunction.Function.AddReference(variable);
+                variable.AnalyzedType = TokenAnalyzedType.FunctionName;
+                SetStatementReference(variable, compiledFunction.Function);
+                SetStatementType(variable, functionType);
+
+                compiledStatement = new CompiledFunctionReference()
+                {
+                    Function = TemplateInstance.New<ICompiledFunctionDefinition>(compiledFunction.Function, compiledFunction.TypeArguments),
+                    Type = functionType,
+                    Location = variable.Location,
+                    SaveValue = variable.SaveValue,
+                };
+                return true;
+            }
         }
 
         if (GetInstructionLabel(variable.Content, out CompiledLabelDeclaration? instructionLabel, out PossibleDiagnostic? instructionLabelError))

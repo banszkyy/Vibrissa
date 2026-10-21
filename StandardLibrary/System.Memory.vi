@@ -28,7 +28,7 @@ export inline void init_heap()
 {
     if ((!#BRAINFUCK) && (!#IL))
     {
-        *(HeapStart as BlockHeader*) = (BlockHeader)HeapSize;
+        *(HeapStart as int*) = HeapSize;
     }
 }
 

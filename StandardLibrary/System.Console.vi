@@ -10,9 +10,10 @@ export void clear()
     print("\e[H");
 }
 
-export void printf(temp string format, any[] args)
+export void printf(char[] format, any[] args)
 {
-    int offset = 0;
+    int l = format.length();
+    any* offset = (&format + l + 1) as any*;
     for (int i = 0; format[i]; i++)
     {
         if (format[i] == '%')
@@ -20,17 +21,53 @@ export void printf(temp string format, any[] args)
             i++;
             if (format[i] == 'd')
             {
-                print(*((&args + offset) as int*));
+                print(*(offset as int*));
                 offset += sizeof(int);
             }
             else if (format[i] == 'f')
             {
-                print(*((&args + offset) as float*));
+                print(*(offset as float*));
                 offset += sizeof(float);
             }
             else if (format[i] == 's')
             {
-                print(*((&args + offset) as string*));
+                print(*(offset as string*));
+                offset += sizeof(string);
+            }
+            else
+            {
+                print('%');
+                print(format[i]);
+            }
+        }
+        else
+        {
+            print(format[i]);
+        }
+    }
+}
+
+export void printf(temp string format, any[] args)
+{
+    int offset = &args as int;
+    for (int i = 0; format[i]; i++)
+    {
+        if (format[i] == '%')
+        {
+            i++;
+            if (format[i] == 'd')
+            {
+                print(*(offset as int*));
+                offset += sizeof(int);
+            }
+            else if (format[i] == 'f')
+            {
+                print(*(offset as float*));
+                offset += sizeof(float);
+            }
+            else if (format[i] == 's')
+            {
+                print(*(offset as string*));
                 offset += sizeof(string);
             }
             else

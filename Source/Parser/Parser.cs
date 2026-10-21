@@ -389,8 +389,6 @@ public sealed partial class Parser
                TokenType.LineBreak or
                TokenType.Comment or
                TokenType.CommentMultiline or
-               TokenType.PreprocessIdentifier or
-               TokenType.PreprocessArgument or
                TokenType.PreprocessSkipped)
         { CurrentTokenIndex++; }
     }

@@ -207,8 +207,6 @@ public class BrainfuckRenderer
                             Tokenizing.TokenType.LiteralCharacter => AnsiColor.BrightYellow,
                             Tokenizing.TokenType.LiteralFloat => AnsiColor.BrightCyan,
                             Tokenizing.TokenType.Operator => AnsiColor.BrightBlack,
-                            Tokenizing.TokenType.PreprocessIdentifier => AnsiColor.BrightBlack,
-                            Tokenizing.TokenType.PreprocessArgument => AnsiColor.BrightBlack,
                             Tokenizing.TokenType.PreprocessSkipped => AnsiColor.BrightBlack,
                             Tokenizing.TokenType.Comment => AnsiColor.BrightBlack,
                             Tokenizing.TokenType.CommentMultiline => AnsiColor.BrightBlack,
@@ -414,6 +412,8 @@ public class BrainfuckRenderer
                 {
                     foreach (StackElementInformation item in stack.Stack)
                     {
+                        if (item.Valid != 0 && !item.Valid.Contains(processor.CodePointer)) continue;
+
                         if (item.Address == i)
                         {
                             t.PadTo(13);

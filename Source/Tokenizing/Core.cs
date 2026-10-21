@@ -42,34 +42,54 @@ public partial class Tokenizer
     int CurrentLine;
     string? SavedUnicode;
 
-    readonly string Text;
+    public static TokenizerResult Tokenize(string text, DiagnosticsCollection diagnostics, Uri file, TokenizerSettings? settings = null)
+        => new Tokenizer(settings ?? TokenizerSettings.Default, file, diagnostics)
+        .TokenizeInternal(text);
 
-    public static TokenizerResult Tokenize(string text, DiagnosticsCollection diagnostics, Uri file, ImmutableHashSet<string>? preprocessorVariables = null, TokenizerSettings? settings = null)
-        => new Tokenizer(text, settings ?? TokenizerSettings.Default, file, preprocessorVariables, diagnostics)
-        .TokenizeInternal();
+    public static TokenizerResult Tokenize(PreprocessorResult preprocessorResult, DiagnosticsCollection diagnostics, Uri file, TokenizerSettings? settings = null)
+        => new Tokenizer(settings ?? TokenizerSettings.Default, file, diagnostics)
+        .TokenizeInternal(preprocessorResult);
 
-#if UNITY
-    static readonly Unity.Profiling.ProfilerMarker _marker = new("LanguageCore.Parser");
-#endif
-    TokenizerResult TokenizeInternal()
+    TokenizerResult TokenizeInternal(string text)
     {
-#if UNITY
-        using Unity.Profiling.ProfilerMarker.AutoScope _1 = _marker.Auto();
-#endif
-        for (int offsetTotal = 0; offsetTotal < Text.Length; offsetTotal++)
+        for (int i = 0; i < text.Length; i++)
         {
-            ProcessCharacter(Text[offsetTotal], offsetTotal);
+            ProcessCharacter(text[i], i);
         }
 
-        EndToken(Text.Length);
+        EndToken(text.Length);
 
         return new TokenizerResult(NormalizeTokens(Tokens, Settings).ToImmutableArray(), UnicodeCharacters.ToImmutableArray());
     }
 
-    Tokenizer(string text, TokenizerSettings settings, Uri file, ImmutableHashSet<string>? preprocessorVariables, DiagnosticsCollection diagnostics)
+    TokenizerResult TokenizeInternal(PreprocessorResult preprocessorResult)
     {
-        Text = text;
+        int j = 0;
+        int k = 0;
+        for (int i = 0; i < preprocessorResult.Text.Length; i++)
+        {
+            if (k < preprocessorResult.TrimmedRanges.Length && preprocessorResult.TrimmedRanges[k].Index == j)
+            {
+                TrimmedRange trimmedRange = preprocessorResult.TrimmedRanges[k];
 
+                Tokens.Add(new Token(TokenType.PreprocessSkipped, string.Empty, new Position(new Range<SinglePosition>(new SinglePosition(CurrentLine, CurrentColumn), new SinglePosition(CurrentLine + trimmedRange.Lines, 0)), new Range<int>(j, j + trimmedRange.Absolute))));
+
+                j += trimmedRange.Absolute;
+                CurrentLine += trimmedRange.Lines;
+                k++;
+            }
+
+            ProcessCharacter(preprocessorResult.Text[i], j);
+            j++;
+        }
+
+        EndToken(j);
+
+        return new TokenizerResult(NormalizeTokens(Tokens, Settings).ToImmutableArray(), UnicodeCharacters.ToImmutableArray());
+    }
+
+    Tokenizer(TokenizerSettings settings, Uri file, DiagnosticsCollection diagnostics)
+    {
         CurrentToken = new(default);
         CurrentColumn = 0;
         CurrentLine = 0;
@@ -81,20 +101,15 @@ public partial class Tokenizer
         Settings = settings;
         SavedUnicode = null;
         File = file;
-
-        PreprocessorContext = new TokenizerPreprocessorContext(diagnostics, preprocessorVariables ?? ImmutableHashSet<string>.Empty, file);
     }
 
     SinglePosition CurrentSinglePosition => new(CurrentLine, CurrentColumn);
     Position GetCurrentPosition(int offsetTotal) => new(new Range<SinglePosition>(CurrentSinglePosition, new SinglePosition(CurrentLine, CurrentColumn + 1)), new Range<int>(offsetTotal, offsetTotal + 1));
 
-    void RefreshTokenPosition(int offsetTotal)
-    {
-        CurrentToken.Position = new Position(
-            new Range<SinglePosition>(CurrentToken.Position.Range.Start, CurrentSinglePosition),
-            new Range<int>(CurrentToken.Position.AbsoluteRange.Start, offsetTotal)
-        );
-    }
+    void RefreshTokenPosition(int offsetTotal) => CurrentToken.Position = new Position(
+        new Range<SinglePosition>(CurrentToken.Position.Range.Start, CurrentSinglePosition),
+        new Range<int>(CurrentToken.Position.AbsoluteRange.Start, offsetTotal)
+    );
 
     static ReadOnlySpan<Token> NormalizeTokens(List<Token> tokens, TokenizerSettings settings)
     {

@@ -15,6 +15,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             return label;
         }
+
         label = Code.DefineLabel();
         DefinitionLabels.Add((definition, label));
         return label;
@@ -532,7 +533,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         AddComment($"Call `{caller.Declaration.ToReadable()}` {{");
 
-        if (caller.Function.ReturnValueSize > 0 && caller.SaveValue)
+        if (caller.Function.ReturnValueSize > 0)
         {
             AddComment($"Initial return value {{");
             StackAlloc(caller.Function.ReturnValueSize, false);
@@ -715,10 +716,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             AddComment($"Call {caller.Function.Template.ToReadable()} {{");
 
+            GeneralType returnType = GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments);
+            int rStart = -(ScopeSizes.Last - BasePointerSize + (FindSize(returnType, out int w, out _) ? w : 0));
+
             if (caller.Function.Template.ReturnSomething)
             {
                 AddComment($"Initial return value {{");
-                StackAlloc(FindSize(GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments), caller), false);
+                StackAlloc(FindSize(returnType, caller), false);
                 AddComment($"}}");
             }
 
@@ -730,15 +734,34 @@ public partial class CodeGeneratorForMain : CodeGenerator
             InstructionLabel label = LabelForDefinition(caller.Function);
             Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
 
+            int iStart = Code.Offset;
+            int iEnd = Code.Offset + 1;
+
             if (!label.IsMarked)
             { UndefinedFunctionOffsets.Add(new(caller, caller.Function.UnsafeTo<IHaveInstructionOffset>())); }
 
             GenerateCodeForParameterCleanup(parameterCleanup);
 
+            iEnd = Code.Offset;
+
             if (caller.Function.Template.ReturnSomething && !caller.SaveValue)
             {
                 AddComment(" Clear Return Value:");
-                Pop(FindSize(GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments), caller));
+                Pop(FindSize(returnType, caller));
+            }
+
+            if (CurrentScopeDebug.Count > 0 && FindSize(returnType, out int rSize, out _))
+            {
+                CurrentScopeDebug.Last.Stack.Add(new()
+                {
+                    Address = rStart,
+                    BasePointerRelative = true,
+                    Identifier = $"{caller.Function.Template.Definition.Identifier.Content}({(caller.Arguments.Length > 0 ? "..." : null)})",
+                    Kind = StackElementKind.Internal,
+                    Type = returnType,
+                    Size = rSize,
+                    Valid = new(iStart, iEnd),
+                });
             }
 
             AddComment("}");
@@ -1973,9 +1996,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 Diagnostics.Add(DiagnosticAt.Error($"Can't modify the size of the value. You tried to convert from `{statementBuiltinType}` (size of {statementSize}) to `{targetbuiltinType}` (size of {targetSize})", typeCast));
                 return;
             }
+
+            GenerateCodeForStatement(typeCast.Value);
+            return;
         }
 
-        Diagnostics.Add(DiagnosticAt.Warning($"Ignoring invalid type cast from `{statementType}` to `{targetType}`", typeCast));
+        Diagnostics.Add(DiagnosticAt.Warning($"Ignoring invalid type cast from `{statementType}` to `{targetType}` (`{statementType.FinalValue}` to `{targetType.FinalValue}`)", typeCast));
         GenerateCodeForStatement(typeCast.Value);
     }
     void GenerateCodeForStatement(CompiledCompilerVariableAccess statement)
@@ -2101,12 +2127,31 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (startInstruction != Code.Offset && statement is not CompiledDummyExpression and not CompiledMeowExpression)
         {
-            DebugInfo?.SourceCodeLocations.Add(new SourceCodeLocation()
+            static bool IsSubtle(CompiledExpression w) => w
+                is CompiledConstantValue
+                or CompiledBinaryOperatorCall
+                or CompiledUnaryOperatorCall
+                or CompiledAccessExpression
+                or CompiledEnumMemberAccess
+                or CompiledFunctionReference
+                or CompiledLabelReference
+                or CompiledRegisterAccess
+                or CompiledReinterpretation
+                or CompiledStackAllocation
+                or CompiledStackString
+                or CompiledGetReference;
+
+            bool isSubtle = IsSubtle(statement);
+
+            if (!isSubtle)
             {
-                Instructions = (startInstruction, Code.Offset),
-                Location = statement.Location,
-                IsSubtle = statement is CompiledConstantValue,
-            });
+                DebugInfo?.SourceCodeLocations.Add(new SourceCodeLocation()
+                {
+                    Instructions = (startInstruction, Code.Offset),
+                    Location = statement.Location,
+                    IsSubtle = isSubtle,
+                });
+            }
         }
     }
 
@@ -2818,7 +2863,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             if (!GetParameterAddress(p, 0, out Address? address, out PossibleDiagnostic? error))
             {
-                Diagnostics.Add(error.ToWarning(p));
+                //Diagnostics.Add(error.ToWarning(p));
                 continue;
             }
 

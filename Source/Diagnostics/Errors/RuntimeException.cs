@@ -366,6 +366,7 @@ public class RuntimeException : LanguageException
                 {
                     if (item.Kind == StackElementKind.Internal) continue;
                     if (item.Kind == StackElementKind.Parameter) continue;
+                    if (item.Valid != 0 && !item.Valid.Contains(tracedScope.InstructionPointer)) continue;
 
                     Range<int> range = item.GetRange(tracedScope.BasePointer, context.StackStart);
                     if (range.Start > range.End)
@@ -458,7 +459,7 @@ public class RuntimeException : LanguageException
                 for (int j = 0; j < function.Parameters.Length; j++)
                 {
                     if (j > 0) result.Append(", ");
-                    if (function.Parameters[j].Definition.Modifiers.Length > 0)
+                    if (details && function.Parameters[j].Definition.Modifiers.Length > 0)
                     {
                         if (colored) result.SetGraphics(Ansi.ForegroundBlue);
                         result.AppendJoin(' ', function.Parameters[j].Definition.Modifiers);
@@ -476,21 +477,25 @@ public class RuntimeException : LanguageException
                         if (colored) result.ResetStyle();
                     }
 
-                    result.Append(' ');
-                    result.Append(function.Parameters[j].Identifier);
-
-                    bool f = false;
-                    foreach (ScopeInformation scope in scopes)
+                    if (details)
                     {
-                        if (f) break;
-                        foreach (StackElementInformation item in scope.Stack)
+                        result.Append(' ');
+                        result.Append(function.Parameters[j].Identifier);
+
+                        bool f = false;
+                        foreach (ScopeInformation scope in scopes)
                         {
-                            if (item.Kind != StackElementKind.Parameter) continue;
-                            if (item.Identifier != function.Parameters[j].Identifier) continue;
-                            result.Append(" = ");
-                            AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), item.Type, 0);
-                            f = true;
-                            break;
+                            if (f) break;
+                            foreach (StackElementInformation item in scope.Stack)
+                            {
+                                if (item.Kind != StackElementKind.Parameter) continue;
+                                if (item.Identifier != function.Parameters[j].Identifier) continue;
+                                if (item.Valid != 0 && !item.Valid.Contains(callTraceItem.InstructionPointer)) continue;
+                                result.Append(" = ");
+                                AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), item.Type, 0);
+                                f = true;
+                                break;
+                            }
                         }
                     }
                 }

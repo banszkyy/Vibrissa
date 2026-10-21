@@ -129,18 +129,19 @@ public class SourceCodeManager
             string text = new StreamReader(content).ReadToEnd();
             content.Dispose();
 
+            PreprocessorResult preprocessed = Preprocessor.Process(text, Settings.PreprocessorVariables, Diagnostics);
+
             TokenizerResult tokens = Tokenizer.Tokenize(
-                text,
+                preprocessed,
                 Diagnostics,
                 finishedFile.Uri,
-                Settings.PreprocessorVariables,
                 Settings.TokenizerSettings
             );
 
             ParserResult ast = Parser.Parser.Parse(tokens.Tokens, finishedFile.Uri, Diagnostics);
 
-            if (ast.Usings.Any())
-            { Logger?.LogDebug("Loading files ..."); }
+            //if (ast.Usings.Any())
+            //{ Logger?.LogDebug("Loading files ..."); }
 
             ParsedFiles.Add(new ParsedFile(finishedFile.Uri, finishedFile.Initiator, tokens, ast, finishedFile.Index, text));
             if (Settings.Cache is not null)

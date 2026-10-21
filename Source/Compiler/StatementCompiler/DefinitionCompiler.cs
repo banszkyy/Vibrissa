@@ -544,13 +544,13 @@ public partial class StatementCompiler
 
         if (externalFunction.ParametersSize != passedParametersSize)
         {
-            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of parameters defined ({passedParametersSize}) for external function `{externalFunction.ToReadable()}` {definition.ToReadable()}", definition.Identifier, definition.File));
+            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of parameters defined ({passedParametersSize}) for external function `{externalFunction.ToReadable()}` {definition.ToReadable()}, expected {externalFunction.ParametersSize}", definition.Identifier, definition.File));
             return;
         }
 
         if (externalFunction.ReturnValueSize != passedReturnType)
         {
-            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of return type defined ({passedReturnType}) for external function `{externalFunction.ToReadable()}` {definition.ToReadable()}", definition.Identifier, definition.File));
+            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of return type defined ({passedReturnType}) for external function `{externalFunction.ToReadable()}` {definition.ToReadable()}, expected {externalFunction.ReturnValueSize}", definition.Identifier, definition.File));
             return;
         }
     }
@@ -1078,11 +1078,11 @@ public partial class StatementCompiler
     CompilerResult CompileExpressionInternal(string expression, CompilerResult previous)
     {
         Uri entryFile = new("void:///");
+
         TokenizerResult expressionTokens = Tokenizer.Tokenize(
             expression,
             Diagnostics,
             entryFile,
-            PreprocessorVariables,
             Settings.TokenizerSettings
         );
 

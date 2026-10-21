@@ -769,25 +769,73 @@ public partial class StatementCompiler
         return false;
     }
 
-    void CompileDefinitions()
+    void PurgeInvalidCache(ImmutableHashSet<Uri> cacheHits)
+    {
+        CompilableConstructors.RemoveAll(v => !cacheHits.Contains(v.Template.File));
+        CompilableFunctions.RemoveAll(v => !cacheHits.Contains(v.Template.File));
+        CompilableGeneralFunctions.RemoveAll(v => !cacheHits.Contains(v.Template.File));
+        CompilableOperators.RemoveAll(v => !cacheHits.Contains(v.Template.File));
+        CompiledAliases.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledConstructors.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledEnums.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledFunctions.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledGeneralFunctions.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledGlobalConstants.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledGlobalVariables.RemoveAll(v => !cacheHits.Contains(v.Location.File));
+        CompiledOperators.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledStructs.RemoveAll(v => !cacheHits.Contains(v.File));
+        CompiledTopLevelStatements.RemoveAll(v => !cacheHits.Contains(v.Location.File));
+
+        AliasDefinitions.RemoveAll(v => !cacheHits.Contains(v.File));
+        ConstantDefinitions.RemoveAll(v => !cacheHits.Contains(v.File));
+        EnumDefinitions.RemoveAll(v => !cacheHits.Contains(v.File));
+        FunctionDefinitions.RemoveAll(v => !cacheHits.Contains(v.File));
+        GeneratedFunctions.RemoveAll(v => !cacheHits.Contains(v.Function.File));
+        OperatorDefinitions.RemoveAll(v => !cacheHits.Contains(v.File));
+        StructDefinitions.RemoveAll(v => !cacheHits.Contains(v.File));
+        TopLevelStatements.RemoveAll(v => !cacheHits.Contains(v.File));
+
+        _generatedFunctions.RemoveAll(v => !cacheHits.Contains(v.Template.File));
+
+        //ExternalFunctions
+        //ExternalConstants
+        //InternalConstants
+        //UserDefinedAttributes
+        //PreprocessorVariables
+
+        Diagnostics.Clear();
+        GenericParameters.Clear();
+        CompilingDefinitionStack.Clear();
+        Frames.Clear();
+    }
+
+    void CompileDefinitions(ImmutableHashSet<Uri> cacheHits)
     {
         foreach (StructDefinition @struct in StructDefinitions)
         {
+            if (cacheHits.Contains(@struct.File)) continue;
+
             CompileStruct(@struct);
         }
 
         foreach (AliasDefinition aliasDefinition in AliasDefinitions)
         {
+            if (cacheHits.Contains(aliasDefinition.File)) continue;
+
             CompileAlias(aliasDefinition);
         }
 
         foreach (EnumDefinition enumDefinition in EnumDefinitions)
         {
+            if (cacheHits.Contains(enumDefinition.File)) continue;
+
             CompileEnum(enumDefinition);
         }
 
         foreach (FunctionDefinition @operator in OperatorDefinitions)
         {
+            if (cacheHits.Contains(@operator.File)) continue;
+
             if (!CompileOperatorDefinition(@operator, null, out CompiledOperatorDefinition? compiled))
             {
                 continue;
@@ -804,6 +852,8 @@ public partial class StatementCompiler
 
         foreach (FunctionDefinition function in FunctionDefinitions)
         {
+            if (cacheHits.Contains(function.File)) continue;
+
             CompileFunctionDefinition(function, null, out CompiledFunctionDefinition? compiled);
 
             if (CompiledFunctions.Any(other => FunctionEquality(compiled, other)))
@@ -817,6 +867,8 @@ public partial class StatementCompiler
 
         foreach (CompiledStruct compiledStruct in CompiledStructs)
         {
+            if (cacheHits.Contains(compiledStruct.File)) continue;
+
             if (compiledStruct.Definition.Template is not null)
             {
                 GenericParameters.Push(compiledStruct.Definition.Template.Parameters);
@@ -1029,6 +1081,7 @@ public partial class StatementCompiler
 
         foreach (VariableDefinition variableDeclaration in ConstantDefinitions)
         {
+            if (cacheHits.Contains(variableDeclaration.File)) continue;
             if (CompiledGlobalConstants.Any(v => Utils.ReferenceEquals(v.Definition, variableDeclaration))) continue;
             if (!CompileConstant(variableDeclaration, out CompiledVariableConstant? result)) continue;
             CompiledGlobalConstants.Add(result);
@@ -1038,6 +1091,10 @@ public partial class StatementCompiler
     CompilerResult CompileMainFile(string file)
     {
         SourceCodeManagerResult res = SourceCodeManager.Collect(file, Diagnostics, Settings.GetSourceManagerSettings() with { PreprocessorVariables = PreprocessorVariables }, Logger);
+
+        ImmutableHashSet<Uri> cacheHits = IsCached ? res.CacheHits : ImmutableHashSet<Uri>.Empty;
+
+        PurgeInvalidCache(cacheHits);
 
         foreach (ParsedFile parsedFile in res.ParsedFiles)
         { AddAST(parsedFile, parsedFile.File != res.ResolvedEntry); }
@@ -1054,25 +1111,33 @@ public partial class StatementCompiler
         if (Diagnostics.HasErrors)
         { return CompilerResult.MakeEmpty(res.ResolvedEntry); }
 
-        return CompileInternal(res.ResolvedEntry, res.ParsedFiles);
+        return CompileInternal(res.ResolvedEntry, res.ParsedFiles, compileDefinitions: true, cacheHits);
     }
 
-    CompilerResult CompileFiles(ReadOnlySpan<string> files)
+    public CompilerResult CompileFiles(ReadOnlySpan<string> files)
     {
         SourceCodeManagerResult res = SourceCodeManager.CollectMultiple(files, Diagnostics, Settings.GetSourceManagerSettings() with { PreprocessorVariables = PreprocessorVariables }, Logger);
 
-        foreach (ParsedFile parsedFile in res.ParsedFiles)
-        { AddAST(parsedFile, parsedFile.File != res.ResolvedEntry); }
+        ImmutableHashSet<Uri> cacheHits = IsCached ? res.CacheHits : ImmutableHashSet<Uri>.Empty;
+
+        PurgeInvalidCache(cacheHits);
 
         foreach (ParsedFile parsedFile in res.ParsedFiles)
         {
+            if (cacheHits.Contains(parsedFile.File)) continue;
+            AddAST(parsedFile, parsedFile.File != res.ResolvedEntry);
+        }
+
+        foreach (ParsedFile parsedFile in res.ParsedFiles)
+        {
+            if (cacheHits.Contains(parsedFile.File)) continue;
             if (parsedFile.File != res.ResolvedEntry) continue;
             TopLevelStatements.Add((parsedFile.AST.TopLevelStatements, parsedFile.File));
         }
 
         // This should not be null ...
         if (res.ResolvedEntry is null) throw new InternalExceptionWithoutContext($"I can't really explain this error ...");
-        return CompileInternal(res.ResolvedEntry, res.ParsedFiles);
+        return CompileInternal(res.ResolvedEntry, res.ParsedFiles, compileDefinitions: true, cacheHits);
     }
 
     CompilerResult CompileExpressionInternal(string expression, CompilerResult previous)
@@ -1095,6 +1160,8 @@ public partial class StatementCompiler
             Diagnostics.Add(DiagnosticAt.Error($"Cannot import files from an interactive expression", expressionAst.Usings.First()));
             return CompilerResult.MakeEmpty(entryFile);
         }
+
+        PurgeInvalidCache(ImmutableHashSet<Uri>.Empty);
 
         foreach (ParsedFile item in previous.RawTokens)
         {
@@ -1128,13 +1195,13 @@ public partial class StatementCompiler
 
         TopLevelStatements.Add((parsedExpression.AST.TopLevelStatements, parsedExpression.File));
 
-        return CompileInternal(entryFile, ImmutableArray.Create(parsedExpression), false);
+        return CompileInternal(entryFile, ImmutableArray.Create(parsedExpression), compileDefinitions: false, ImmutableHashSet<Uri>.Empty);
     }
 
 #if UNITY
     static readonly Unity.Profiling.ProfilerMarker _m3 = new("LanguageCore.Compiler");
 #endif
-    CompilerResult CompileInternal(Uri entryFile, ImmutableArray<ParsedFile> parsedFiles, bool compileDefinitions = true)
+    CompilerResult CompileInternal(Uri entryFile, ImmutableArray<ParsedFile> parsedFiles, bool compileDefinitions, ImmutableHashSet<Uri> cacheHits)
     {
 #if UNITY
         using var _1 = _m3.Auto();
@@ -1142,9 +1209,9 @@ public partial class StatementCompiler
 
         using (Frames.PushAuto(CompiledFrame.Empty))
         {
-            if (compileDefinitions) CompileDefinitions();
+            if (compileDefinitions) CompileDefinitions(cacheHits);
 
-            GenerateCode(entryFile);
+            GenerateCode(entryFile, cacheHits);
         }
 
         return new CompilerResult(

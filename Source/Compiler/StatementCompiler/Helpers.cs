@@ -20,7 +20,7 @@ public partial class StatementCompiler
     readonly Stack<CompiledVariableConstant> CompiledGlobalConstants = new();
     readonly Stack<CompiledVariableDefinition> CompiledGlobalVariables = new();
 
-    readonly DiagnosticsCollection Diagnostics;
+    public DiagnosticsCollection Diagnostics;
 
     readonly ImmutableArray<IExternalFunction> ExternalFunctions;
     readonly ImmutableArray<ExternalConstant> ExternalConstants;
@@ -32,6 +32,7 @@ public partial class StatementCompiler
     public BuiltinType SizeofStatementType => Settings.SizeofStatementType;
     public BuiltinType ExitCodeType => Settings.ExitCodeType;
 
+    public bool IsCached;
     readonly CompilerSettings Settings;
     readonly List<CompiledFunction> GeneratedFunctions = new();
 
@@ -54,7 +55,7 @@ public partial class StatementCompiler
     readonly ImmutableHashSet<string> PreprocessorVariables;
     readonly ImmutableArray<CompiledStatement>.Builder CompiledTopLevelStatements = ImmutableArray.CreateBuilder<CompiledStatement>();
     readonly Stack<CompiledFrame> Frames;
-    readonly ITraceLogger? Logger;
+    public ITraceLogger? Logger;
 
     #endregion
 

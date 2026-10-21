@@ -6,4 +6,5 @@ public readonly struct SourceCodeManagerResult
 {
     public required ImmutableArray<ParsedFile> ParsedFiles { get; init; }
     public required Uri? ResolvedEntry { get; init; }
+    public required ImmutableHashSet<Uri> CacheHits { get; init; }
 }

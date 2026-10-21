@@ -1789,11 +1789,12 @@ public partial class StatementCompiler
         return true;
     }
 
-    void GenerateCode(Uri entryFile)
+    void GenerateCode(Uri entryFile, ImmutableHashSet<Uri> cacheHits)
     {
         ImmutableArray<CompiledLabelDeclaration>.Builder globalInstructionLabels = ImmutableArray.CreateBuilder<CompiledLabelDeclaration>();
 
         foreach (InstructionLabelDeclaration instructionLabel in TopLevelStatements
+            .Where(v => !cacheHits.Contains(v.File))
             .SelectMany(v => v.Statements)
             .SelectMany(v => StatementWalker.Visit(v, StatementWalkerFilter.FrameOnlyFilter))
             .OfType<InstructionLabelDeclaration>())
@@ -1824,6 +1825,7 @@ public partial class StatementCompiler
                 {
                     foreach ((ImmutableArray<Statement> statements, Uri file) in TopLevelStatements)
                     {
+                        if (cacheHits.Contains(file)) continue;
                         if (file != entryFile) continue;
                         if (!CompileTopLevelStatements(statements, out ImmutableArray<CompiledStatement> v)) continue;
                         CompiledTopLevelStatements.AddRange(v);
@@ -1833,6 +1835,7 @@ public partial class StatementCompiler
                 {
                     foreach ((ImmutableArray<Statement> statements, Uri file) in TopLevelStatements)
                     {
+                        if (cacheHits.Contains(file)) continue;
                         if (!CompileTopLevelStatements(statements, out ImmutableArray<CompiledStatement> v)) continue;
                         CompiledTopLevelStatements.AddRange(v);
                     }
@@ -1874,6 +1877,7 @@ public partial class StatementCompiler
 
         foreach (CompiledFunction function in GeneratedFunctions)
         {
+            if (cacheHits.Contains(function.Function.File)) continue;
             AnalyseFunction(function, new());
         }
 
@@ -1915,7 +1919,10 @@ public partial class StatementCompiler
                     entryFile
                 ), ImmutableArray<CompiledExpression>.Empty, ImmutableArray<ArgumentExpression>.Empty, result, out CompiledExpression? call))
                 {
-                    CompiledTopLevelStatements.Insert(0, call);
+                    if (!cacheHits.Contains(call.Location.File))
+                    {
+                        CompiledTopLevelStatements.Insert(0, call);
+                    }
                 }
                 else
                 {

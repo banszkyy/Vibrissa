@@ -72,6 +72,7 @@ public class SourceCodeManager
     readonly SourceManagerSettings Settings;
     readonly List<PendingFile> PendingFiles;
     readonly List<ParsedFile> ParsedFiles;
+    readonly HashSet<Uri> CacheHits;
     readonly ITraceLogger? Logger;
 
     public SourceCodeManager(DiagnosticsCollection diagnostics, SourceManagerSettings settings, ITraceLogger? logger)
@@ -84,6 +85,7 @@ public class SourceCodeManager
         Diagnostics = diagnostics;
         PendingFiles = new();
         ParsedFiles = new();
+        CacheHits = new();
         Logger = logger;
     }
 
@@ -195,11 +197,12 @@ public class SourceCodeManager
 
                                 if (!CompiledUris.Add(query)) return true;
 
-                                //Logger?.LogDebug("Cache hit");
+                                //Logger?.LogDebug($"Cache hit {query}");
 
                                 ImportIndex index = initiatorIndex.Next();
 
                                 ParsedFiles.Add(new ParsedFile(query, initiator, cache.TokenizerResult, cache.ParserResult, index, cache.Content));
+                                CacheHits.Add(query);
 
                                 //if (cache.ParserResult.Usings.Any())
                                 //{ Logger?.LogDebug("Loading files ..."); }
@@ -444,6 +447,7 @@ public class SourceCodeManager
                 {
                     ParsedFiles = ImmutableArray<ParsedFile>.Empty,
                     ResolvedEntry = resolvedEntry,
+                    CacheHits = CacheHits.ToImmutableHashSet(),
                 };
             }
         }
@@ -490,6 +494,7 @@ public class SourceCodeManager
         {
             ParsedFiles = sortedParsedFiles.ToImmutableArray(),
             ResolvedEntry = resolvedEntry,
+            CacheHits = CacheHits.ToImmutableHashSet(),
         };
     }
 

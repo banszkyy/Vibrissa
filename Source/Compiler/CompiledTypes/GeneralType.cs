@@ -90,7 +90,7 @@ public abstract class GeneralType :
             return true;
         }
 
-        if (defined.Is(out PointerType? definedPointerType) && passed.Is(out PointerType? passedPointerType))
+        if (defined.Is(out IReferenceType? definedPointerType) && passed.Is(out IReferenceType? passedPointerType))
         {
             if (definedPointerType.To is ArrayType definedArrayType && passedPointerType.To is ArrayType passedArrayType)
             {
@@ -141,6 +141,14 @@ public abstract class GeneralType :
                     { typeParameters.Add(typeParamName, typeParamValue); }
                 }
 
+                return true;
+            }
+        }
+
+        if (passed.Is(out ReferenceType? passedReferenceType2))
+        {
+            if (TryGetTypeParameters(defined, passedReferenceType2.To, typeParameters))
+            {
                 return true;
             }
         }

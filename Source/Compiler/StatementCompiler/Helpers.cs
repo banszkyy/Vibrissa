@@ -11,7 +11,6 @@ public partial class StatementCompiler
 
     readonly List<CompiledStruct> CompiledStructs = new();
     readonly List<CompiledOperatorDefinition> CompiledOperators = new();
-    readonly List<CompiledConstructorDefinition> CompiledConstructors = new();
     readonly List<CompiledFunctionDefinition> CompiledFunctions = new();
     readonly List<CompiledGeneralFunctionDefinition> CompiledGeneralFunctions = new();
     readonly List<CompiledAlias> CompiledAliases = new();
@@ -39,7 +38,6 @@ public partial class StatementCompiler
     readonly List<TemplateInstance<CompiledFunctionDefinition>> CompilableFunctions = new();
     readonly List<TemplateInstance<CompiledOperatorDefinition>> CompilableOperators = new();
     readonly List<TemplateInstance<CompiledGeneralFunctionDefinition>> CompilableGeneralFunctions = new();
-    readonly List<TemplateInstance<CompiledConstructorDefinition>> CompilableConstructors = new();
 
     readonly List<FunctionDefinition> OperatorDefinitions = new();
     readonly List<FunctionDefinition> FunctionDefinitions = new();
@@ -259,18 +257,6 @@ public partial class StatementCompiler
         CompilableGeneralFunctions.Add(compilable);
     }
 
-    TemplateInstance<CompiledConstructorDefinition> AddCompilable(TemplateInstance<CompiledConstructorDefinition> compilable)
-    {
-        foreach (TemplateInstance<CompiledConstructorDefinition> v in CompilableConstructors)
-        {
-            if (v.Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
-            { return v; }
-        }
-        CompilableConstructors.Add(compilable);
-        return compilable;
-    }
-
     #endregion
 
     bool GetLocalSymbolType(IdentifierExpression symbolName, [NotNullWhen(true)] out GeneralType? type)
@@ -319,119 +305,6 @@ public partial class StatementCompiler
         Compiled = CompiledGeneralFunctions,
         Compilable = CompilableGeneralFunctions,
     };
-
-    [DebuggerStepThrough]
-    Functions<CompiledConstructorDefinition> GetConstructors() => new()
-    {
-        Compiled = CompiledConstructors,
-        Compilable = CompilableConstructors,
-    };
-
-    bool GetConstructor(
-        CompiledExpression objectArg,
-        ImmutableArray<CompiledExpression> arguments,
-        Uri relevantFile,
-
-        [NotNullWhen(true)] out FunctionQueryResult<CompiledConstructorDefinition>? result,
-        [NotNullWhen(false)] out PossibleDiagnostic? error,
-        Action<TemplateInstance<CompiledConstructorDefinition>>? addCompilable = null)
-    {
-        StructType? structType;
-
-        {
-            ImmutableArray<CompiledExpression>.Builder argumentsBuilder = ImmutableArray.CreateBuilder<CompiledExpression>();
-
-            if (objectArg.Type.Is(out PointerType? pointerType))
-            {
-                if (!pointerType.To.Is<StructType>(out structType))
-                {
-                    result = null;
-                    error = new PossibleDiagnostic($"Invalid type `{objectArg}` used for constructor");
-                    return false;
-                }
-                argumentsBuilder.Add(objectArg);
-            }
-            else if (objectArg.Type.Is(out structType))
-            {
-                argumentsBuilder.Add(new CompiledGetReference()
-                {
-                    Of = objectArg,
-                    Type = new PointerType(structType),
-                    Location = objectArg.Location,
-                    SaveValue = objectArg.SaveValue,
-                });
-            }
-            else
-            {
-                result = null;
-                error = new PossibleDiagnostic($"Invalid type `{objectArg}` used for constructor");
-                return false;
-            }
-
-            argumentsBuilder.AddRange(arguments);
-            arguments = argumentsBuilder.ToImmutable();
-        }
-
-        Functions<CompiledConstructorDefinition> constructors = GetConstructors();
-
-        constructors = new Functions<CompiledConstructorDefinition>()
-        {
-            Compiled = constructors.Compiled.Where(v => Utils.ReferenceEquals(v.Context, structType.Struct)),
-            Compilable = constructors.Compilable.Where(v => Utils.ReferenceEquals(v.Template.Context, structType.Struct)),
-        };
-
-        return GetFunction<CompiledConstructorDefinition, GeneralType, GeneralType, CompiledExpression>(
-            constructors,
-            "constructor",
-            CompiledConstructorDefinition.ToReadable(objectArg.Type, arguments),
-
-            FunctionQuery.Create(objectArg.Type, arguments, relevantFile, null, addCompilable, (GeneralType passed, GeneralType defined, out int badness) =>
-            {
-                badness = 0;
-                if (passed.Is(out PointerType? passedPointerType))
-                {
-                    if (defined.Is(out PointerType? definedPointerType))
-                    {
-                        badness = 0;
-                        return passedPointerType.To.Equals(definedPointerType.To);
-                    }
-                    else if (defined.Is(out StructType? definedStructType))
-                    {
-                        badness = 1;
-                        return passedPointerType.To.Equals(definedStructType);
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-                else if (passed.Is(out StructType? passedStructType))
-                {
-                    if (defined.Is(out PointerType? definedPointerType))
-                    {
-                        badness = 1;
-                        return passedStructType.Equals(definedPointerType.To);
-                    }
-                    else if (defined.Is(out StructType? definedStructType))
-                    {
-                        badness = 0;
-                        return passedStructType.Equals(definedStructType);
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    return false;
-                }
-            }),
-
-            out result,
-            out error
-        );
-    }
 
     bool GetIndexGetter(
         CompiledExpression prevType,
@@ -561,6 +434,40 @@ public partial class StatementCompiler
             .Where(v => ContextIs(v.Template, context));
 
         return GetFunction<CompiledGeneralFunctionDefinition, string, string, GeneralType>(
+            new Functions<CompiledGeneralFunctionDefinition>()
+            {
+                Compiled = compiledGeneralFunctionsInContext,
+                Compilable = compilableGeneralFunctionsInContext,
+            },
+            "general function",
+            CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.ToString()), null),
+
+            FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, relevantFile, null, addCompilable),
+
+            out result,
+            out error
+        );
+    }
+
+    bool GetGeneralFunction(
+        GeneralType context,
+        ImmutableArray<CompiledExpression> arguments,
+        string identifier,
+        Uri relevantFile,
+
+        [NotNullWhen(true)] out FunctionQueryResult<CompiledGeneralFunctionDefinition>? result,
+        [NotNullWhen(false)] out PossibleDiagnostic? error,
+        Action<TemplateInstance<CompiledGeneralFunctionDefinition>>? addCompilable = null)
+    {
+        IEnumerable<CompiledGeneralFunctionDefinition> compiledGeneralFunctionsInContext =
+            CompiledGeneralFunctions
+            .Where(v => ContextIs(v, context));
+
+        IEnumerable<TemplateInstance<CompiledGeneralFunctionDefinition>> compilableGeneralFunctionsInContext =
+            CompilableGeneralFunctions
+            .Where(v => ContextIs(v.Template, context));
+
+        return GetFunction<CompiledGeneralFunctionDefinition, string, string, CompiledExpression>(
             new Functions<CompiledGeneralFunctionDefinition>()
             {
                 Compiled = compiledGeneralFunctionsInContext,
@@ -1395,8 +1302,8 @@ public partial class StatementCompiler
         }
 
         {
-            if (destination.Is(out PointerType? dstPointer) &&
-                source.Is(out PointerType? srcPointer))
+            if (destination.Is(out IReferenceType? dstPointer) &&
+                source.Is(out IReferenceType? srcPointer))
             {
                 if (dstPointer.To.SameAs(BasicType.Any))
                 {
@@ -1527,13 +1434,13 @@ public partial class StatementCompiler
 
         if (CanCastImplicitly(value.Type, destination, out error, out castLevel)) return true;
 
-        if (destination.Is(out ReferenceType? returnRefType))
+        if (destination.Is(out ReferenceType? definitionRefType))
         {
-            if (CanCastImplicitly(value.Type, returnRefType.To, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
+            if (CanCastImplicitly(value.Type, definitionRefType.To, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
             {
                 if (!IsLValue(value, out PossibleDiagnostic? lvalueError))
                 {
-                    error = new PossibleDiagnostic($"Can't cast `{value.Type}` to `{returnRefType.To}`", value, lvalueError);
+                    error = new PossibleDiagnostic($"Can't cast `{value.Type}` to `{definitionRefType.To}`", value, lvalueError);
                     return false;
                 }
 
@@ -2253,7 +2160,7 @@ public partial class StatementCompiler
         if (context.Arguments.TryGetValue(statement.Parameter.Identifier, out CompiledArgument? inlinedArgument))
         {
             if (inlinedArgument.Cleanup.Deallocator is not null ||
-                inlinedArgument.Cleanup.Destructor is not null)
+                inlinedArgument.Cleanup.Deinitializer is not null)
             {
                 error = DiagnosticAt.Error($"Argument cleanup is not empty", statement, false);
                 return false;
@@ -4184,7 +4091,7 @@ public partial class StatementCompiler
     StatementComplexity GetStatementComplexity(CompiledExpression statement) => statement switch
     {
         CompiledSizeof v => GetStatementComplexity(v.Of),
-        CompiledArgument v => GetStatementComplexity(v.Value) | ((v.Cleanup.Destructor is not null || v.Cleanup.Deallocator is not null) ? StatementComplexity.Complex | StatementComplexity.Volatile : StatementComplexity.None),
+        CompiledArgument v => GetStatementComplexity(v.Value) | ((v.Cleanup.Deinitializer is not null || v.Cleanup.Deallocator is not null) ? StatementComplexity.Complex | StatementComplexity.Volatile : StatementComplexity.None),
         CompiledBinaryOperatorCall v => GetStatementComplexity(v.Left) | GetStatementComplexity(v.Right) | StatementComplexity.Complex,
         CompiledUnaryOperatorCall v => GetStatementComplexity(v.Expression) | StatementComplexity.Complex,
         CompiledConstantValue => StatementComplexity.None,

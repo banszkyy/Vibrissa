@@ -189,72 +189,6 @@ public partial class StatementCompiler
 
         return true;
     }
-    bool CompileCleanup(GeneralType deallocateableType, Location location, [NotNullWhen(true)] out CompiledCleanup? compiledCleanup)
-    {
-        compiledCleanup = null;
-
-        ImmutableArray<GeneralType> argumentTypes = ImmutableArray.Create<GeneralType>(deallocateableType);
-
-        FunctionQueryResult<CompiledGeneralFunctionDefinition>? destructor = null;
-        CompiledFunctionDefinition? deallocator;
-
-        if (AllowDeallocate(deallocateableType))
-        {
-            if (!CompileDeallocation(deallocateableType, location, out deallocator))
-            {
-                return false;
-            }
-        }
-        else
-        {
-            deallocator = null;
-        }
-
-        if (deallocateableType.Is(out PointerType? deallocateablePointerType))
-        {
-            if (!GetGeneralFunction(deallocateablePointerType.To, argumentTypes, BuiltinFunctionIdentifiers.Destructor, location.File, out destructor, out PossibleDiagnostic? error, AddCompilable))
-            {
-                //if (deallocateablePointerType.To.Is<StructType>())
-                //{
-                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateablePointerType.To}` not found", location).WithSuberrors(error.ToWarning(location)));
-                //}
-            }
-            else
-            {
-                destructor.Function.AddReference(null, location);
-            }
-        }
-        else
-        {
-            if (!GetGeneralFunction(deallocateableType, argumentTypes, BuiltinFunctionIdentifiers.Destructor, location.File, out destructor, out PossibleDiagnostic? error, AddCompilable))
-            {
-                //if (deallocateableType.Is<StructType>())
-                //{
-                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateableType}` not found", location).WithSuberrors(error.ToWarning(location)));
-                //}
-            }
-            else
-            {
-                destructor.Function.AddReference(null, location);
-            }
-        }
-
-        if (destructor is not null
-            && !destructor.Function.Definition.CanUse(location.File))
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Destructor for type `{deallocateableType}` cannot be called due to its protection level", location));
-            return false;
-        }
-
-        compiledCleanup = new CompiledCleanup()
-        {
-            Deallocator = TemplateInstance.New(deallocator, null),
-            Destructor = TemplateInstance.New(destructor),
-            Location = location,
-            TrashType = deallocateableType,
-        };
-        return true;
-    }
 
     public bool CompileStatement(ImmutableArray<TypeInstance> types, [NotNullWhen(true)] out ImmutableArray<CompiledTypeExpression> result, DiagnosticsCollection diagnostics)
     {
@@ -270,19 +204,174 @@ public partial class StatementCompiler
         return true;
     }
 
-    bool CompileStatement(TypeInstance typeInstance, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics)
+    bool CompileCleanup(GeneralType deallocateableType, Location location, [NotNullWhen(true)] out CompiledCleanup? compiledCleanup)
     {
-        return typeInstance switch
+        compiledCleanup = null;
+
+        ImmutableArray<GeneralType> arguments = ImmutableArray.Create<GeneralType>(deallocateableType);
+
+        FunctionQueryResult<CompiledGeneralFunctionDefinition>? deinitializer = null;
+        CompiledFunctionDefinition? deallocator;
+
+        if (AllowDeallocate(deallocateableType))
         {
-            TypeInstanceSimple v => CompileStatement(v, out result, diagnostics),
-            TypeInstanceFunction v => CompileStatement(v, out result, diagnostics),
-            TypeInstanceStackArray v => CompileStatement(v, out result, diagnostics),
-            TypeInstancePointer v => CompileStatement(v, out result, diagnostics),
-            TypeInstanceReference v => CompileStatement(v, out result, diagnostics),
-            MissingTypeInstance v => CompileStatement(v, out result, diagnostics),
-            _ => throw new UnreachableException(),
+            if (!CompileDeallocation(deallocateableType, location, out deallocator))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            deallocator = null;
+        }
+
+        PossibleDiagnostic? deinitializerError = null;
+
+        if (deallocateableType.Is(out PointerType? deallocateablePointerType))
+        {
+            if (!GetGeneralFunction(deallocateablePointerType.To, arguments, BuiltinFunctionIdentifiers.Deinitializer, location.File, out deinitializer, out deinitializerError, AddCompilable))
+            {
+                //if (deallocateablePointerType.To.Is<StructType>())
+                //{
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateablePointerType.To}` not found", location).WithSuberrors(error.ToWarning(location)));
+                //}
+                deinitializer = null;
+            }
+            else
+            {
+                deinitializer.Function.AddReference(null, location);
+            }
+        }
+        else
+        {
+            if (!GetGeneralFunction(deallocateableType, arguments, BuiltinFunctionIdentifiers.Deinitializer, location.File, out deinitializer, out deinitializerError, AddCompilable))
+            {
+                //if (deallocateableType.Is<StructType>())
+                //{
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateableType}` not found", location).WithSuberrors(error.ToWarning(location)));
+                //}
+                deinitializer = null;
+            }
+            else
+            {
+                deinitializer.Function.AddReference(null, location);
+            }
+        }
+
+        if (deinitializer is not null
+            && !deinitializer.Function.Definition.CanUse(location.File))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Destructor for type `{deallocateableType}` cannot be called due to its protection level", location));
+            return false;
+        }
+
+        if (deallocator is null && deinitializer is null)
+        {
+            //Diagnostics.Add(DiagnosticAt.Error($"Deinitializer for type `{deallocateableType}` not found", location).WithSuberrors(deinitializerError?.ToError(location)));
+        }
+
+        compiledCleanup = new CompiledCleanup()
+        {
+            Deallocator = TemplateInstance.New(deallocator, null),
+            Deinitializer = TemplateInstance.New(deinitializer),
+            Location = location,
+            TrashType = deallocateableType,
         };
+        return true;
     }
+
+    bool CompileCleanup(CompiledExpression value, [NotNullWhen(true)] out CompiledCleanup? compiledCleanup, out CompiledExpression assignedValue)
+    {
+        compiledCleanup = null;
+        assignedValue = value;
+
+        ImmutableArray<CompiledExpression> arguments = ImmutableArray.Create<CompiledExpression>(value);
+
+        FunctionQueryResult<CompiledGeneralFunctionDefinition>? deinitializer = null;
+        CompiledFunctionDefinition? deallocator;
+
+        if (AllowDeallocate(value.Type))
+        {
+            if (!CompileDeallocation(value.Type, value.Location, out deallocator))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            deallocator = null;
+        }
+
+        PossibleDiagnostic? deinitializerError = null;
+
+        if (value.Type.Is(out PointerType? deallocateablePointerType))
+        {
+            if (!GetGeneralFunction(deallocateablePointerType.To, arguments, BuiltinFunctionIdentifiers.Deinitializer, value.Location.File, out deinitializer, out deinitializerError, AddCompilable))
+            {
+                //if (deallocateablePointerType.To.Is<StructType>())
+                //{
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateablePointerType.To}` not found", location).WithSuberrors(error.ToWarning(location)));
+                //}
+                deinitializer = null;
+            }
+            else
+            {
+                deinitializer.Function.AddReference(null, value.Location);
+            }
+        }
+        else
+        {
+            if (!GetGeneralFunction(value.Type, arguments, BuiltinFunctionIdentifiers.Deinitializer, value.Location.File, out deinitializer, out deinitializerError, AddCompilable))
+            {
+                //if (deallocateableType.Is<StructType>())
+                //{
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateableType}` not found", value).WithSuberrors(error.ToWarning(value)));
+                //}
+                deinitializer = null;
+            }
+            else
+            {
+                deinitializer.Function.AddReference(null, value.Location);
+            }
+        }
+
+        if (deinitializer is not null)
+        {
+            deinitializer.ReplaceArgumentsIfNeeded(ref arguments);
+            assignedValue = arguments[0];
+        }
+
+        if (deinitializer is not null
+            && !deinitializer.Function.Definition.CanUse(value.Location.File))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Destructor for type `{value.Type}` cannot be called due to its protection level", value));
+        }
+
+        if (deallocator is null && deinitializer is null)
+        {
+            //Diagnostics.Add(DiagnosticAt.Error($"Deinitializer for type `{value.Type}` not found", value).WithSuberrors(deinitializerError?.ToError(value)));
+        }
+
+        compiledCleanup = new CompiledCleanup()
+        {
+            Deallocator = TemplateInstance.New(deallocator, null),
+            Deinitializer = TemplateInstance.New(deinitializer),
+            Location = value.Location,
+            TrashType = value.Type,
+        };
+        return true;
+    }
+
+    bool CompileStatement(TypeInstance typeInstance, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics) => typeInstance switch
+    {
+        TypeInstanceSimple v => CompileStatement(v, out result, diagnostics),
+        TypeInstanceFunction v => CompileStatement(v, out result, diagnostics),
+        TypeInstanceStackArray v => CompileStatement(v, out result, diagnostics),
+        TypeInstancePointer v => CompileStatement(v, out result, diagnostics),
+        TypeInstanceReference v => CompileStatement(v, out result, diagnostics),
+        MissingTypeInstance v => CompileStatement(v, out result, diagnostics),
+        _ => throw new UnreachableException(),
+    };
     bool CompileStatement(MissingTypeInstance type, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics)
     {
         result = null;
@@ -558,7 +647,7 @@ public partial class StatementCompiler
             ExternalConstant? externalConstant = ExternalConstants.FirstOrDefault(v => v.Name == newVariable.ExternalConstantName);
             if (externalConstant is null)
             {
-                if (type is null)
+                if (initialValue is null)
                 {
                     Diagnostics.Add(DiagnosticAt.Warning($"External constant `{newVariable.ExternalConstantName}` not found", newVariable));
                 }
@@ -639,9 +728,13 @@ public partial class StatementCompiler
             }
         }
 
-        if (type is null)
+        if (success && initialValue is null && type is null)
         {
             Diagnostics.Add(DiagnosticAt.Error($"Initial value for variable declaration with implicit type is required", newVariable));
+        }
+
+        if (type is null)
+        {
             type = BuiltinType.Any;
         }
 
@@ -756,6 +849,12 @@ public partial class StatementCompiler
 
         if (keywordCall.Keyword.Content == StatementKeywords.Break)
         {
+            if (keywordCall.Arguments.Length != 0)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to `{StatementKeywords.Break}`: required {0} passed {keywordCall.Arguments.Length}", keywordCall));
+                return false;
+            }
+
             compiledStatement = new CompiledBreak()
             {
                 Location = keywordCall.Location,
@@ -765,15 +864,21 @@ public partial class StatementCompiler
 
         if (keywordCall.Keyword.Content == StatementKeywords.Delete)
         {
+            if (keywordCall.Arguments.Length != 1)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to `{StatementKeywords.Delete}`: required {1} passed {keywordCall.Arguments.Length}", keywordCall));
+                return false;
+            }
+
             if (!CompileExpression(keywordCall.Arguments[0], out CompiledExpression? value)) return false;
 
-            if (!CompileCleanup(value.Type, keywordCall.Arguments[0].Location, out CompiledCleanup? compiledCleanup)) return false;
+            if (!CompileCleanup(value, out CompiledCleanup? compiledCleanup, out CompiledExpression? assignedValue)) return false;
 
             SetStatementReference(keywordCall, compiledCleanup);
 
             compiledStatement = new CompiledDelete()
             {
-                Value = value,
+                Value = assignedValue,
                 Cleanup = compiledCleanup,
                 Location = keywordCall.Location,
             };
@@ -1848,10 +1953,8 @@ public partial class StatementCompiler
                     compiledAnything = CompileFunctions(CompiledFunctions) || compiledAnything;
                     compiledAnything = CompileFunctions(CompiledOperators) || compiledAnything;
                     compiledAnything = CompileFunctions(CompiledGeneralFunctions) || compiledAnything;
-                    compiledAnything = CompileFunctions(CompiledConstructors) || compiledAnything;
 
                     compiledAnything = CompileFunctionTemplates(CompilableFunctions) || compiledAnything;
-                    compiledAnything = CompileFunctionTemplates(CompilableConstructors) || compiledAnything;
                     compiledAnything = CompileFunctionTemplates(CompilableOperators) || compiledAnything;
                     compiledAnything = CompileFunctionTemplates(CompilableGeneralFunctions) || compiledAnything;
 

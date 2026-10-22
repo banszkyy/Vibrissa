@@ -63,7 +63,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     {
         if (StatementCompiler.AllowDeallocate(cleanup.TrashType))
         {
-            if (cleanup.Destructor is null)
+            if (cleanup.Deinitializer is null)
             {
                 GenerateDeallocator(cleanup, il, ref successful);
                 return;
@@ -71,20 +71,20 @@ public partial class CodeGeneratorForIL : CodeGenerator
         }
         else
         {
-            if (cleanup.Destructor is null)
+            if (cleanup.Deinitializer is null)
             { return; }
         }
 
-        if (!EmitFunction(cleanup.Destructor.Template, cleanup.Destructor.TypeArguments, out DynamicMethod? function))
+        if (!EmitFunction(cleanup.Deinitializer.Template, cleanup.Deinitializer.TypeArguments, out DynamicMethod? function))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{cleanup.Destructor}`", cleanup));
+            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{cleanup.Deinitializer}`", cleanup));
             successful = false;
             return;
         }
 
         if (function.GetParameters().Length != 1)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Invalid destructor", cleanup));
+            Diagnostics.Add(DiagnosticAt.Internal($"Invalid deinitializer", cleanup));
             successful = false;
             return;
         }
@@ -2329,7 +2329,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         bool successful = true;
         EmitFunctionBody(body.Statements, il, ref successful);
 
-        if (!EmitDefaultValue(function is CompiledConstructorDefinition ? BuiltinType.Void : GeneralType.TryInsertTypeParameters(function.Type, typeArguments), il, out PossibleDiagnostic? defaultValueError))
+        if (!EmitDefaultValue(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), il, out PossibleDiagnostic? defaultValueError))
         {
             Diagnostics.Add(defaultValueError.ToError(body.Location.After(), false));
             successful = false;
@@ -2362,7 +2362,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     bool EmitFunctionSignature(ICompiledFunctionDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
     {
         dynamicMethod = null;
-        if (!ToType(function is CompiledConstructorDefinition ? BuiltinType.Void : GeneralType.TryInsertTypeParameters(function.Type, typeArguments), out Type? returnType, out PossibleDiagnostic? returnTypeError))
+        if (!ToType(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), out Type? returnType, out PossibleDiagnostic? returnTypeError))
         {
             Diagnostics.Add(returnTypeError.ToError());
             return false;
@@ -2389,7 +2389,6 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 "%" => "mod",
                 _ => v.Identifier,
             }}",
-            CompiledConstructorDefinition v => $"ctor_{v.Identifier}",
             CompiledGeneralFunctionDefinition v => $"genr_{v.Identifier}",
             _ => throw new UnreachableException(),
         };

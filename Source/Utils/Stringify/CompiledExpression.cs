@@ -204,7 +204,7 @@ public static partial class Stringifier
     public static void Stringify(CompiledArgument expression, BuilderBase builder, StringifyContext context = default)
     {
         if (expression.Cleanup.Deallocator is not null
-            || expression.Cleanup.Destructor is not null)
+            || expression.Cleanup.Deinitializer is not null)
         {
             builder.Append(ModifierKeywords.Temp);
             builder.Append(' ');

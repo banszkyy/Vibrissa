@@ -92,6 +92,7 @@ public partial class StatementCompiler
     {
         public TIdentifier? Identifier { get; init; }
         public Uri? RelevantFile { get; init; }
+        public TArgument? Object { get; init; }
         public ImmutableArray<TArgument>? Arguments { get; init; }
         public int? ArgumentCount { get; init; }
         public GeneralType? ReturnType { get; init; }
@@ -237,6 +238,7 @@ public partial class StatementCompiler
         public TypeMatch? ParameterTypeMatch { get; set; }
 
         public ImmutableDictionary<string, GeneralType>? TypeArguments { get; set; }
+        public CompiledExpression? Object { get; set; }
         public ImmutableArray<CompiledExpression?> Arguments { get; set; }
 
         public override int CompareTo(DefinitionMatch<TDefinition>? other) => CompareTo(other as FunctionMatch<TDefinition>);
@@ -562,64 +564,47 @@ public partial class StatementCompiler
             result.Errors.Add(new($"Cannot use function `{query.Identifier}` due it's protection level"));
         }
 
-        bool TryReplaceArgument2(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed, Dictionary<string, GeneralType> typeArguments)
-        {
-            if (passed is not CompiledExpression passedExpression) return false;
-            if (!definition.Modifiers.Contains(ModifierKeywords.This)) return false;
-
-            if (!definedType.Is(out PointerType? definedPointerType)) return false;
-            if (!GeneralType.TryGetTypeParameters(definedPointerType.To, passedType, typeArguments)) return false;
-
-            argument = new CompiledGetReference()
-            {
-                Of = passedExpression,
-                Location = passedExpression.Location,
-                SaveValue = passedExpression.SaveValue,
-                Type = new PointerType(passedExpression.Type),
-            };
-            return true;
-        }
-
         void GetArgumentMatch(ref TypeMatch typeMatch, ref CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, TArgument passed, List<PossibleDiagnostic> errors)
         {
             if (typeMatch == TypeMatch.None) return;
 
             PossibleDiagnostic? error = null;
 
-            /*
-            if (passed is CompiledExpression expression)
-            {
-                if (typeMatch >= TypeMatch.ImplicitCast
-                    && CanCastImplicitly(expression, definedType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out CastLevel castLevel))
-                {
-                    switch (castLevel)
-                    {
-                        case CastLevel.Cast:
-                        case CastLevel.ReferenceDereference:
-                            if (typeMatch > TypeMatch.ImplicitCast) typeMatch = TypeMatch.ImplicitCast;
-                            compiledPassedArgument = assignedValue;
-                            break;
-                        case CastLevel.SameCast:
-                        case CastLevel.Same:
-                            if (typeMatch > TypeMatch.Same) typeMatch = TypeMatch.Same;
-                            compiledPassedArgument = assignedValue;
-                            break;
-                        case CastLevel.Equals:
-                            if (typeMatch > TypeMatch.Equals) typeMatch = TypeMatch.Equals;
-                            compiledPassedArgument = assignedValue;
-                            break;
-                        case CastLevel.None:
-                        default:
-                            typeMatch = TypeMatch.None;
-                            return;
-                    }
-                }
-            }
-            */
-
             if (typeMatch >= TypeMatch.ImplicitCast)
             {
                 GeneralType passedType = query.Converter.Invoke(passed);
+
+                if (passed is CompiledExpression expression)
+                {
+                    //if (expression.Location.File.LocalPath.EndsWith("meow.vi")) Debugger.Break();
+                    if (CanCastImplicitly(expression, definedType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out CastLevel castLevel))
+                    {
+                        switch (castLevel)
+                        {
+                            case CastLevel.Cast:
+                            case CastLevel.ReferenceDereference:
+                                if (typeMatch > TypeMatch.ImplicitCast) typeMatch = TypeMatch.ImplicitCast;
+                                compiledPassedArgument = assignedValue;
+                                return;
+                            case CastLevel.SameCast:
+                            case CastLevel.Same:
+                                if (typeMatch > TypeMatch.Same) typeMatch = TypeMatch.Same;
+                                compiledPassedArgument = assignedValue;
+                                return;
+                            case CastLevel.Equals:
+                                if (typeMatch > TypeMatch.Equals) typeMatch = TypeMatch.Equals;
+                                compiledPassedArgument = assignedValue;
+                                return;
+                            case CastLevel.None:
+                            default:
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        errors.Add(castError);
+                    }
+                }
 
                 if (typeMatch >= TypeMatch.Equals && passedType.Equals(definedType))
                 {
@@ -637,21 +622,6 @@ public partial class StatementCompiler
                 {
                     typeMatch = TypeMatch.ImplicitCast;
                     return;
-                }
-
-                if (passedType.Is(out ReferenceType? ar))
-                {
-                    if (typeMatch >= TypeMatch.EqualsRef && ar.To.Equals(definedType))
-                    {
-                        typeMatch = TypeMatch.EqualsRef;
-                        return;
-                    }
-
-                    if (typeMatch >= TypeMatch.SameRef && ar.To.SameAs(definedType))
-                    {
-                        typeMatch = TypeMatch.SameRef;
-                        return;
-                    }
                 }
 
                 if (typeMatch >= TypeMatch.ImplicitCast
@@ -673,7 +643,8 @@ public partial class StatementCompiler
 
             if (typeMatch >= TypeMatch.Promotion)
             {
-                if (query.Converter.Invoke(passed).SameAs(definedType))
+                GeneralType passedType = query.Converter.Invoke(passed);
+                if (passedType.SameAs(definedType))
                 {
                     typeMatch = TypeMatch.Promotion;
                     return;
@@ -705,94 +676,52 @@ public partial class StatementCompiler
             }
         }
 
-        if (function.Definition.IsTemplate)
+        Dictionary<string, GeneralType>? _typeArguments = function.Definition.IsTemplate ? new() : null;
+
+        if (!query.Arguments.HasValue)
         {
-            Dictionary<string, GeneralType> _typeArguments = new();
-
-            if (!query.Arguments.HasValue)
-            {
-                result.ParameterTypeMatch = null;
-            }
-            else
-            {
-                int checkCount = Math.Min(function.Parameters.Length, query.Arguments.Value.Length);
-
-                CompiledExpression?[] argumentValues = new CompiledExpression?[checkCount];
-
-                for (int i = 0; i < checkCount; i++)
-                {
-                    GeneralType defined = function.Parameters[i].Type;
-                    GeneralType passed = query.Converter.Invoke(query.Arguments.Value[i]);
-
-                    if (TryReplaceArgument2(ref argumentValues[i], passed, defined, function.Parameters[i].Definition, query.Arguments.Value[i], _typeArguments))
-                    {
-                        // yay
-                    }
-                    else if (!GeneralType.TryGetTypeParameters(defined, passed, _typeArguments))
-                    {
-                        PossibleDiagnostic suberror = new($"Argument {i + 1}: Invalid type passed: expected {GeneralType.TryInsertTypeParameters(defined, _typeArguments)} but passed {passed}");
-                        if (function is FunctionThingDefinition ftd)
-                        { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function `{function.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                        result.Errors.Add(new PossibleDiagnostic($"Argument {i + 1}: Could not resolve the template types", suberror));
-                        return result;
-                    }
-                }
-
-                result.ParameterTypeMatch = TypeMatch.Equals;
-                result.TypeArguments = _typeArguments.ToImmutableDictionary();
-
-                for (int i = 0; i < checkCount; i++)
-                {
-                    GeneralType defined = GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, _typeArguments);
-                    TArgument passed = query.Arguments.Value[i];
-                    TypeMatch v = result.ParameterTypeMatch.Value;
-                    GetArgumentMatch(ref v, ref argumentValues[i], defined, function.Parameters[i].Definition, passed, result.Errors);
-                    if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
-                }
-
-                result.Arguments = argumentValues.AsImmutableUnsafe();
-            }
-
-            if (query.ReturnType is not null)
-            {
-                result.ReturnTypeMatch = GetReturnTypeMatch(GeneralType.TryInsertTypeParameters(function.Type, _typeArguments), query.ReturnType, result.Errors);
-            }
-            else
-            {
-                result.ReturnTypeMatch = TypeMatch.Equals;
-            }
+            result.ParameterTypeMatch = null;
         }
         else
         {
-            if (!query.Arguments.HasValue)
-            {
-                result.ParameterTypeMatch = null;
-            }
-            else
-            {
-                result.ParameterTypeMatch = TypeMatch.Equals;
+            result.ParameterTypeMatch = TypeMatch.Equals;
 
-                int checkCount = Math.Min(function.Parameters.Length, query.Arguments.Value.Length);
-                CompiledExpression?[] arguments = new CompiledExpression?[checkCount];
-                for (int i = 0; i < checkCount; i++)
+            int checkCount = Math.Min(function.Parameters.Length, query.Arguments.Value.Length);
+            CompiledExpression?[] arguments = new CompiledExpression?[checkCount];
+            for (int i = 0; i < checkCount; i++)
+            {
+                GeneralType defined = GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, _typeArguments);
+                TArgument passed = query.Arguments.Value[i];
+                TypeMatch v = result.ParameterTypeMatch.Value;
+
+                if (result.ParameterTypeMatch > TypeMatch.None && _typeArguments is not null)
                 {
-                    GeneralType defined = function.Parameters[i].Type;
-                    TArgument passed = query.Arguments.Value[i];
-                    TypeMatch v = result.ParameterTypeMatch.Value;
-                    GetArgumentMatch(ref v, ref arguments[i], defined, function.Parameters[i].Definition, passed, result.Errors);
-                    if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
+                    if (GeneralType.TryGetTypeParameters(defined, query.Converter(passed), _typeArguments))
+                    {
+                        defined = GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, _typeArguments);
+                    }
                 }
-                result.Arguments = arguments.AsImmutableUnsafe();
-            }
 
-            if (query.ReturnType is not null)
-            {
-                result.ReturnTypeMatch = GetReturnTypeMatch(function.Type, query.ReturnType, result.Errors);
+                GetArgumentMatch(ref v, ref arguments[i], defined, function.Parameters[i].Definition, passed, result.Errors);
+                if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
+
+                if (result.ParameterTypeMatch > TypeMatch.None && _typeArguments is not null)
+                {
+                    GeneralType.TryGetTypeParameters(defined, arguments[i]?.Type ?? query.Converter(passed), _typeArguments);
+                }
             }
-            else
-            {
-                result.ReturnTypeMatch = TypeMatch.Equals;
-            }
+            result.Arguments = arguments.AsImmutableUnsafe();
+        }
+
+        result.TypeArguments = _typeArguments?.ToImmutableDictionary();
+
+        if (query.ReturnType is not null)
+        {
+            result.ReturnTypeMatch = GetReturnTypeMatch(GeneralType.TryInsertTypeParameters(function.Type, _typeArguments), query.ReturnType, result.Errors);
+        }
+        else
+        {
+            result.ReturnTypeMatch = TypeMatch.Equals;
         }
 
         return result;

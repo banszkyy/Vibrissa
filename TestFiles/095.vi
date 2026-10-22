@@ -5,7 +5,7 @@ struct B
     byte _a;
     string _b;
 
-    delete() {
+    deinit() {
         delete this._b;
     }
 }
@@ -16,7 +16,7 @@ struct A
     B* _b;
     float _c;
 
-    delete() {
+    deinit() {
         delete this._b;
     }
 }

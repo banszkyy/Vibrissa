@@ -20,7 +20,7 @@ public readonly struct ParserResult
     public IEnumerable<FunctionThingDefinition> AllFunctions =>
         Functions
         .Append(Operators)
-        .Append(Structs.SelectMany(v => v.Functions.Cast<FunctionThingDefinition>().Append(v.Operators).Append(v.Constructors).Append(v.GeneralFunctions)));
+        .Append(Structs.SelectMany(v => v.Functions.Cast<FunctionThingDefinition>().Append(v.Operators).Append(v.GeneralFunctions)));
 
     public static ParserResult Empty => new(
         ImmutableArray<FunctionDefinition>.Empty,

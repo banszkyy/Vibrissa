@@ -245,13 +245,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             if (!GeneratedVariables.TryGetValue(variable, out generatedVariable))
             {
-                error = new PossibleDiagnostic($"Variable `{variable}` was not compiled", variable);
+                error = new PossibleDiagnostic($"Variable `{variable}` was not compiled");
                 return false;
             }
 
             if (!HasCapturedGlobalVariables)
             {
-                error = new($"Unexpected global variable `{variable}`", variable);
+                error = new($"Unexpected global variable reference to `{variable}`");
                 return false;
             }
 

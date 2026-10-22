@@ -4,7 +4,7 @@ struct A
 {
     int v;
 
-    A()
+    init()
     {
         this.v = 4;
     }

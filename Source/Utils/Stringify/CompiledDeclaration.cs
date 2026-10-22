@@ -65,27 +65,20 @@ public static partial class Stringifier
             builder.Append(' ');
         }
 
-        if (signature is CompiledConstructorDefinition)
+        builder.Append(signature.Type.ToString());
+        builder.Append(' ');
+        builder.Append(signature switch
         {
-            builder.Append(signature.Type.ToString());
-        }
-        else
+            CompiledFunctionDefinition v => v.Identifier,
+            CompiledOperatorDefinition v => v.Identifier,
+            CompiledGeneralFunctionDefinition v => v.Identifier,
+            _ => throw new UnreachableException(signature.GetType().Name),
+        });
+        if (signature.Definition.Template is not null)
         {
-            builder.Append(signature.Type.ToString());
-            builder.Append(' ');
-            builder.Append(signature switch
-            {
-                CompiledFunctionDefinition v => v.Identifier,
-                CompiledOperatorDefinition v => v.Identifier,
-                CompiledGeneralFunctionDefinition v => v.Identifier,
-                _ => throw new UnreachableException(signature.GetType().Name),
-            });
-            if (signature.Definition.Template is not null)
-            {
-                builder.Append('<');
-                builder.AppendJoin(signature.Definition.Template.Parameters, (v, _, _) => builder.Append(v.Content));
-                builder.Append('>');
-            }
+            builder.Append('<');
+            builder.AppendJoin(signature.Definition.Template.Parameters, (v, _, _) => builder.Append(v.Content));
+            builder.Append('>');
         }
         builder.Append('(');
         bool comma = false;

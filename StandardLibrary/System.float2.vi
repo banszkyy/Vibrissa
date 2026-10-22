@@ -7,7 +7,7 @@ export struct float2
     float x;
     float y;
 
-    export float2(float x, float y)
+    export init(float x, float y)
     {
         this.x = x;
         this.y = y;

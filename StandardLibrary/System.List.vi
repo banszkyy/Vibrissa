@@ -20,35 +20,21 @@ export struct List<T>
         return this._ptr[index];
     }
 
-    export List<T>(int capacity)
+    export init(int capacity)
     {
         this._capacity = capacity;
         this._length = 0;
         this._ptr = new T[capacity]*;
     }
 
-    export List<T>*(int capacity)
-    {
-        this._capacity = capacity;
-        this._length = 0;
-        this._ptr = new T[capacity]*;
-    }
-
-    export List<T>()
+    export init()
     {
         this._capacity = 4;
         this._length = 0;
         this._ptr = new T[4]*;
     }
 
-    export List<T>*()
-    {
-        this._capacity = 4;
-        this._length = 0;
-        this._ptr = new T[4]*;
-    }
-
-    export delete()
+    export deinit()
     {
         if (this._ptr)
         { delete this._ptr; }

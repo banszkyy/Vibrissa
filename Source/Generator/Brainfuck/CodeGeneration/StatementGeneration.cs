@@ -15,11 +15,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateDestructor(CompiledExpression value, CompiledCleanup cleanup)
     {
-        if (cleanup.Destructor is not null)
+        if (cleanup.Deinitializer is not null)
         {
-            GenerateCodeForFunction(cleanup.Destructor.Template, ImmutableArray.Create(CompiledArgument.Wrap(value)), cleanup.Destructor.TypeArguments, value);
+            GenerateCodeForFunction(cleanup.Deinitializer.Template, ImmutableArray.Create(CompiledArgument.Wrap(value)), cleanup.Deinitializer.TypeArguments, value);
 
-            if (cleanup.Destructor.Template.ReturnSomething)
+            if (cleanup.Deinitializer.Template.ReturnSomething)
             { Stack.Pop(); }
         }
 
@@ -2736,7 +2736,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     return;
                 }
 
-                if (!definedType.Is(out PointerType? pointerType) ||
+                if (!definedType.Is(out IReferenceType? pointerType) ||
                     !v.Type.SameAs(pointerType.To))
                 {
                     if (pointerType is not null &&
@@ -3341,7 +3341,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForFunction(CompiledConstructorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledConstructorCall caller)
+    void GenerateCodeForConstructor(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledConstructorCall caller)
     {
         CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
         if (f is null)

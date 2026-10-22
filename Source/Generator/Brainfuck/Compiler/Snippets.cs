@@ -1091,7 +1091,26 @@ public static class Snippets
 
     #region ARRAY
 
-    public static int ARRAY_SIZE(int elementCount) => (2 * elementCount) + 3;
+    public static int ARRAY_SIZE(int elementCount, int elementSize) => elementCount + (elementCount * elementSize) + 3;
+
+    public static int ARRAY_SIZE(int elementCount) => (elementCount * 2) + 3;
+
+    /// <summary>
+    /// <b>Pointer:</b> <paramref name="arrayAddress"/>
+    /// <br/>
+    /// <br/>
+    /// <see href="https://code.google.com/archive/p/brainfuck-compiler/"/>
+    /// <br/>
+    /// Attribution: Jeffry Johnston
+    /// <para>
+    /// Each array element requires 2 memory cells.
+    /// </para>
+    /// </summary>
+    public static void ARRAY_SET(this CodeHelper code, int arrayAddress, int indexAddress, int valueAddress, int elementSize, int offset, Func<int, StackAddress> allocator)
+    {
+        using StackAddress tempAddress1 = allocator.Invoke(1);
+        code.ARRAY_SET(arrayAddress, indexAddress, valueAddress, elementSize, offset, tempAddress1);
+    }
 
     /// <summary>
     /// <b>Pointer:</b> <paramref name="arrayAddress"/>
@@ -1108,6 +1127,65 @@ public static class Snippets
     {
         using StackAddress tempAddress1 = allocator.Invoke(1);
         code.ARRAY_SET(arrayAddress, indexAddress, valueAddress, tempAddress1);
+    }
+
+    /// <summary>
+    /// <b>Pointer:</b> <paramref name="arrayAddress"/>
+    /// <br/>
+    /// <br/>
+    /// <see href="https://code.google.com/archive/p/brainfuck-compiler/"/>
+    /// <br/>
+    /// Attribution: Jeffry Johnston
+    /// <para>
+    /// Each array element requires 2 memory cells.
+    /// </para>
+    /// </summary>
+    public static void ARRAY_SET(this CodeHelper code, int arrayAddress, int indexAddress, int valueAddress, int elementSize, int offset, int tempAddress1)
+    {
+        if (offset < 0 || offset >= elementSize || elementSize <= 0) throw new ArgumentException();
+
+        int temp1 = arrayAddress + 1;
+        int temp2 = arrayAddress + 2;
+
+        code.ClearValue(arrayAddress + 1, temp2, tempAddress1);
+
+        code.CopyValue(indexAddress, temp2, tempAddress1);
+        code.CopyValue(valueAddress, temp1, tempAddress1);
+
+        code.SetPointer(arrayAddress);
+
+        //code += ">>";
+        //code += "[[>>] + [<<] >> -]";
+        //code += '+';
+        //code += "[>>] < [-] < [<<]";
+        //code += "> [> [>>] < +< [<<] > -]";
+        //code += "> [>>] << [-<<]";
+
+        //code += ">>";
+        //code += "[[>>>] + [<<<] >>> -]";
+        //code += '+';
+        //code += "[>>>] < [-] < [-] < [<<<]";
+        //code += ">> [> [>>>] < +< +< [<<<] >> -]";
+        //code += "> [>>>] <<< [-<<<] >";
+
+        string r = new('>', elementSize);
+        string l = new('<', elementSize);
+
+        code += ">>";
+        code += $"[[>{r}] + [<{l}] >{r} -]";
+        code += '+';
+        code += $"[>{r}]";
+        code += new string('<', elementSize - offset);
+        code += $"[-]";
+        code += new string('<', offset);
+        code += $"< [<{l}]";
+        code += $"{r} [> [>{r}]";
+        code += new string('<', elementSize - offset);
+        code += $"+";
+        code += new string('<', offset);
+        code += $"< [<{l}] {r} -]";
+        code += $"> [>{r}] <{l} [-<{l}]";
+        code += new string('>', elementSize - 1);
     }
 
     /// <summary>
@@ -1172,6 +1250,49 @@ public static class Snippets
         code += '+';
         code.SetPointer(arrayAddress);
         code += ">> [>>] < -] < [<<] > [> [>>] < +< [<<] > -] > [>>] << [-<<]";
+        code.FixPointer(arrayAddress);
+    }
+
+    /// <summary>
+    /// <b>Pointer:</b> <paramref name="arrayAddress"/>
+    /// <br/>
+    /// <br/>
+    /// <see href="https://code.google.com/archive/p/brainfuck-compiler/"/>
+    /// <br/>
+    /// Attribution: Jeffry Johnston
+    /// <para>
+    /// Each array element requires 2 memory cells.
+    /// </para>
+    /// </summary>
+    public static void ARRAY_GET(this CodeHelper code, int arrayAddress, int indexAddress, int elementSize, int offset, int resultAddress)
+    {
+        code.ClearValue(resultAddress, arrayAddress + 1, arrayAddress + 2);
+        code.CopyValue(indexAddress, arrayAddress + 2, arrayAddress + 1);
+
+        string r = new('>', elementSize);
+        string l = new('<', elementSize);
+
+        code.SetPointer(arrayAddress);
+
+        code += ">>";
+        code += $"[[>{r}] + [<{l}] >{r} -]";
+        code += "+";
+        code += $"[>{r}]";
+        code += $"<";
+        code += $"[";
+        code += new string('<', elementSize - offset);
+        code += $" [<{l}] > +<";
+        code.FixPointer(arrayAddress);
+
+        code.SetPointer(resultAddress);
+        code += '+';
+
+        code.SetPointer(arrayAddress);
+        code += $">{r} [>{r}] < -]";
+        code += new string('<', elementSize - offset);
+        code += $" [<{l}] > [> [>{r}] < +< [<{l}] > -]";
+        code += $"> [>{r}] <{l} [-<{l}]";
+        code += new string('>', elementSize - 1);
         code.FixPointer(arrayAddress);
     }
 

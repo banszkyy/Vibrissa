@@ -205,7 +205,7 @@ static class TestResults
             brainfuckResult.Outcome = TranslateOutcome(brainfuckResult.Outcome, brainfuckResult.ErrorMessage, brainfuckResult.StackTrace);
             msilResult.Outcome = TranslateOutcome(msilResult.Outcome, msilResult.ErrorMessage, msilResult.StackTrace);
 
-            string translatedName = $"https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/{serialNumber.ToString().PadLeft(2, '0')}{LanguageConstants.LanguageExtension}";
+            string translatedName = $"https://github.com/banszkyy/Vibrissa/blob/master/TestFiles/{serialNumber.ToString().PadLeft(3, '0')}{LanguageConstants.LanguageExtension}";
             translatedName = $"[{serialNumber}]({translatedName})";
 
             file.Write("| ");

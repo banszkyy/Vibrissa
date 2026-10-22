@@ -71,7 +71,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         if (StatementCompiler.AllowDeallocate(cleanup.TrashType))
         {
-            if (cleanup.Destructor is null)
+            if (cleanup.Deinitializer is null)
             {
                 AddComment($"Pointer value should be already there");
                 GenerateDeallocator(cleanup);
@@ -81,16 +81,16 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
         else
         {
-            if (cleanup.Destructor is null)
+            if (cleanup.Deinitializer is null)
             {
                 return;
             }
         }
 
-        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Destructor.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Destructor.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Deinitializer.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Deinitializer.TypeArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function `{cleanup.Destructor.Template.ToReadable()}` wasn't compiled", cleanup));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function `{cleanup.Deinitializer.Template.ToReadable()}` wasn't compiled", cleanup));
             return;
         }
 
@@ -98,11 +98,11 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         AddComment(" .:");
 
-        InstructionLabel label = LabelForDefinition(cleanup.Destructor);
+        InstructionLabel label = LabelForDefinition(cleanup.Deinitializer);
         Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
 
         if (!label.IsMarked)
-        { UndefinedFunctionOffsets.Add(new UndefinedOffset(cleanup.Location, cleanup.Destructor.UnsafeTo<IHaveInstructionOffset>())); }
+        { UndefinedFunctionOffsets.Add(new UndefinedOffset(cleanup.Location, cleanup.Deinitializer.UnsafeTo<IHaveInstructionOffset>())); }
 
         if (StatementCompiler.AllowDeallocate(cleanup.TrashType))
         {
@@ -1705,7 +1705,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return;
         }
 
-        if (prevType.Is(out PointerType? pointerType) && pointerType.To.Is(out arrayType))
+        if (prevType.Is(out IReferenceType? pointerType) && pointerType.To.Is(out arrayType))
         {
             int elementSize = FindSize(arrayType.Of, index.Base);
             if (!GetAddress(index, out Address? _address, out PossibleDiagnostic? _error))
@@ -3157,7 +3157,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             globalVariablesCleanup.Insert(0, variableDeclaration.Cleanup);
         }
 
-        if (GlobalVariablesSize > 0)
+        if (CompiledGlobalVariables.Count > 0)
         {
             AddComment("Allocate global variables {");
             StackAlloc(GlobalVariablesSize, false);
@@ -3308,7 +3308,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
             CompiledFunctions = compilerResult.FunctionDefinitions,
             CompiledOperators = compilerResult.OperatorDefinitions,
             CompiledGeneralFunctions = compilerResult.GeneralFunctionDefinitions,
-            CompiledConstructors = compilerResult.ConstructorDefinitions,
             ExposedFunctions = exposedFunctions.ToFrozenDictionary(),
             GeneratedUnmanagedFunctions = GeneratedUnmanagedFunctions.ToImmutableArray(v => v.Function),
             GeneratedUnmanagedFunctionReferences = GeneratedUnmanagedFunctions.ToImmutableArray(v => v.Reference),

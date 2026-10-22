@@ -16,7 +16,6 @@ public class CompiledExternalFunctionCall : CompiledExpression
         CompiledFunctionDefinition v => v.Identifier,
         CompiledOperatorDefinition v => v.Identifier,
         CompiledGeneralFunctionDefinition v => v.Identifier,
-        CompiledConstructorDefinition v => v.Type.ToString(),
         ExternalFunctionSync v => v.UnmarshaledCallback.Method.Name ?? v.Name ?? v.Id.ToString(),
         ExternalFunctionAsync v => v.Name ?? v.Id.ToString(),
         ExternalFunctionManaged v => v.Method.ToString() ?? v.Name ?? v.Id.ToString(),

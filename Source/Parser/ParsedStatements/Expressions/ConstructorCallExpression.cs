@@ -3,12 +3,12 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Parser.Statements;
 
-public class ConstructorCallExpression : Expression, IReferenceableTo<CompiledConstructorDefinition>, IHaveType
+public class ConstructorCallExpression : Expression, IReferenceableTo<CompiledGeneralFunctionDefinition>, IHaveType
 {
     /// <summary>
     /// Set by the compiler
     /// </summary>
-    public CompiledConstructorDefinition? Reference { get; set; }
+    public CompiledGeneralFunctionDefinition? Reference { get; set; }
 
     public Token Keyword { get; }
     public TypeInstance Type { get; }

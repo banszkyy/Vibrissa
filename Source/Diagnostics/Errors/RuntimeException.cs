@@ -439,10 +439,6 @@ public class RuntimeException : LanguageException
                 {
                     result.Append(compiledGeneralFunctionDefinition.Identifier);
                 }
-                else if (function is CompiledConstructorDefinition compiledConstructorDefinition)
-                {
-                    result.Append(compiledConstructorDefinition.Type.ToString());
-                }
                 else if (function is CompiledLambda)
                 {
                     result.Append("<lambda>");

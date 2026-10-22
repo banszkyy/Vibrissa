@@ -84,13 +84,13 @@ export struct Pair<TKey, TValue>
     TKey key;
     TValue value;
 
-    Pair<TKey, TValue>*(TKey key, TValue value)
+    export init(TKey key, TValue value)
     {
         this.key = key;
         this.value = value;
     }
 
-    export delete()
+    export deinit()
     {
         delete this.key;
         delete this.value;
@@ -248,7 +248,7 @@ export struct HashMap<TKey, TValue>
         return false;
     }
 
-    export delete()
+    export deinit()
     {
         if (this._ptr)
         {

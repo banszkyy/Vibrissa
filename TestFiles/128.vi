@@ -1,6 +1,6 @@
 using System;
 
-int[]* map(this int[]* values, int length, temp @int(int) converter)
+int[]* map(this int[]& values, int length, temp @int(int) converter)
 {
     int[]* result = new int[length]*;
     for (int i = 0; i < length; i++)

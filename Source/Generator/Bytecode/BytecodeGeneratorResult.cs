@@ -21,7 +21,6 @@ public struct BytecodeGeneratorResult
     public ImmutableArray<CompiledFunctionDefinition> CompiledFunctions;
     public ImmutableArray<CompiledOperatorDefinition> CompiledOperators;
     public ImmutableArray<CompiledGeneralFunctionDefinition> CompiledGeneralFunctions;
-    public ImmutableArray<CompiledConstructorDefinition> CompiledConstructors;
     public FrozenDictionary<string, ExposedFunction> ExposedFunctions;
     public ImmutableArray<ExternalFunctionScopedSync> GeneratedUnmanagedFunctions;
     public ImmutableArray<ExternalFunctionScopedSyncCallback> GeneratedUnmanagedFunctionReferences;

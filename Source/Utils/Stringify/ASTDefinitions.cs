@@ -38,12 +38,6 @@ public static partial class Stringifier
             Stringify(@struct.Fields[i], builder);
         }
 
-        for (int i = 0; i < @struct.Constructors.Length; i++)
-        {
-            builder.NewLine();
-            Stringify(@struct.Constructors[i], builder);
-        }
-
         for (int i = 0; i < @struct.GeneralFunctions.Length; i++)
         {
             builder.NewLine();
@@ -85,41 +79,6 @@ public static partial class Stringifier
         builder.Append(' ');
         builder.Append(field.Identifier.Content);
         builder.Append(';');
-    }
-
-    public static void Stringify(ConstructorDefinition function, BuilderBase builder)
-    {
-        foreach (AttributeUsage attr in function.Attributes)
-        {
-            Stringify(attr, builder);
-            builder.NewLine();
-        }
-
-        foreach (Token modifier in function.Modifiers)
-        {
-            builder.Append(modifier.Content);
-            builder.Append(' ');
-        }
-
-        Stringify(function.Type, builder);
-        builder.Append('(');
-        for (int i = 0; i < function.Parameters.Length; i++)
-        {
-            if (i > 0)
-            {
-                builder.Append(',');
-                builder.Space();
-            }
-
-            Stringify(function.Parameters[i], builder);
-        }
-        builder.Append(')');
-
-        if (function.Block is not null)
-        {
-            builder.NewLine();
-            Stringify(function.Block, builder);
-        }
     }
 
     public static void Stringify(FunctionDefinition function, BuilderBase builder)

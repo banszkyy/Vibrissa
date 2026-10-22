@@ -270,9 +270,9 @@ public class InterpreterRenderer
             {
                 t.Write("<lambda>", AnsiColor.Yellow);
             }
-            else if (function is CompiledConstructorDefinition c)
+            else if (function is CompiledGeneralFunctionDefinition c)
             {
-                t.Write(c.Identifier.ToString(), AnsiColor.Green);
+                t.Write(c.Identifier, AnsiColor.Yellow);
             }
             else
             {

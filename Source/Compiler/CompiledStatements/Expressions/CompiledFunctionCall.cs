@@ -12,7 +12,6 @@ public class CompiledFunctionCall : CompiledExpression
         CompiledFunctionDefinition v => v.Identifier,
         CompiledOperatorDefinition v => v.Identifier,
         CompiledGeneralFunctionDefinition v => v.Identifier,
-        CompiledConstructorDefinition v => v.Type.ToString(),
         _ => throw new UnreachableException(),
     }}({string.Join(", ", Arguments.Select(v => v.ToString()))})";
 }

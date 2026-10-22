@@ -22,7 +22,6 @@ public class StructDefinition :
     public ImmutableArray<FunctionDefinition> Functions { get; }
     public ImmutableArray<GeneralFunctionDefinition> GeneralFunctions { get; }
     public ImmutableArray<FunctionDefinition> Operators { get; }
-    public ImmutableArray<ConstructorDefinition> Constructors { get; }
 
     public bool IsExported => Modifiers.Contains(ProtectionKeywords.Export);
     public virtual Position Position => new(Identifier, BracketStart, BracketEnd);
@@ -43,7 +42,6 @@ public class StructDefinition :
         Functions = other.Functions;
         GeneralFunctions = other.GeneralFunctions;
         Operators = other.Operators;
-        Constructors = other.Constructors;
     }
 
     public StructDefinition(
@@ -57,13 +55,11 @@ public class StructDefinition :
         ImmutableArray<FunctionDefinition> methods,
         ImmutableArray<GeneralFunctionDefinition> generalMethods,
         ImmutableArray<FunctionDefinition> operators,
-        ImmutableArray<ConstructorDefinition> constructors,
         Uri file)
     {
         foreach (FunctionDefinition method in methods) method.Context = this;
         foreach (GeneralFunctionDefinition generalMethod in generalMethods) generalMethod.Context = this;
         foreach (FunctionDefinition @operator in operators) @operator.Context = this;
-        foreach (ConstructorDefinition constructor in constructors) constructor.Context = this;
         foreach (FieldDefinition field in fields) field.Context = this;
 
         Identifier = name;
@@ -74,7 +70,6 @@ public class StructDefinition :
         GeneralFunctions = generalMethods;
         Attributes = attributes;
         Operators = operators;
-        Constructors = constructors;
         Modifiers = modifiers;
         Template = template;
 

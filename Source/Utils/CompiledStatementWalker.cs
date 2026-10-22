@@ -23,7 +23,7 @@ public static partial class StatementWalker
             {
                 case CompiledCleanup v:
                     TryFunctionCallback(v.Deallocator?.Template);
-                    TryFunctionCallback(v.Destructor?.Template);
+                    TryFunctionCallback(v.Deinitializer?.Template);
                     break;
                 case CompiledFunctionCall v:
                     TryFunctionCallback(v.Function.Template);

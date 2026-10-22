@@ -8,7 +8,6 @@ public readonly struct CompilerResult
     public readonly ImmutableArray<CompiledFunctionDefinition> FunctionDefinitions;
     public readonly ImmutableArray<CompiledGeneralFunctionDefinition> GeneralFunctionDefinitions;
     public readonly ImmutableArray<CompiledOperatorDefinition> OperatorDefinitions;
-    public readonly ImmutableArray<CompiledConstructorDefinition> ConstructorDefinitions;
 
     public readonly ImmutableArray<CompiledAlias> Aliases;
     public readonly ImmutableArray<CompiledEnum> Enums;
@@ -58,7 +57,6 @@ public readonly struct CompilerResult
         ImmutableArray<CompiledFunctionDefinition>.Empty,
         ImmutableArray<CompiledGeneralFunctionDefinition>.Empty,
         ImmutableArray<CompiledOperatorDefinition>.Empty,
-        ImmutableArray<CompiledConstructorDefinition>.Empty,
         ImmutableArray<CompiledAlias>.Empty,
         ImmutableArray<CompiledEnum>.Empty,
         ImmutableArray<IExternalFunction>.Empty,
@@ -75,7 +73,6 @@ public readonly struct CompilerResult
         ImmutableArray<CompiledFunctionDefinition> functions,
         ImmutableArray<CompiledGeneralFunctionDefinition> generalFunctions,
         ImmutableArray<CompiledOperatorDefinition> operators,
-        ImmutableArray<CompiledConstructorDefinition> constructors,
         ImmutableArray<CompiledAlias> aliases,
         ImmutableArray<CompiledEnum> enums,
         ImmutableArray<IExternalFunction> externalFunctions,
@@ -91,7 +88,6 @@ public readonly struct CompilerResult
         FunctionDefinitions = functions;
         GeneralFunctionDefinitions = generalFunctions;
         OperatorDefinitions = operators;
-        ConstructorDefinitions = constructors;
         Aliases = aliases;
         Enums = enums;
         ExternalFunctions = externalFunctions;

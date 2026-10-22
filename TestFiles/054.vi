@@ -11,7 +11,7 @@ struct B
   A* a;
   A* b;
 
-  delete()
+  deinit()
   {
     delete this.a;
     delete this.b;
@@ -23,7 +23,7 @@ struct C
   B* a;
   B* b;
 
-  delete()
+  deinit()
   {
     delete this.a;
     delete this.b;

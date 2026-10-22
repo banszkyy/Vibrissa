@@ -7,7 +7,7 @@ export struct byte2
     i8 x;
     i8 y;
 
-    export byte2(i8 x, i8 y)
+    export init(i8 x, i8 y)
     {
         this.x = x;
         this.y = y;

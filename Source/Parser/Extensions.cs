@@ -44,12 +44,6 @@ public static class Extensions
 
             foreach (Statement statement in structs.Operators.SelectMany(v => v.Parameters.Parameters).SelectMany(v => StatementWalker.Visit(v.DefaultValue)))
             { yield return statement; }
-
-            foreach (Statement statement in structs.Constructors.SelectMany(v => StatementWalker.Visit(v.Block)))
-            { yield return statement; }
-
-            foreach (Statement statement in structs.Constructors.SelectMany(v => v.Parameters.Parameters).SelectMany(v => StatementWalker.Visit(v.DefaultValue)))
-            { yield return statement; }
         }
     }
 
@@ -62,12 +56,6 @@ public static class Extensions
         foreach (StructDefinition item in ast.Structs)
         {
             foreach (FieldDefinition v in item.Fields) yield return v.Type;
-
-            foreach (ConstructorDefinition v in item.Constructors)
-            {
-                yield return v.Type;
-                foreach (ParameterDefinition p in v.Parameters.Parameters) yield return p.Type;
-            }
 
             foreach (FunctionDefinition v in item.Functions)
             {

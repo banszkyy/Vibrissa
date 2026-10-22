@@ -382,7 +382,8 @@ public sealed partial class Parser
         if (possibleNameT.Content
             is not BuiltinFunctionIdentifiers.IndexerGet
             and not BuiltinFunctionIdentifiers.IndexerSet
-            and not BuiltinFunctionIdentifiers.Destructor)
+            and not BuiltinFunctionIdentifiers.Initializer
+            and not BuiltinFunctionIdentifiers.Deinitializer)
         {
             diagnostic.Add(0, DiagnosticAt.Error($"Invalid identifier `{possibleNameT.Content}` for general function definition", possibleNameT, File, false));
             savepoint.Restore();
@@ -410,47 +411,6 @@ public sealed partial class Parser
 
         function = new GeneralFunctionDefinition(
             possibleNameT,
-            modifiers,
-            parameters,
-            block,
-            File
-        );
-        return true;
-    }
-
-    bool ExpectConstructorDefinition([NotNullWhen(true)] out ConstructorDefinition? function, OrderedDiagnosticCollection diagnostic)
-    {
-        ParseRestorePoint savepoint = SavePoint();
-        function = null;
-
-        ImmutableArray<Token> modifiers = ExpectModifiers();
-
-        if (!ExpectType(AllowedType.None, out TypeInstance? type))
-        {
-            diagnostic.Add(0, DiagnosticAt.Error($"Expected a type for constructor definition", CurrentPosition, File, false));
-            savepoint.Restore();
-            return false;
-        }
-
-        OrderedDiagnosticCollection parameterDiagnostics = new();
-        if (!ExpectParameters(ImmutableArray.Create(ModifierKeywords.Temp), true, out ParameterDefinitionCollection? parameters, parameterDiagnostics))
-        {
-            diagnostic.Add(0, DiagnosticAt.Error($"Expected a parameter list for constructor definition", CurrentPosition, File, false), parameterDiagnostics.ToImmutableArray());
-            savepoint.Restore();
-            return false;
-        }
-
-        CheckModifiers(modifiers, ConstructorModifiers);
-
-        if (!ExpectBlock(out Block? block))
-        {
-            diagnostic.Add(0, DiagnosticAt.Error($"Body is required for constructor definition", CurrentPosition, File, false));
-            savepoint.Restore();
-            return false;
-        }
-
-        function = new ConstructorDefinition(
-            type,
             modifiers,
             parameters,
             block,
@@ -498,7 +458,6 @@ public sealed partial class Parser
         List<FunctionDefinition> methods = new();
         List<FunctionDefinition> operators = new();
         List<GeneralFunctionDefinition> generalMethods = new();
-        List<ConstructorDefinition> constructors = new();
 
         Token? bracketEnd;
         EndlessCheck endlessSafe = new();
@@ -526,10 +485,6 @@ public sealed partial class Parser
             {
                 generalMethods.Add(generalMethodDefinition);
             }
-            else if (ExpectConstructorDefinition(out ConstructorDefinition? constructorDefinition, diagnostics))
-            {
-                constructors.Add(constructorDefinition);
-            }
             else if (ExpectOperatorDefinition(out FunctionDefinition? operatorDefinition, diagnostics))
             {
                 operators.Add(operatorDefinition);
@@ -555,7 +510,6 @@ public sealed partial class Parser
             methods.ToImmutableArray(),
             generalMethods.ToImmutableArray(),
             operators.ToImmutableArray(),
-            constructors.ToImmutableArray(),
             File
         );
 

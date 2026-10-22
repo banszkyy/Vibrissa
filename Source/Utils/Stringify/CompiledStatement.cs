@@ -16,7 +16,7 @@ public static partial class Stringifier
     public static void Stringify(CompiledVariableDefinition statement, BuilderBase builder, StringifyContext context = default)
     {
         if (statement.Cleanup.Deallocator is not null
-            || statement.Cleanup.Destructor is not null)
+            || statement.Cleanup.Deinitializer is not null)
         {
             builder.Append(ModifierKeywords.Temp);
             builder.Append(' ');

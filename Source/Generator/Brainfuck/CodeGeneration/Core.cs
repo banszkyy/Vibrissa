@@ -377,12 +377,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
         function,
         typeArguments);
 
-    DebugFunctionBlock FunctionBlock(CompiledConstructorDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments) => new(
-        Code,
-        DebugInfo,
-        function,
-        typeArguments);
-
     #region Addressing Helpers
 
     bool TryGetAddress(CompiledExpression statement, [NotNullWhen(true)] out Address? address, out int size)

@@ -894,13 +894,13 @@ public partial class StatementCompiler
 
                     if (!leftType.TryGetNumericType(out leftNType))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Type `{leftType}` aint a numeric type", @operator.Left));
+                        Diagnostics.Add(DiagnosticAt.Error($"Type `{leftType}` isn't a numeric type", @operator.Left));
                         ok = false;
                     }
 
                     if (!rightType.TryGetNumericType(out rightNType))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Type `{rightType}` aint a numeric type", @operator.Right));
+                        Diagnostics.Add(DiagnosticAt.Error($"Type `{rightType}` isn't a numeric type", @operator.Right));
                         ok = false;
                     }
 
@@ -954,6 +954,18 @@ public partial class StatementCompiler
                 Location = @operator.Location,
                 SaveValue = @operator.SaveValue,
             };
+
+            if (leftType.Is<PointerType>() && rightType.Is<PointerType>()
+                && @operator.Operator.Content is not BinaryOperatorCallExpression.CompEQ and not BinaryOperatorCallExpression.CompNEQ)
+            {
+                Diagnostics.Add(DiagnosticAt.Warning($"Are you sure?", @operator));
+            }
+            else if (GetUsedBy(InternalTypes.Boolean, out GeneralType? booleanType, out _)
+                && (Utils.ReferenceEquals(leftType, booleanType) || Utils.ReferenceEquals(rightType, booleanType))
+                && @operator.Operator.Content is not BinaryOperatorCallExpression.CompEQ and not BinaryOperatorCallExpression.CompNEQ)
+            {
+                Diagnostics.Add(DiagnosticAt.Warning($"Are you sure?", @operator));
+            }
 
             if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
                 TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
@@ -1609,7 +1621,7 @@ public partial class StatementCompiler
                         return false;
                     }
 
-                    var stringType = new ArrayType(charType, stringLiteral.Value.Length + 1);
+                    GeneralType stringType = new ArrayType(charType, stringLiteral.Value.Length + 1);
                     //if (!GetLiteralType(LiteralType.String, out GeneralType? stringType, out _))
                     //{
                     //    stringType = new PointerType(new ArrayType(charType, stringLiteral.Value.Length + 1));
@@ -2189,39 +2201,72 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (!GetConstructor(compiledObjectExpression, compiledArgumentExpressions, constructorCall.File, out FunctionQueryResult<CompiledConstructorDefinition>? compiledFunction, out PossibleDiagnostic? notFound, v => AddCompilable(v)))
+        StructType? structType;
+
+        ImmutableArray<CompiledExpression> arguments;
+        ImmutableArray<CompiledExpression>.Builder argumentsBuilder = ImmutableArray.CreateBuilder<CompiledExpression>();
+
+        if (compiledObjectExpression.Type.Is(out PointerType? pointerType))
         {
-            Diagnostics.Add(notFound.ToError(constructorCall.Type, constructorCall.File));
+            if (!pointerType.To.Is<StructType>(out structType))
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Invalid type `{compiledObjectExpression}` used for constructor", compiledObjectExpression));
+                return false;
+            }
+            argumentsBuilder.Add(compiledObjectExpression);
+        }
+        else if (compiledObjectExpression.Type.Is(out structType))
+        {
+            argumentsBuilder.Add(new CompiledGetReference()
+            {
+                Of = compiledObjectExpression,
+                Type = new PointerType(structType),
+                Location = compiledObjectExpression.Location,
+                SaveValue = compiledObjectExpression.SaveValue,
+            });
+        }
+        else
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Invalid type `{compiledObjectExpression}` used for constructor", compiledObjectExpression));
             return false;
         }
 
-        compiledFunction.ReplaceArgumentsIfNeeded(ref compiledArgumentExpressions);
+        argumentsBuilder.AddRange(compiledArgumentExpressions);
+        arguments = argumentsBuilder.ToImmutable();
 
-        if (compiledFunction.Function.Definition.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
+        if (!GetGeneralFunction(structType, arguments, BuiltinFunctionIdentifiers.Initializer, constructorCall.File, out FunctionQueryResult<CompiledGeneralFunctionDefinition>? initializer, out PossibleDiagnostic? error, AddCompilable))
+        {
+            Diagnostics.Add(error.ToError(constructorCall.Type, constructorCall.File));
+            return false;
+        }
+
+        initializer.ReplaceArgumentsIfNeeded(ref arguments);
+
+        if (initializer.Function.Definition.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
         {
             Frames.LastRef.IsMsilCompatible = false;
         }
 
-        compiledFunction.Function.AddReference(constructorCall, constructorCall.Type.Position);
-        SetStatementReference(constructorCall, compiledFunction.Function);
+        initializer.Function.AddReference(constructorCall, constructorCall.Type.Position);
+        SetStatementReference(constructorCall, initializer.Function);
 
-        SetStatementType(constructorCall, compiledFunction.Function.Type);
+        SetStatementType(constructorCall, initializer.Function.Type);
 
-        if (!compiledFunction.Function.Definition.CanUse(constructorCall.File))
+        if (!initializer.Function.Definition.CanUse(constructorCall.File))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Constructor `{compiledFunction.Function.ToReadable()}` could not be called due to its protection level", constructorCall.Type, constructorCall.File)
-                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Constructor `{compiledFunction.Function.ToReadable()}` defined here", compiledFunction.Function.Location)));
+            Diagnostics.Add(DiagnosticAt.Error($"Constructor `{initializer.Function.ToReadable()}` could not be called due to its protection level", constructorCall.Type, constructorCall.File)
+                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Constructor `{initializer.Function.ToReadable()}` defined here", initializer.Function.Location)));
             return false;
         }
 
         if (!CompileExpression(constructorCall.ToInstantiation(), out CompiledExpression? _object)) return false;
-        if (!CompileArguments(constructorCall.Arguments.Arguments, compiledArgumentExpressions, compiledFunction.Function, compiledFunction.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments, 1)) return false;
+        if (!CompileArguments(constructorCall.Arguments.Arguments, compiledArgumentExpressions, initializer.Function, initializer.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments, 1)) return false;
 
         Frames.Last.CapturesGlobalVariables = null;
         compiledStatement = new CompiledConstructorCall()
         {
             Arguments = compiledArguments,
-            Function = TemplateInstance.New(compiledFunction),
+            Function = TemplateInstance.New(initializer),
             Object = _object,
             Location = constructorCall.Location,
             SaveValue = constructorCall.SaveValue,
@@ -2304,52 +2349,69 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (prev.Type.Is<IReferenceType>())
+        GeneralType prevType = prev.Type;
+
+        while (prevType.Is(out IReferenceType? referenceType))
         {
-            GeneralType prevType = prev.Type;
-
-            while (prevType.Is(out IReferenceType? referenceType))
-            {
-                prevType = referenceType.To;
-            }
-
-            if (!prevType.Is(out StructType? structPointerType))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type `{prevType}`", field.Object));
-                return false;
-            }
-
-            if (!structPointerType.GetField(field.Identifier.Content, out CompiledField? fieldDefinition, out PossibleDiagnostic? error1))
-            {
-                Diagnostics.Add(error1.ToError(field.Identifier, field.File));
-                return false;
-            }
-
-            field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
-            SetStatementType(field, fieldDefinition.Type);
-            SetStatementReference(field, fieldDefinition);
-            fieldDefinition.AddReference(field, field.Identifier.Position);
-
-            compiledStatement = new CompiledFieldAccess()
-            {
-                Object = prev,
-                Field = fieldDefinition,
-                Location = field.Location,
-                SaveValue = field.SaveValue,
-                Type = GeneralType.TryInsertTypeParameters(fieldDefinition.Type, structPointerType.TypeArguments),
-            };
-            return true;
+            prevType = referenceType.To;
         }
 
-        if (!prev.Type.Is(out StructType? structType))
+        if (!prevType.Is(out StructType? structType))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Type `{prev.Type}` doesn't have any fields", field.Identifier, field.File, ignoreOnPartialSource: prev.Type.Equals(BuiltinType.Any)));
+            Diagnostics.Add(DiagnosticAt.Error($"Type `{prevType}` doesn't have any fields", field.Identifier, field.File, ignoreOnPartialSource: prevType.Equals(BuiltinType.Any)));
             return false;
         }
 
-        if (!structType.GetField(field.Identifier.Content, out CompiledField? compiledField, out PossibleDiagnostic? error2))
+        if (!structType.GetField(field.Identifier.Content, out CompiledField? compiledField, out PossibleDiagnostic? fieldError))
         {
-            Diagnostics.Add(error2.ToError(field.Identifier, field.File));
+            if (GetFunction(
+                new()
+                {
+                    Compiled = CompiledFunctions.Where(v => Utils.ReferenceEquals(v.Context, structType.Struct)),
+                    Compilable = CompilableFunctions.Where(v => Utils.ReferenceEquals(v.Template.Context, structType.Struct)),
+                },
+                "function",
+                CompiledFunctionDefinition.ToReadable(field.Identifier.Content, null, null),
+                FunctionQuery.Create<CompiledFunctionDefinition, string, string>(field.Identifier.Content) with
+                {
+                    Object = new ReferenceType(prevType),
+                },
+                out FunctionQueryResult<CompiledFunctionDefinition>? methodResult,
+                out PossibleDiagnostic? methodError
+            ))
+            {
+                if (methodResult.Function.Definition.Block is null)
+                {
+                    methodError = new PossibleDiagnostic($"Cannot take the address of an external function declaration", new Location(field.Identifier.Position, field.File));
+                    return false;
+                }
+                else
+                {
+                    if (methodResult.Function.Definition.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
+                    {
+                        Frames.LastRef.IsMsilCompatible = false;
+                    }
+
+                    GeneralType functionType = GeneralType.TryInsertTypeParameters(new FunctionType(methodResult.Function.Type, methodResult.Function.Parameters.ToImmutableArray(v => v.Type), false), methodResult.TypeArguments);
+
+                    field.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName;
+                    SetStatementType(field, functionType);
+                    SetStatementReference(field, methodResult.Function);
+                    methodResult.Function.AddReference(field, field.Identifier.Position);
+
+                    Diagnostics.Add(DiagnosticAt.Warning($"This will take the raw address of `{methodResult.Function.ToReadable()}` without saving the reference to the object", new Location(field.Identifier.Position, field.File)));
+                    compiledStatement = new CompiledFunctionReference()
+                    {
+                        Function = TemplateInstance.New<ICompiledFunctionDefinition>(methodResult.Function, methodResult.TypeArguments),
+                        Type = functionType,
+                        Location = field.Location,
+                        SaveValue = field.SaveValue,
+                    };
+                    return true;
+                }
+            }
+
+            Diagnostics.Add(fieldError.ToError(field.Identifier, field.File));
             return false;
         }
 
@@ -2404,7 +2466,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (baseStatement.Type.Is(out PointerType? pointerType) && pointerType.To.Is(out arrayType))
+        if (baseStatement.Type.Is(out IReferenceType? pointerType) && pointerType.To.Is(out arrayType))
         {
             compiledStatement = new CompiledElementAccess()
             {

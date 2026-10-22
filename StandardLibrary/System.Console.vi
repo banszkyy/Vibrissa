@@ -12,7 +12,7 @@ export void clear()
 
 export void printf(char[] format, any[] args)
 {
-    int l = format.length();
+    int l = (&format).length();
     any* offset = (&format + l + 1) as any*;
     for (int i = 0; format[i]; i++)
     {

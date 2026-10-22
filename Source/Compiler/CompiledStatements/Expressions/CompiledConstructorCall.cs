@@ -2,7 +2,7 @@ namespace LanguageCore.Compiler;
 
 public class CompiledConstructorCall : CompiledExpression
 {
-    public required TemplateInstance<CompiledConstructorDefinition> Function { get; init; }
+    public required TemplateInstance<CompiledGeneralFunctionDefinition> Function { get; init; }
     public required CompiledExpression Object { get; init; }
     public required ImmutableArray<CompiledArgument> Arguments { get; init; }
 

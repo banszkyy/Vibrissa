@@ -89,17 +89,6 @@ public class StackCodeHelper
     }
 
     /// <summary>
-    /// <b>Pointer:</b> Restored to the last state
-    /// </summary>
-    public StackAddress Push(char v, ILocated? location = null)
-    {
-        StackAddress address = PushVirtual(1, location);
-
-        _code.SetValue(address, v);
-        return address;
-    }
-
-    /// <summary>
     /// <b>Pointer:</b> Last state or 0
     /// </summary>
     public int PopAndStore(int target)

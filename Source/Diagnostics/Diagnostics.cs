@@ -80,6 +80,7 @@ public class DiagnosticsCollection : IReadOnlyDiagnosticsCollection
             .Concat(_diagnosticsWithoutContext.Where(v => v.Level == DiagnosticsLevel.Error).Select(v => v.ToException()))
             .ToArray();
         if (exceptions.Length == 0) return;
+        if (exceptions.Length == 1) throw exceptions[0];
         throw new AggregateException(exceptions);
     }
 

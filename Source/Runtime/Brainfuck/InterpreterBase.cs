@@ -26,8 +26,8 @@ public abstract class InterpreterBase
     public int MemoryPointer => _memoryPointer;
     public RuntimeContext CurrentContext => new(_memoryPointer, _codePointer);
 
-    public static void OnDefaultOutput(byte data) => Console.Write(CharCode.GetChar(data));
-    public static byte OnDefaultInput() => CharCode.GetByte(Console.ReadKey(true).KeyChar);
+    public static void OnDefaultOutput(byte data) => Console.Out.Write((char)data);
+    public static byte OnDefaultInput() => (byte)Console.ReadKey(true).KeyChar;
 
     protected InterpreterBase(OutputCallback? onOutput = null, InputCallback? onInput = null)
     {

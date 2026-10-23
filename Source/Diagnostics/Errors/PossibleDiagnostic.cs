@@ -65,6 +65,9 @@ public class PossibleDiagnostic
     public virtual PossibleDiagnostic WithRelatedInfo(ImmutableArray<DiagnosticRelatedInformation> relatedInfo) => relatedInfo.IsDefaultOrEmpty ? this : new(Message, SubErrors, RelatedInformation.AddRange(relatedInfo), false);
     public virtual PossibleDiagnostic WithRelatedInfo(ImmutableArray<DiagnosticRelatedInformationAt> relatedInfo) => relatedInfo.IsDefaultOrEmpty ? this : new(Message, SubErrors, RelatedInformation.AddRange(relatedInfo), false);
 
+    public virtual PossibleDiagnostic WithSuberrors(PossibleDiagnostic? suberror) => suberror is null ? this : new(Message, SubErrors.Add(suberror), RelatedInformation, false);
+    public virtual PossibleDiagnostic WithSuberrors(ImmutableArray<PossibleDiagnostic?> suberrors) => suberrors.IsDefaultOrEmpty ? this : new(Message, SubErrors.AddRange(suberrors.Where(v => v is not null)!), RelatedInformation, false);
+
     public void Throw()
     {
         if (IsPopulated)

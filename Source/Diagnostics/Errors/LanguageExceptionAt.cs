@@ -7,6 +7,9 @@ public class LanguageExceptionAt : LanguageException
 {
     public Position Position { get; protected set; }
     public Uri File { get; protected set; }
+#if TESTING
+    public override string Message => Format(base.Message, Position, File);
+#endif
 
     public LanguageExceptionAt(string message, Position position, Uri file)
         : this(message, position, file, ImmutableArray<Exception>.Empty)
@@ -25,7 +28,7 @@ public class LanguageExceptionAt : LanguageException
 
     public override string ToString()
     {
-        StringBuilder result = new(Format(Message, Position, File));
+        StringBuilder result = new(Message);
 
         if (InnerException is not null)
         { result.Append($" {InnerException}"); }
@@ -50,16 +53,16 @@ public class LanguageExceptionAt : LanguageException
         {
             if (result.Length > 0) result.Append(' ');
             result.Append("(at ");
-            result.Append(file);
 
+            result.Append(file);
             if (position.Range.Start.Line >= 0)
             {
-                result.Append(':');
+                result.Append("#L");
                 result.Append(position.Range.Start.Line + 1);
 
                 if (position.Range.Start.Character >= 0)
                 {
-                    result.Append(':');
+                    result.Append(',');
                     result.Append(position.Range.Start.Character + 1);
                 }
             }

@@ -95,7 +95,7 @@ public class CompiledFunctionDefinition :
         StringBuilder result = new();
         result.Append(GeneralType.TryInsertTypeParameters(Type, typeArguments).ToString());
         result.Append(' ');
-        result.Append(Identifier.ToString());
+        result.Append(Identifier);
         result.Append('(');
         for (int i = 0; i < Parameters.Length; i++)
         {
@@ -115,12 +115,12 @@ public class CompiledFunctionDefinition :
             result.Append(' ');
         }
         result.Append(identifier);
-        result.Append('(');
-        if (parameters is null)
-        { result.Append("..."); }
-        else
-        { result.AppendJoin(", ", parameters.Select(v => v ?? "?")); }
-        result.Append(')');
+        if (parameters is not null)
+        {
+            result.Append('(');
+            result.AppendJoin(", ", parameters.Select(v => v ?? "?"));
+            result.Append(')');
+        }
         return result.ToString();
     }
 

@@ -290,6 +290,11 @@ public static class Entry
                     CompilerResult compiled = StatementCompiler.CompileFile(arguments.Source, compilerSettings, diagnostics, logger);
                     generatedCode = CodeGeneratorForMain.Generate(compiled, mainGeneratorSettings, logger, diagnostics);
 
+                    //using FileStream file = new("meow.txt", FileMode.Create, FileAccess.Write);
+                    //using StreamWriter writer = new(file);
+                    //IRResult block = IRGenerator.Generate(compiled);
+                    //IRGenerator.Dump(block, writer);
+
                     if (arguments.IntermediateOutput is not null)
                     {
                         using StreamWriter f = new(arguments.IntermediateOutput);
@@ -889,7 +894,15 @@ public static class Entry
                     File.WriteAllText(output, generated.Code);
                 }
 
-                InterpreterCompact interpreter = new();
+                using Stream _o = Console.OpenStandardOutput();
+                using Stream _i = Console.OpenStandardInput();
+
+                InterpreterCompact interpreter = new(v => _o.WriteByte(v), () =>
+                {
+                    int v = _i.ReadByte();
+                    if (v == -1) throw new EndOfStreamException();
+                    return (byte)v;
+                });
                 interpreter.LoadCode(generated.Code, generated.DebugInfo, logger);
                 interpreter.DebugInfo = new CompiledDebugInformation(generated.DebugInfo);
 

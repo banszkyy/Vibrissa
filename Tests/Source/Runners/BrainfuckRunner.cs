@@ -50,10 +50,10 @@ static class BrainfuckRunner
         BrainfuckResult resultUnoptimized;
 
         InputBuffer inputBuffer;
-        StringBuilder stdOutput = new();
+        List<byte> stdOutput = new();
 
-        void OutputCallback(byte data) => stdOutput.Append(Brainfuck.CharCode.GetChar(data));
-        byte InputCallback() => Brainfuck.CharCode.GetByte(inputBuffer.Read());
+        void OutputCallback(byte data) => stdOutput.Add(data);
+        byte InputCallback() => inputBuffer.Read();
 
         DiagnosticsCollection diagnostics = new();
         CompilerResult compiled;
@@ -93,7 +93,7 @@ static class BrainfuckRunner
             interpreter.DebugInfo = new CompiledDebugInformation(generated.DebugInfo);
             interpreter.Run();
 
-            resultNormal = new BrainfuckResult(stdOutput.ToString(), interpreter);
+            resultNormal = new BrainfuckResult(Encoding.UTF8.GetString(stdOutput.ToArray()), interpreter);
         }
 
         {
@@ -105,7 +105,7 @@ static class BrainfuckRunner
             interpreter.DebugInfo = new CompiledDebugInformation(generated.DebugInfo);
             interpreter.Run();
 
-            resultCompact = new BrainfuckResult(stdOutput.ToString(), interpreter);
+            resultCompact = new BrainfuckResult(Encoding.UTF8.GetString(stdOutput.ToArray()), interpreter);
         }
 
         {
@@ -117,7 +117,7 @@ static class BrainfuckRunner
             interpreter.DebugInfo = new CompiledDebugInformation(generatedUnoptimized.DebugInfo);
             interpreter.Run();
 
-            resultUnoptimized = new BrainfuckResult(stdOutput.ToString(), interpreter);
+            resultUnoptimized = new BrainfuckResult(Encoding.UTF8.GetString(stdOutput.ToArray()), interpreter);
         }
 
         return (resultNormal, resultCompact, resultUnoptimized);

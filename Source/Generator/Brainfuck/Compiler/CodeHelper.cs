@@ -74,7 +74,7 @@ public class CodeHelper : IDuplicatable<CodeHelper>
         {
             RuntimeType.U8 => v.U8,
             RuntimeType.I8 => v.I8,
-            RuntimeType.U16 => CharCode.GetByte(v.Char),
+            RuntimeType.U16 => v.Char,
             RuntimeType.I16 => v.I16,
             RuntimeType.U32 => (int)v.U32,
             RuntimeType.I32 => v.I32,
@@ -317,10 +317,6 @@ public class CodeHelper : IDuplicatable<CodeHelper>
         SetPointer(address);
         AddValue(value);
     }
-
-    /// <inheritdoc cref="SetValue(int, int)"/>
-    public void SetValue(int address, char value)
-        => SetValue(address, CharCode.GetByte(value));
 
     /// <summary>
     /// <para>

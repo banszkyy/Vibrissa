@@ -201,6 +201,8 @@ export inline void print(byte message) { print(message as u8); }
 
 #if BRAINFUCK
 export inline void print(int message) { print(message as u8); }
+#else
+export inline void print(int message) { print(message as i32); }
 #endif
 
 /*

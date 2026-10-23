@@ -9,7 +9,7 @@ export string base64_encode(temp byte[]* plain, int len)
     char[65] base64_map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     char counts = 0;
-    char[3] buffer;
+    byte[3] buffer;
     char[]* cipher = new char[len * 4 / 3 + 4]*;
     int c = 0;
 

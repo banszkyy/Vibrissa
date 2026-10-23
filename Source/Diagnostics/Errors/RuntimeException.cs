@@ -140,6 +140,13 @@ public class RuntimeException : LanguageException
                     result.Append('*');
 
                     break;
+                case ReferenceType v:
+                    AppendType(v.To);
+
+                    if (colored) result.SetGraphics(Ansi.ForegroundWhite);
+                    result.Append('&');
+
+                    break;
                 case StructType v:
                     if (colored) result.SetGraphics(Ansi.BrightForegroundGreen);
                     result.Append(v.Struct.Identifier);
@@ -213,21 +220,22 @@ public class RuntimeException : LanguageException
             { result.Append(value.To<ulong>()); }
             else if (type.SameAs(BasicType.I64))
             { result.Append(value.To<long>()); }
-            else if (type.Is(out PointerType? pointerType))
+            else if (type.Is(out IReferenceType? pointerType))
             {
                 if (pointerType.To is ArrayType toArrayType)
                 {
-                    if (toArrayType.Of.SameAs(BasicType.U16))
+                    if (toArrayType.Of.SameAs(BasicType.U8))
                     {
                         result.Append('"');
                         int i = value.To<int>();
+                        int j = i;
                         while (i > 0 && i + 1 < context.Memory.Length)
                         {
-                            char v = context.Memory.AsSpan()[i..].To<char>();
-                            i += sizeof(char);
+                            byte v = context.Memory[j];
                             if (v == 0) break;
-                            result.Append(v);
+                            j++;
                         }
+                        Encoding.UTF8.GetString(context.Memory.AsSpan()[i..j]);
                         result.Append('"');
                     }
                     else if (!toArrayType.Length.HasValue)
@@ -349,19 +357,15 @@ public class RuntimeException : LanguageException
             { result.AppendJoin(' ', value.ToArray()); }
         }
 
-        void AppendScope(CallTraceItem tracedScope)
+        void AppendScope(CallTraceItem tracedScope, ImmutableDictionary<string, GeneralType>? typeArguments)
         {
             if (DebugInformation.IsEmpty) return;
             ImmutableArray<ScopeInformation> scopes = DebugInformation.GetScopes(tracedScope.InstructionPointer);
             if (scopes.IsEmpty) return;
 
-            int scopeDepth = 0;
             foreach (ScopeInformation scope in scopes.Reverse())
             {
                 result.Append(' ', CallStackIndent);
-                result.Append(' ', scopeDepth);
-                result.AppendLine("{");
-                scopeDepth++;
                 foreach (StackElementInformation item in scope.Stack)
                 {
                     if (item.Kind == StackElementKind.Internal) continue;
@@ -376,14 +380,13 @@ public class RuntimeException : LanguageException
                     // else
                     // { value = context.Memory.Slice(0 - item.Address, item.Size); }
                     result.Append(' ', CallStackIndent);
-                    result.Append(' ', scopeDepth);
                     // if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
                     // result.Append('(');
                     // result.Append(range.Start);
                     // result.Append(')');
                     // result.Append(' ');
                     // if (colored) result.ResetStyle();
-                    AppendType(item.Type);
+                    AppendType(GeneralType.TryInsertTypeParameters(item.Type, typeArguments));
                     result.Append(' ');
                     if (item.Kind == StackElementKind.Internal)
                     {
@@ -396,18 +399,16 @@ public class RuntimeException : LanguageException
                         result.Append(item.Identifier);
                     }
                     if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
-                    result.Append(" = ");
+                    if (range.Start >= 0 && range.End < context.Memory.Length)
+                    {
+                        result.Append(" = ");
+                        if (colored) result.ResetStyle();
+                        AppendValue(range, GeneralType.TryInsertTypeParameters(item.Type, typeArguments), 0);
+                    }
                     if (colored) result.ResetStyle();
-                    AppendValue(range, item.Type, 0);
                     result.Append(';');
                     result.AppendLine();
                 }
-            }
-            for (int i = 0; i < scopeDepth; i++)
-            {
-                result.Append(' ', CallStackIndent);
-                result.Append(' ', scopeDepth - i - 1);
-                result.AppendLine("}");
             }
             result.AppendLine();
         }
@@ -488,7 +489,7 @@ public class RuntimeException : LanguageException
                                 if (item.Identifier != function.Parameters[j].Identifier) continue;
                                 if (item.Valid != 0 && !item.Valid.Contains(callTraceItem.InstructionPointer)) continue;
                                 result.Append(" = ");
-                                AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), item.Type, 0);
+                                AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), GeneralType.TryInsertTypeParameters(item.Type, frame.TypeArguments), 0);
                                 f = true;
                                 break;
                             }
@@ -529,7 +530,7 @@ public class RuntimeException : LanguageException
         AppendFrame(currentFrame, new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer));
         result.AppendLine();
 
-        if (details) AppendScope(new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer));
+        if (details) AppendScope(new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer), null);
 
         if (!callStack.IsDefaultOrEmpty)
         {
@@ -543,13 +544,15 @@ public class RuntimeException : LanguageException
             {
                 for (int i = callStack.Length - 1; i >= 0; i--)
                 {
+                    if (CallTrace[i].InstructionPointer < 0 || CallTrace[i].InstructionPointer >= Context.Value.Code.Length) continue;
+
                     result.Append(' ', CallStackIndent);
 
                     AppendFrame(callStack[i], CallTrace[i]);
 
                     result.AppendLine();
 
-                    if (details) AppendScope(CallTrace[i]);
+                    if (details) AppendScope(CallTrace[i], callStack[i].TypeArguments);
                 }
             }
         }

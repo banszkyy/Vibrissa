@@ -1,5 +1,6 @@
 using LanguageCore.Runtime;
 using System.Runtime.Versioning;
+using System.Text.Json;
 
 namespace LanguageCore.Tests;
 
@@ -40,7 +41,7 @@ sealed class TestFileCase
         if (result.MemoryPointer != resultCompact.MemoryPointer) throw new AssertFailedException($"Compacted brainfuck code made different result (memory pointer)");
         if (!result.Memory.SequenceEqual(resultCompact.Memory)) throw new AssertFailedException($"Compacted brainfuck code made different result (memory)");
 
-        if (resultCompact.StdOutput != resultUnoptimized.StdOutput) throw new AssertFailedException($"Optimized brainfuck code made different result (stdout) (optimized: \"{resultCompact.StdOutput}\" unoptimized: \"{resultUnoptimized.StdOutput}\")");
+        if (resultCompact.StdOutput != resultUnoptimized.StdOutput) throw new AssertFailedException($"Optimized brainfuck code made different result (stdout) (optimized: {JsonSerializer.Serialize(resultCompact.StdOutput)} unoptimized: {JsonSerializer.Serialize(resultUnoptimized.StdOutput)})");
         if (resultCompact.MemoryPointer != resultUnoptimized.MemoryPointer) throw new AssertFailedException($"Optimized brainfuck code made different result (memory pointer)");
         // if (!resultCompact.Memory.SequenceEqual(resultUnoptimized.Memory)) throw new AssertFailedException($"Optimized brainfuck code made different result (memory)");
 

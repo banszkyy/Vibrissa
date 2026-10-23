@@ -131,18 +131,6 @@ public partial class StatementCompiler
         public override string? ToString() => Function.ToString();
     }
 
-    public enum TypeMatch
-    {
-        None,
-        Promotion,
-        ImplicitCastRef,
-        ImplicitCast,
-        SameRef,
-        Same,
-        EqualsRef,
-        Equals,
-    }
-
     class MatchList<TMatch, TDefinition> : IEnumerable<TMatch>
         where TMatch : notnull, DefinitionMatch<TDefinition>
         where TDefinition : notnull
@@ -233,9 +221,9 @@ public partial class StatementCompiler
     {
         public bool IsParameterCountMatches { get; set; }
 
-        public TypeMatch ReturnTypeMatch { get; set; }
+        public CastLevel ReturnTypeMatch { get; set; }
         public int UsedUpDefaultParameterValues { get; set; }
-        public TypeMatch? ParameterTypeMatch { get; set; }
+        public CastLevel? ParameterTypeMatch { get; set; }
 
         public ImmutableDictionary<string, GeneralType>? TypeArguments { get; set; }
         public CompiledExpression? Object { get; set; }
@@ -262,16 +250,16 @@ public partial class StatementCompiler
 
             if (ParameterTypeMatch is not null && other.ParameterTypeMatch is not null)
             {
-                TypeMatch a = ParameterTypeMatch.Value;
-                TypeMatch b = other.ParameterTypeMatch.Value;
+                CastLevel a = ParameterTypeMatch.Value;
+                CastLevel b = other.ParameterTypeMatch.Value;
                 if (a > b) return Better;
                 if (a < b) return Worse;
-                if (a == TypeMatch.None || b == TypeMatch.None) return Same;
+                if (a == CastLevel.None || b == CastLevel.None) return Same;
             }
 
             if (ReturnTypeMatch > other.ReturnTypeMatch) return Better;
             if (ReturnTypeMatch < other.ReturnTypeMatch) return Worse;
-            if (ReturnTypeMatch == TypeMatch.None || other.ReturnTypeMatch == TypeMatch.None) return Same;
+            if (ReturnTypeMatch == CastLevel.None || other.ReturnTypeMatch == CastLevel.None) return Same;
 
             if (TypeArguments is null && other.TypeArguments is not null) return Better;
             if (TypeArguments is not null && other.TypeArguments is null) return Worse;
@@ -373,17 +361,17 @@ public partial class StatementCompiler
             }
 
             if (best.ParameterTypeMatch is not null &&
-                best.ParameterTypeMatch.Value == TypeMatch.None)
+                best.ParameterTypeMatch.Value == CastLevel.None)
             {
                 PossibleDiagnostic suberror = new($"Wrong types of arguments passed (sorry I can't tell any more info)");
-                GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(best.Definition, query);
+                GetFunctionMatch(best.Definition, query);
                 if (best.Definition is FunctionThingDefinition ftd)
                 { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
                 return false;
             }
 
-            if (best.ReturnTypeMatch == TypeMatch.None)
+            if (best.ReturnTypeMatch == CastLevel.None)
             {
                 PossibleDiagnostic suberror = new($"Wrong return type (sorry I can't tell any more info)");
                 if (best.Definition is FunctionThingDefinition ftd)
@@ -395,6 +383,8 @@ public partial class StatementCompiler
             if (functionMatches.Count > 1)
             {
                 error = new PossibleDiagnostic($"Multiple functions matched ({string.Join(", ", functionMatches.Select(v => v.Definition.ToReadable()))})");
+                GetFunctionMatch(functionMatches[0].Definition, query);
+                GetFunctionMatch(functionMatches[1].Definition, query);
                 foreach (FunctionMatch<TFunction> functionMatch in functionMatches)
                 { error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{functionMatch.Definition.ToReadable()}` defined here", functionMatch.Definition.Location)); }
                 return false;
@@ -564,115 +554,47 @@ public partial class StatementCompiler
             result.Errors.Add(new($"Cannot use function `{query.Identifier}` due it's protection level"));
         }
 
-        void GetArgumentMatch(ref TypeMatch typeMatch, ref CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, TArgument passed, List<PossibleDiagnostic> errors)
+        void GetArgumentMatch(ref CastLevel typeMatch, ref CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, TArgument passed, List<PossibleDiagnostic> errors)
         {
-            if (typeMatch == TypeMatch.None) return;
+            if (typeMatch == CastLevel.None) return;
 
-            PossibleDiagnostic? error = null;
+            PossibleDiagnostic? castError;
 
-            if (typeMatch >= TypeMatch.ImplicitCast)
+            if (passed is CompiledExpression expression)
+            {
+                if (CanCastImplicitly(expression, definedType, out CompiledExpression? assignedValue, out castError, out CastLevel castLevel))
+                {
+                    if (definition.Modifiers.Contains(ModifierKeywords.This) && castLevel == CastLevel.GotReferenceOf) castLevel = CastLevel.GotReferenceOfObject;
+
+                    compiledPassedArgument = assignedValue;
+                    if (typeMatch > castLevel) typeMatch = castLevel;
+                    return;
+                }
+            }
+            else
             {
                 GeneralType passedType = query.Converter.Invoke(passed);
-
-                if (passed is CompiledExpression expression)
+                if (CanCastImplicitly(passedType, definedType, out castError, out CastLevel castLevel))
                 {
-                    //if (expression.Location.File.LocalPath.EndsWith("meow.vi")) Debugger.Break();
-                    if (CanCastImplicitly(expression, definedType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out CastLevel castLevel))
-                    {
-                        switch (castLevel)
-                        {
-                            case CastLevel.Cast:
-                            case CastLevel.ReferenceDereference:
-                                if (typeMatch > TypeMatch.ImplicitCast) typeMatch = TypeMatch.ImplicitCast;
-                                compiledPassedArgument = assignedValue;
-                                return;
-                            case CastLevel.SameCast:
-                            case CastLevel.Same:
-                                if (typeMatch > TypeMatch.Same) typeMatch = TypeMatch.Same;
-                                compiledPassedArgument = assignedValue;
-                                return;
-                            case CastLevel.Equals:
-                                if (typeMatch > TypeMatch.Equals) typeMatch = TypeMatch.Equals;
-                                compiledPassedArgument = assignedValue;
-                                return;
-                            case CastLevel.None:
-                            default:
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        errors.Add(castError);
-                    }
-                }
-
-                if (typeMatch >= TypeMatch.Equals && passedType.Equals(definedType))
-                {
-                    typeMatch = TypeMatch.Equals;
-                    return;
-                }
-
-                if (typeMatch >= TypeMatch.Same && passedType.SameAs(definedType))
-                {
-                    typeMatch = TypeMatch.Same;
-                    return;
-                }
-
-                if (typeMatch >= TypeMatch.ImplicitCast && CanCastImplicitly(passedType, definedType, out error, out _))
-                {
-                    typeMatch = TypeMatch.ImplicitCast;
-                    return;
-                }
-
-                if (typeMatch >= TypeMatch.ImplicitCast
-                    && passed is CompiledExpression passedExpression
-                    && definition.Modifiers.Contains(ModifierKeywords.This)
-                    && CanCastImplicitly(new PointerType(passedType), definedType, out _, out _))
-                {
-                    compiledPassedArgument = new CompiledGetReference()
-                    {
-                        Of = passedExpression,
-                        Location = passedExpression.Location,
-                        SaveValue = passedExpression.SaveValue,
-                        Type = new PointerType(passedExpression.Type),
-                    };
-                    typeMatch = TypeMatch.ImplicitCastRef;
+                    if (typeMatch > castLevel) typeMatch = castLevel;
                     return;
                 }
             }
 
-            if (typeMatch >= TypeMatch.Promotion)
-            {
-                GeneralType passedType = query.Converter.Invoke(passed);
-                if (passedType.SameAs(definedType))
-                {
-                    typeMatch = TypeMatch.Promotion;
-                    return;
-                }
-            }
-
-            if (error is not null) errors.Add(new PossibleDiagnostic($"Invalid argument passed to `{definition.Identifier}`", passed as ILocated, error));
-            typeMatch = TypeMatch.None;
+            typeMatch = CastLevel.None;
+            if (castError is not null) errors.Add(new PossibleDiagnostic($"Invalid argument passed to `{definition.Identifier}`", passed as ILocated, castError));
         }
 
-        TypeMatch GetReturnTypeMatch(GeneralType target, GeneralType current, List<PossibleDiagnostic> errors)
+        CastLevel GetReturnTypeMatch(GeneralType target, GeneralType current, List<PossibleDiagnostic> errors)
         {
-            if (current.Equals(target))
+            if (CanCastImplicitly(current, target, out PossibleDiagnostic? error, out CastLevel castLevel))
             {
-                return TypeMatch.Equals;
-            }
-            else if (current.SameAs(target))
-            {
-                return TypeMatch.Same;
-            }
-            else if (CanCastImplicitly(current, target, out PossibleDiagnostic? error, out _))
-            {
-                return TypeMatch.ImplicitCast;
+                return castLevel;
             }
             else
             {
                 errors.Add(new PossibleDiagnostic($"Return type mismatch", error));
-                return TypeMatch.None;
+                return CastLevel.None;
             }
         }
 
@@ -684,7 +606,7 @@ public partial class StatementCompiler
         }
         else
         {
-            result.ParameterTypeMatch = TypeMatch.Equals;
+            result.ParameterTypeMatch = CastLevel.Equals;
 
             int checkCount = Math.Min(function.Parameters.Length, query.Arguments.Value.Length);
             CompiledExpression?[] arguments = new CompiledExpression?[checkCount];
@@ -692,9 +614,9 @@ public partial class StatementCompiler
             {
                 GeneralType defined = GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, _typeArguments);
                 TArgument passed = query.Arguments.Value[i];
-                TypeMatch v = result.ParameterTypeMatch.Value;
+                CastLevel v = result.ParameterTypeMatch.Value;
 
-                if (result.ParameterTypeMatch > TypeMatch.None && _typeArguments is not null)
+                if (result.ParameterTypeMatch > CastLevel.None && _typeArguments is not null)
                 {
                     if (GeneralType.TryGetTypeParameters(defined, query.Converter(passed), _typeArguments))
                     {
@@ -705,7 +627,7 @@ public partial class StatementCompiler
                 GetArgumentMatch(ref v, ref arguments[i], defined, function.Parameters[i].Definition, passed, result.Errors);
                 if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
 
-                if (result.ParameterTypeMatch > TypeMatch.None && _typeArguments is not null)
+                if (result.ParameterTypeMatch > CastLevel.None && _typeArguments is not null)
                 {
                     GeneralType.TryGetTypeParameters(defined, arguments[i]?.Type ?? query.Converter(passed), _typeArguments);
                 }
@@ -721,7 +643,7 @@ public partial class StatementCompiler
         }
         else
         {
-            result.ReturnTypeMatch = TypeMatch.Equals;
+            result.ReturnTypeMatch = CastLevel.Equals;
         }
 
         return result;

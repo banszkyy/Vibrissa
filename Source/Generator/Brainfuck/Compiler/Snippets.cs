@@ -1358,25 +1358,26 @@ public static class Snippets
     {
         code.ClearValue(tempAddress);
 
+        byte[] bytes = Encoding.UTF8.GetBytes(message);
+
         byte prevValue = 0;
-        for (int i = 0; i < message.Length; i++)
+        foreach (byte c in bytes)
         {
             code.SetPointer(tempAddress);
-            byte charToPrint = CharCode.GetByte(message[i]);
 
-            while (prevValue > charToPrint)
+            while (prevValue > c)
             {
                 code += '-';
                 prevValue--;
             }
 
-            while (prevValue < charToPrint)
+            while (prevValue < c)
             {
                 code += '+';
                 prevValue++;
             }
 
-            prevValue = charToPrint;
+            prevValue = c;
 
             code += '.';
         }
@@ -1392,24 +1393,24 @@ public static class Snippets
         code.MovePointerUnsafe(tempOffset);
         code.ClearCurrent();
 
-        byte prevValue = 0;
-        for (int i = 0; i < message.Length; i++)
-        {
-            byte charToPrint = CharCode.GetByte(message[i]);
+        byte[] bytes = Encoding.UTF8.GetBytes(message);
 
-            while (prevValue > charToPrint)
+        byte prevValue = 0;
+        foreach (byte c in bytes)
+        {
+            while (prevValue > c)
             {
                 code += '-';
                 prevValue--;
             }
 
-            while (prevValue < charToPrint)
+            while (prevValue < c)
             {
                 code += '+';
                 prevValue++;
             }
 
-            prevValue = charToPrint;
+            prevValue = c;
 
             code += '.';
         }

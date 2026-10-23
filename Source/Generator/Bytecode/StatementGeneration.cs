@@ -2498,45 +2498,51 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         CompiledExpression? dereference = FindFirstReference(fieldSetter);
 
-        if (value is CompiledStackString stackString)
+        if (value is CompiledStackString)
         {
             if (dereference is null)
             {
-                if (!GetAddress(fieldSetter, out Address? address, out PossibleDiagnostic? error2))
+                if (!GetAddress(fieldSetter, out _, out PossibleDiagnostic? error2))
                 {
                     Diagnostics.Add(error2.ToError(fieldSetter));
                     return;
                 }
-                for (int i = 0; i < stackString.Value.Length; i++)
-                {
-                    Push(new CompiledValue(stackString.Value[i]));
-                    PopTo(new AddressOffset(address, i * 2), 2);
-                }
 
-                if (stackString.IsNullTerminated)
-                {
-                    Push(new CompiledValue('\0'));
-                    PopTo(new AddressOffset(address, stackString.Value.Length * 2), 2);
-                }
+                throw new NotImplementedException();
+
+                //for (int i = 0; i < stackString.Value.Length; i++)
+                //{
+                //    Push(new CompiledValue(stackString.Value[i]));
+                //    PopTo(new AddressOffset(address, i * 2), 2);
+                //}
+                //
+                //if (stackString.IsNullTerminated)
+                //{
+                //    Push(new CompiledValue('\0'));
+                //    PopTo(new AddressOffset(address, stackString.Value.Length * 2), 2);
+                //}
             }
             else
             {
-                if (!GetAddress(fieldSetter, out Address? address, out PossibleDiagnostic? error))
+                if (!GetAddress(fieldSetter, out _, out PossibleDiagnostic? error))
                 {
                     Diagnostics.Add(error.ToError(fieldSetter));
                     return;
                 }
-                for (int i = 0; i < stackString.Value.Length; i++)
-                {
-                    Push(new CompiledValue(stackString.Value[i]));
-                    PopToChecked(new AddressOffset(address, i * 2), 2);
-                }
 
-                if (stackString.IsNullTerminated)
-                {
-                    Push(new CompiledValue('\0'));
-                    PopToChecked(new AddressOffset(address, stackString.Value.Length * 2), 2);
-                }
+                throw new NotImplementedException();
+
+                //for (int i = 0; i < stackString.Value.Length; i++)
+                //{
+                //    Push(new CompiledValue(stackString.Value[i]));
+                //    PopToChecked(new AddressOffset(address, i * 2), 2);
+                //}
+                //
+                //if (stackString.IsNullTerminated)
+                //{
+                //    Push(new CompiledValue('\0'));
+                //    PopToChecked(new AddressOffset(address, stackString.Value.Length * 2), 2);
+                //}
             }
         }
         else

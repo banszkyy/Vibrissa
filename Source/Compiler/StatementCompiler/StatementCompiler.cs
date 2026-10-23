@@ -510,14 +510,19 @@ public partial class StatementCompiler
     {
         result = null;
 
+        if (!CompileStatement(type.StackArrayOf, out CompiledTypeExpression? of, diagnostics)) return false;
+
         if (type.StackArraySize is not null)
         {
             CompiledExpression? compiledLength;
             using (Diagnostics.MakeOverride(diagnostics))
             {
-                if (!CompileExpression(type.StackArraySize, out compiledLength, Settings.ArrayLengthType)) return false;
+                if (!CompileExpression(type.StackArraySize, out compiledLength, Settings.ArrayLengthType))
+                {
+                    result = new CompiledArrayTypeExpression(of, null, type.Location);
+                    return false;
+                }
             }
-            if (!CompileStatement(type.StackArrayOf, out CompiledTypeExpression? of, diagnostics)) return false;
 
             result = new CompiledArrayTypeExpression(of, compiledLength, type.Location);
             //SetTypeType(type, result);
@@ -525,7 +530,6 @@ public partial class StatementCompiler
         }
         else
         {
-            if (!CompileStatement(type.StackArrayOf, out CompiledTypeExpression? of, diagnostics)) return false;
             result = new CompiledArrayTypeExpression(of, null, type.Location);
             //SetTypeType(type, result);
             return true;
@@ -574,7 +578,7 @@ public partial class StatementCompiler
         {
             if (!CompileType(newVariable.Type, out type, Diagnostics))
             {
-                type = BuiltinType.Any;
+                type ??= BuiltinType.Any;
             }
             else
             {
@@ -811,12 +815,18 @@ public partial class StatementCompiler
                 if (!CompileExpression(keywordCall.Arguments[0], out returnValue, Frames.Last.CurrentReturnType)) return false;
                 Frames.Last.CurrentReturnType ??= returnValue.Type;
 
-                if (!CanCastImplicitly(returnValue, Frames.Last.CurrentReturnType, out CompiledExpression? assignedReturnValue, out PossibleDiagnostic? castError, out _))
+                if (Frames.Last.IsTopLevel && returnValue.Type.SameAs(Frames.Last.CurrentReturnType))
                 {
-                    Diagnostics.Add(castError.ToError(keywordCall.Arguments[0]));
                 }
+                else
+                {
+                    if (!CanCastImplicitly(returnValue, Frames.Last.CurrentReturnType, out CompiledExpression? assignedReturnValue, out PossibleDiagnostic? castError, out _))
+                    {
+                        Diagnostics.Add(castError.ToError(keywordCall.Arguments[0]));
+                    }
 
-                returnValue = assignedReturnValue;
+                    returnValue = assignedReturnValue;
+                }
             }
 
             compiledStatement = new CompiledReturn()

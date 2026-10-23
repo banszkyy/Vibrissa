@@ -1271,10 +1271,14 @@ public partial class StatementCompiler
     public enum CastLevel
     {
         None,
-        Cast,
-        ReferenceDereference,
-        SameCast,
-        Same,
+        EmptyClosuring,
+        Dereference,
+        GotReferenceOf,
+        GotReferenceOfObject,
+        ConstantCasting,
+        OperatorTypeAdjusting,
+        LiteralTypeAdjusting,
+        Assignable,
         Equals,
     }
 
@@ -1289,15 +1293,9 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (destination.SameAs(source))
-        {
-            castLevel = CastLevel.Same;
-            return true;
-        }
-
         if (destination.SameAs(BasicType.Any))
         {
-            castLevel = CastLevel.Same;
+            castLevel = CastLevel.Assignable;
             return true;
         }
 
@@ -1307,7 +1305,7 @@ public partial class StatementCompiler
             {
                 if (dstPointer.To.SameAs(BasicType.Any))
                 {
-                    castLevel = CastLevel.Same;
+                    castLevel = CastLevel.Assignable;
                     return true;
                 }
 
@@ -1324,7 +1322,7 @@ public partial class StatementCompiler
 
                     if (dstArray.Length is null)
                     {
-                        castLevel = CastLevel.Same;
+                        castLevel = CastLevel.Assignable;
                         return true;
                     }
                 }
@@ -1334,10 +1332,9 @@ public partial class StatementCompiler
         {
             if (destination.Is(out PointerType? dstPointer) &&
                 source.Is(out FunctionType? srcFunction)
-                && dstPointer.To.SameAs(BasicType.Any)
-                && srcFunction.HasClosure)
+                && dstPointer.To.SameAs(BasicType.Any))
             {
-                castLevel = CastLevel.Same;
+                castLevel = CastLevel.Assignable;
                 return true;
             }
         }
@@ -1347,7 +1344,7 @@ public partial class StatementCompiler
                 && source.Is(out PointerType? srcPointerType)
                 && destReferenceType.To.Equals(srcPointerType.To))
             {
-                castLevel = CastLevel.Same;
+                castLevel = CastLevel.Equals;
                 return true;
             }
         }
@@ -1358,73 +1355,13 @@ public partial class StatementCompiler
             {
                 if (srcArrayType.Length.HasValue && !destArrayType.Length.HasValue)
                 {
-                    castLevel = CastLevel.Same;
+                    castLevel = CastLevel.Assignable;
                     return true;
                 }
             }
         }
 
         error = new($"Can't cast `{source}` to `{destination}` implicitly");
-        return false;
-    }
-
-    public static bool CanCastImplicitly(GeneralType source, GeneralType destination, Expression? value, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
-    {
-        if (CanCastImplicitly(source, destination, out error, out castLevel)) return true;
-
-        if (value is StringLiteralExpression stringLiteral)
-        {
-            if (destination.Is(out ArrayType? destArrayType) &&
-                destArrayType.Of.SameAs(BasicType.U16))
-            {
-                string literalValue = stringLiteral.Value;
-                if (destArrayType.Length is null)
-                {
-                    error = new($"Can't cast literal value `{literalValue}` (length of {literalValue.Length}) to stack array `{destination}` (without length)", stringLiteral);
-                    return false;
-                }
-
-                if (!destArrayType.Length.HasValue)
-                {
-                    error = new($"Can't cast literal value `{literalValue}` (length of {literalValue.Length}) to stack array `{destination}` (length of <runtime value>)", stringLiteral);
-                    return false;
-                }
-
-                if (literalValue.Length != destArrayType.Length.Value)
-                {
-                    error = new($"Can't cast literal value `{literalValue}` (length of {literalValue.Length}) to stack array `{destination}` (length of {destArrayType.Length.Value})", stringLiteral);
-                    return false;
-                }
-
-                castLevel = CastLevel.SameCast;
-                return true;
-            }
-
-            if (destination.Is(out PointerType? pointerType) &&
-                pointerType.To.Is(out ArrayType? arrayType) &&
-                arrayType.Of.SameAs(BasicType.U16))
-            {
-                if (arrayType.Length is not null)
-                {
-                    if (!arrayType.Length.HasValue)
-                    {
-                        error = new($"Can't cast literal value `{stringLiteral.Value}` (length of {stringLiteral.Value.Length}) to array `{destination}` (length of <runtime value>)", stringLiteral);
-                        return false;
-                    }
-
-                    if (stringLiteral.Value.Length != arrayType.Length.Value)
-                    {
-                        error = new($"Can't cast literal value `{stringLiteral.Value}` (length of {stringLiteral.Value.Length}) to array `{destination}` (length of {arrayType.Length.Value})", stringLiteral);
-                        return false;
-                    }
-                }
-
-                castLevel = CastLevel.SameCast;
-                return true;
-            }
-        }
-
-        error = new($"Can't cast `{source}` to `{destination}` implicitly", value);
         return false;
     }
 
@@ -1451,7 +1388,7 @@ public partial class StatementCompiler
                     SaveValue = true,
                     Type = new ReferenceType(value.Type),
                 };
-                castLevel = CastLevel.ReferenceDereference;
+                castLevel = CastLevel.GotReferenceOf;
                 if (subcastLevel < castLevel) castLevel = subcastLevel;
                 return true;
             }
@@ -1472,7 +1409,7 @@ public partial class StatementCompiler
                     SaveValue = true,
                     Type = valueRefType.To,
                 };
-                castLevel = CastLevel.ReferenceDereference;
+                castLevel = CastLevel.Dereference;
                 if (subcastLevel < castLevel) castLevel = subcastLevel;
                 return true;
             }
@@ -1508,7 +1445,7 @@ public partial class StatementCompiler
                         Location = value.Location,
                         SaveValue = value.SaveValue,
                     };
-                    castLevel = CastLevel.Cast;
+                    castLevel = CastLevel.EmptyClosuring;
                     return true;
                 }
             }
@@ -1518,9 +1455,10 @@ public partial class StatementCompiler
         {
             case CompiledString stringInstance:
             {
-                if (destination.Is(out PointerType? pointerType) &&
-                    pointerType.To.Is(out ArrayType? arrayType) &&
-                    arrayType.Of.SameAs(BasicType.U16))
+                if (!stringInstance.IsUTF8
+                    && destination.Is(out PointerType? pointerType)
+                    && pointerType.To.Is(out ArrayType? arrayType)
+                    && arrayType.Of.SameAs(BasicType.U16))
                 {
                     if (arrayType.Length is not null)
                     {
@@ -1537,16 +1475,59 @@ public partial class StatementCompiler
                         }
                     }
 
-                    castLevel = CastLevel.SameCast;
+                    assignedValue = new CompiledString()
+                    {
+                        Allocator = stringInstance.Allocator,
+                        IsUTF8 = stringInstance.IsUTF8,
+                        Location = stringInstance.Location,
+                        SaveValue = stringInstance.SaveValue,
+                        Type = destination,
+                        Value = stringInstance.Value,
+                    };
+                    castLevel = CastLevel.LiteralTypeAdjusting;
+                    return true;
+                }
+
+                if (stringInstance.IsUTF8
+                    && destination.Is(out pointerType)
+                    && pointerType.To.Is(out arrayType)
+                    && arrayType.Of.SameAs(BasicType.U8))
+                {
+                    int byteCount = Encoding.UTF8.GetByteCount(stringInstance.Value) + 1;
+
+                    if (arrayType.Length is not null)
+                    {
+                        if (!arrayType.Length.HasValue)
+                        {
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {byteCount}) to array `{destination}` (with a non-constant length)", stringInstance);
+                            return false;
+                        }
+
+                        if (byteCount != arrayType.Length.Value)
+                        {
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {byteCount}) to array `{destination}` (length of {arrayType.Length.Value})", stringInstance);
+                            return false;
+                        }
+                    }
+
+                    assignedValue = new CompiledString()
+                    {
+                        Allocator = stringInstance.Allocator,
+                        IsUTF8 = stringInstance.IsUTF8,
+                        Location = stringInstance.Location,
+                        SaveValue = stringInstance.SaveValue,
+                        Type = destination,
+                        Value = stringInstance.Value,
+                    };
+                    castLevel = CastLevel.LiteralTypeAdjusting;
                     return true;
                 }
 
                 if (destination.Is(out ArrayType? arrayType1)
                     && value.Type.Is(out PointerType? pointerType1)
                     && pointerType1.To.Is(out ArrayType? arrayType2)
-                    && CanCastImplicitly(arrayType1.Of, arrayType2.Of, null, out _, out _))
+                    && CanCastImplicitly(arrayType1.Of, arrayType2.Of, out _, out _))
                 {
-                    Debugger.Break();
                     assignedValue = new CompiledStackString()
                     {
                         IsUTF8 = arrayType2.Of.SameAs(BasicType.U8),
@@ -1556,8 +1537,8 @@ public partial class StatementCompiler
                         SaveValue = value.SaveValue,
                         IsNullTerminated = true,
                     };
-                    castLevel = CastLevel.SameCast;
-                    return true;
+                    castLevel = CastLevel.LiteralTypeAdjusting;
+                    throw new NotImplementedException();
                 }
 
                 break;
@@ -1594,7 +1575,7 @@ public partial class StatementCompiler
                         Location = stackStringInstance.Location,
                         SaveValue = stackStringInstance.SaveValue,
                     };
-                    castLevel = CastLevel.SameCast;
+                    castLevel = CastLevel.LiteralTypeAdjusting;
                     return true;
                 }
 
@@ -1629,7 +1610,7 @@ public partial class StatementCompiler
                         Location = stackStringInstance.Location,
                         SaveValue = stackStringInstance.SaveValue,
                     };
-                    castLevel = CastLevel.SameCast;
+                    castLevel = CastLevel.LiteralTypeAdjusting;
                     return true;
                 }
 
@@ -1649,7 +1630,14 @@ public partial class StatementCompiler
                         Location = value.Location,
                         SaveValue = value.SaveValue,
                     };
-                    castLevel = CastLevel.SameCast;
+                    if (constantValue.Type.SameAs(destination))
+                    {
+                        castLevel = CastLevel.LiteralTypeAdjusting;
+                    }
+                    else
+                    {
+                        castLevel = CastLevel.ConstantCasting;
+                    }
                     return true;
                 }
 
@@ -1668,7 +1656,7 @@ public partial class StatementCompiler
                         SaveValue = binaryOperatorCall.SaveValue,
                         Location = binaryOperatorCall.Location,
                     };
-                    castLevel = CastLevel.SameCast;
+                    castLevel = CastLevel.OperatorTypeAdjusting;
                     return true;
                 }
                 break;
@@ -1683,7 +1671,7 @@ public partial class StatementCompiler
                         Location = sizeOf.Location,
                         SaveValue = sizeOf.SaveValue,
                     };
-                    castLevel = CastLevel.Equals;
+                    castLevel = CastLevel.LiteralTypeAdjusting;
                     return true;
                 }
                 break;
@@ -1883,9 +1871,7 @@ public partial class StatementCompiler
             case (TypeInstanceReference v, ReferenceType w): SetStatementType(v, w); break;
             case (TypeInstanceStackArray v, ArrayType w): SetStatementType(v, w); break;
             case (TypeInstanceSimple v, _): SetStatementType(v, type); break;
-            default:
-                Diagnostics.Add(DiagnosticAt.Warning($"({expression.GetType().Name}, {type.GetType().Name})", expression));
-                break; // throw new UnreachableException($"({expression.GetType().Name}, {type.GetType().Name})");
+            default: break;
         }
         return type;
     }
@@ -4469,7 +4455,6 @@ public partial class StatementCompiler
         if (!CompileType(typeExpression, out result, out PossibleDiagnostic? typeError))
         {
             diagnostics.Add(typeError.ToError(type));
-            result = null;
             return false;
         }
 
@@ -4507,32 +4492,32 @@ public partial class StatementCompiler
 
                         if (expression is not CompiledConstantValue constantLength)
                         {
-                            error = new PossibleDiagnostic($"Array type's length must be constant", expression);
+                            error = new PossibleDiagnostic($"Stack array type's length must be constant", expression);
                             return false;
                         }
                         if (constantLength.Value.Type == RuntimeType.F32)
                         {
-                            error = new PossibleDiagnostic($"Array type's length cannot be a float", expression);
+                            error = new PossibleDiagnostic($"Stack array type's length cannot be a float", expression);
                             return false;
                         }
                         if (constantLength.Value.Type == RuntimeType.Null)
                         {
-                            error = new PossibleDiagnostic($"Array type's length cannot be null", expression);
+                            error = new PossibleDiagnostic($"Stack array type's length cannot be empty", expression);
                             return false;
                         }
                         if (constantLength.Value > int.MaxValue)
                         {
-                            error = new PossibleDiagnostic($"Array type's length cannot be more than {int.MaxValue}", expression);
+                            error = new PossibleDiagnostic($"Stack array type's length cannot be more than {int.MaxValue}", expression);
                             return false;
                         }
-                        if (constantLength.Value < 1)
+                        if (constantLength.Value < 0)
                         {
-                            error = new PossibleDiagnostic($"Array type's length cannot be less than {1}", expression);
+                            error = new PossibleDiagnostic($"Stack array type's length cannot be less than {0}", expression);
                             return false;
                         }
                         if (constantLength.Value != (int)constantLength.Value)
                         {
-                            error = new PossibleDiagnostic($"Invalid array length {constantLength.Value}", expression);
+                            error = new PossibleDiagnostic($"Invalid stack array length {constantLength.Value}", expression);
                             return false;
                         }
 

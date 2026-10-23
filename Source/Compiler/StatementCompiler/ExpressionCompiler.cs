@@ -650,9 +650,6 @@ public partial class StatementCompiler
         PossibleDiagnostic? argumentError = null;
         if (!Utils.SequenceEquals(compiledArguments, functionType.Parameters, (argument, parameter) =>
         {
-            if (argument.Type.SameAs(parameter))
-            { return true; }
-
             if (CanCastImplicitly(argument.Type, parameter, out argumentError, out _))
             { return true; }
 
@@ -1247,7 +1244,7 @@ public partial class StatementCompiler
             }
             else if (_body is CompiledExpression _compiledStatementWithValue)
             {
-                if (frame.Value.CurrentReturnType is not null && frame.Value.CurrentReturnType.SameAs(BuiltinType.Void))
+                if (frame.Value.CurrentReturnType is not null && frame.Value.CurrentReturnType.SameAs(BasicType.Void))
                 {
                     _compiledStatementWithValue.SaveValue = false;
                     block = new CompiledBlock()
@@ -1273,7 +1270,7 @@ public partial class StatementCompiler
                     {
                         frame.Value.CurrentReturnType = _compiledStatementWithValue.Type;
                     }
-                    else if (!frame.Value.CurrentReturnType.SameAs(_compiledStatementWithValue.Type))
+                    else if (!frame.Value.CurrentReturnType.Equals(_compiledStatementWithValue.Type))
                     {
                         Diagnostics.Add(DiagnosticAt.Error($"Lambda expression value's type ({_compiledStatementWithValue.Type}) doesn't match the return type {frame.Value.CurrentReturnType}", _compiledStatementWithValue));
                     }
@@ -1621,7 +1618,7 @@ public partial class StatementCompiler
                         return false;
                     }
 
-                    GeneralType stringType = new ArrayType(charType, stringLiteral.Value.Length + 1);
+                    GeneralType stringType = new ArrayType(charType, (charSize == 1 ? Encoding.UTF8.GetByteCount(stringLiteral.Value) : stringLiteral.Value.Length) + 1);
                     //if (!GetLiteralType(LiteralType.String, out GeneralType? stringType, out _))
                     //{
                     //    stringType = new PointerType(new ArrayType(charType, stringLiteral.Value.Length + 1));
@@ -2247,7 +2244,7 @@ public partial class StatementCompiler
             Frames.LastRef.IsMsilCompatible = false;
         }
 
-        initializer.Function.AddReference(constructorCall, constructorCall.Type.Position);
+        initializer.Function.AddReference(constructorCall, constructorCall.Type.Location);
         SetStatementReference(constructorCall, initializer.Function);
 
         SetStatementType(constructorCall, initializer.Function.Type);
@@ -2479,7 +2476,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type `{baseStatement.Type}` not found", index, ignoreOnPartialSource: true).WithSuberrors(notFoundError.ToError(index)));
+        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type `{baseStatement.Type}` not found", index, ignoreOnPartialSource: true).WithSuberrors(baseStatement.Type.SameAs(BasicType.Any) ? null : notFoundError.ToError(index)));
         return false;
     }
     bool CompileExpression(ArgumentExpression modifiedStatement, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
@@ -2506,7 +2503,7 @@ public partial class StatementCompiler
             {
                 itemType = item.Type;
             }
-            else if (!item.Type.SameAs(itemType))
+            else if (!item.Type.Equals(itemType))
             {
                 Diagnostics.Add(DiagnosticAt.Error($"List element at index {i} should be a {itemType} and not {item.Type}", item));
             }
@@ -2641,8 +2638,8 @@ public partial class StatementCompiler
         }
 
         // f32 -> i32
-        if (prev.Type.SameAs(BuiltinType.F32) &&
-            targetType.SameAs(BuiltinType.I32))
+        if (prev.Type.SameAs(BasicType.F32) &&
+            targetType.SameAs(BasicType.I32))
         {
             compiledStatement = new CompiledCast()
             {
@@ -2657,8 +2654,8 @@ public partial class StatementCompiler
         }
 
         // i32 -> f32
-        if (prev.Type.SameAs(BuiltinType.I32) &&
-            targetType.SameAs(BuiltinType.F32))
+        if (prev.Type.SameAs(BasicType.I32) &&
+            targetType.SameAs(BasicType.F32))
         {
             compiledStatement = new CompiledCast()
             {

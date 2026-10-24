@@ -13,6 +13,7 @@ public class FunctionCallExpression : Expression,
 
     public Token Identifier { get; }
     public ArgumentListExpression Arguments { get; }
+    public TypeArgumentListExpression? TypeArguments { get; }
     public ArgumentExpression? Object { get; }
 
     public ImmutableArray<ArgumentExpression> MethodArguments
@@ -28,11 +29,13 @@ public class FunctionCallExpression : Expression,
     public FunctionCallExpression(
         ArgumentExpression? @object,
         Token identifier,
+        TypeArgumentListExpression? typeArguments,
         ArgumentListExpression arguments,
         Uri file) : base(file)
     {
         Object = @object;
         Identifier = identifier;
+        TypeArguments = typeArguments;
         Arguments = arguments;
     }
 
@@ -48,6 +51,7 @@ public class FunctionCallExpression : Expression,
             result.Append('.');
         }
         result.Append(Identifier);
+        result.Append(TypeArguments?.ToString());
         result.Append(Arguments.ToString());
 
         result.Append(SurroundingBrackets?.End);

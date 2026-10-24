@@ -481,10 +481,15 @@ public partial class StatementCompiler
     {
         compiledStatement = null;
 
-        if (anyCall.Expression is IdentifierExpression _identifier &&
-            _identifier.Content == StatementKeywords.Sizeof)
+        if (anyCall.Expression is IdentifierExpression _identifier
+            && _identifier.Content == StatementKeywords.Sizeof)
         {
             _identifier.AnalyzedType = TokenAnalyzedType.Keyword;
+
+            if (anyCall.TypeArguments is not null)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Type arguments are not allowed for `{StatementKeywords.Sizeof}`", anyCall.TypeArguments));
+            }
 
             if (anyCall.Arguments.Arguments.Length != 1)
             {
@@ -537,9 +542,23 @@ public partial class StatementCompiler
 
         ImmutableArray<CompiledExpression> compiledArgumentExpressions;
 
-        PossibleDiagnostic? notFound = null;
+        PossibleDiagnostic? functionError = null;
         if (anyCall.ToFunctionCall(out FunctionCallExpression? functionCall))
         {
+            bool success = true;
+            ImmutableArray<GeneralType>? compiledTypeArguments = null;
+            if (functionCall.TypeArguments?.Arguments is not null)
+            {
+                if (!CompileExpression(functionCall.TypeArguments.Arguments, out ImmutableArray<GeneralType> compiledTypeArguments0))
+                {
+                    success = false;
+                }
+                else
+                {
+                    compiledTypeArguments = compiledTypeArguments0;
+                }
+            }
+
             if (!CompileExpression(functionCall.MethodArguments.Select(v => v.Value), out compiledArgumentExpressions))
             {
                 if (GetFunction(GetFunctions(), "function", CompiledFunctionDefinition.ToReadable(functionCall.Identifier.Content, null, null), new FunctionQuery<CompiledFunctionDefinition, string, string, object>()
@@ -568,7 +587,7 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, anyCall.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out notFound, AddCompilable))
+            if (GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, compiledTypeArguments, anyCall.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out functionError, AddCompilable))
             {
                 if (anyCall.Expression is IdentifierExpression _identifier2)
                 { _identifier2.AnalyzedType = TokenAnalyzedType.FunctionName; }
@@ -581,13 +600,22 @@ public partial class StatementCompiler
                 SetStatementType(anyCall, result.Function.Type);
                 result.Function.AddReference(anyCall, functionCall.Identifier.Position);
 
-                return CompileFunctionCall(functionCall, compiledArgumentExpressions, functionCall.MethodArguments, result, out compiledStatement);
+                return CompileFunctionCall(functionCall, compiledArgumentExpressions, functionCall.MethodArguments, result, out compiledStatement) && success;
             }
-            //else
-            //{
-            //    Debugger.Break();
-            //    GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, anyCall.File, out _, out _, AddCompilable);
-            //}
+
+            if (result is not null)
+            {
+                if (anyCall.Expression is IdentifierExpression _identifier2)
+                { _identifier2.AnalyzedType = TokenAnalyzedType.FunctionName; }
+
+                if (anyCall.Expression is FieldExpression _field)
+                { _field.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName; }
+
+                SetStatementReference(anyCall, result);
+                TrySetStatementReference(anyCall.Expression, result);
+                SetStatementType(anyCall, result.Function.Type);
+                result.Function.AddReference(anyCall, functionCall.Identifier.Position);
+            }
         }
 
         if (!CompileExpression(anyCall.Arguments.Arguments.Select(v => v.Value), out compiledArgumentExpressions))
@@ -597,8 +625,13 @@ public partial class StatementCompiler
 
         if (!CompileExpression(anyCall.Expression, out CompiledExpression? functionValue))
         {
-            if (notFound is not null) Diagnostics.Add(notFound?.ToError(anyCall));
+            if (functionError is not null) Diagnostics.AddRange(functionError?.ToError(anyCall).ReduceNonTelling());
             return false;
+        }
+
+        if (anyCall.TypeArguments is not null)
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Type arguments are not allowed here", anyCall.TypeArguments));
         }
 
         {
@@ -628,7 +661,7 @@ public partial class StatementCompiler
         if (!functionValue.Type.Is(out FunctionType? functionType))
         {
             Diagnostics.Add(DiagnosticAt.Error($"This isn't a function", anyCall.Expression));
-            Diagnostics.Add(notFound?.ToError(anyCall));
+            Diagnostics.AddRange(functionError?.ToError(anyCall).ReduceNonTelling());
             return false;
         }
 
@@ -637,13 +670,13 @@ public partial class StatementCompiler
         if (anyCall.Arguments.Arguments.Length != functionType.Parameters.Length)
         {
             Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function `{functionType}`: required {functionType.Parameters.Length} passed {anyCall.Arguments.Arguments.Length}", new Position(anyCall.Arguments.Arguments.As<IPositioned>().DefaultIfEmpty(anyCall.Arguments.Brackets)), anyCall.File));
-            Diagnostics.Add(notFound?.ToError(anyCall));
+            Diagnostics.AddRange(functionError?.ToError(anyCall).ReduceNonTelling());
             return false;
         }
 
         if (!CompileArguments(anyCall.Arguments.Arguments, compiledArgumentExpressions, functionType, out ImmutableArray<CompiledArgument> compiledArguments))
         {
-            Diagnostics.Add(notFound?.ToError(anyCall));
+            Diagnostics.AddRange(functionError?.ToError(anyCall).ReduceNonTelling());
             return false;
         }
 
@@ -659,7 +692,7 @@ public partial class StatementCompiler
         }))
         {
             Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller `...({string.Join(", ", compiledArguments.Select(v => v.Type))})` doesn't match with callee `{functionType}`", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
-            Diagnostics.Add(notFound?.ToError(anyCall));
+            Diagnostics.AddRange(functionError?.ToError(anyCall).ReduceNonTelling());
             return false;
         }
 
@@ -1205,16 +1238,13 @@ public partial class StatementCompiler
 
         ImmutableArray<CompiledLabelDeclaration>.Builder localInstructionLabels = ImmutableArray.CreateBuilder<CompiledLabelDeclaration>();
 
-        foreach (Statement item in StatementWalker.Visit(lambdaStatement.Body, StatementWalkerFilter.FrameOnlyFilter))
+        foreach (InstructionLabelDeclaration instructionLabel in StatementWalker.EnumerateNodes(lambdaStatement.Body, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>())
         {
-            if (item is InstructionLabelDeclaration instructionLabel)
+            localInstructionLabels.Add(new CompiledLabelDeclaration()
             {
-                localInstructionLabels.Add(new CompiledLabelDeclaration()
-                {
-                    Identifier = instructionLabel.Identifier.Content,
-                    Location = instructionLabel.Location,
-                });
-            }
+                Identifier = instructionLabel.Identifier.Content,
+                Location = instructionLabel.Location,
+            });
         }
 
         using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
@@ -1951,11 +1981,11 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (GetFunction(variable.Content, expectedType, out FunctionQueryResult<CompiledFunctionDefinition>? compiledFunction, out PossibleDiagnostic? functionNotFoundError, AddCompilable))
+        if (GetFunction(variable.Content, expectedType, out FunctionQueryResult<CompiledFunctionDefinition>? compiledFunction, out PossibleDiagnostic? functionError, AddCompilable))
         {
             if (compiledFunction.Function.Definition.Block is null)
             {
-                functionNotFoundError = new PossibleDiagnostic($"Cannot take the address of an external function declaration", variable);
+                functionError = new PossibleDiagnostic($"Cannot take the address of an external function declaration", variable);
             }
             else
             {
@@ -1966,19 +1996,29 @@ public partial class StatementCompiler
 
                 FunctionType functionType = new(compiledFunction.Function.Type, compiledFunction.Function.Parameters.ToImmutableArray(v => v.Type), false);
 
+                GeneralType v = GeneralType.TryInsertTypeParameters(functionType, compiledFunction.TypeArguments);
+                if (v is FunctionType w) functionType = w;
+
                 compiledFunction.Function.AddReference(variable);
                 variable.AnalyzedType = TokenAnalyzedType.FunctionName;
                 SetStatementReference(variable, compiledFunction.Function);
                 SetStatementType(variable, functionType);
 
-                compiledStatement = new CompiledFunctionReference()
+                if (functionType.AllGenericsDefined())
                 {
-                    Function = TemplateInstance.New<ICompiledFunctionDefinition>(compiledFunction.Function, compiledFunction.TypeArguments),
-                    Type = functionType,
-                    Location = variable.Location,
-                    SaveValue = variable.SaveValue,
-                };
-                return true;
+                    compiledStatement = new CompiledFunctionReference()
+                    {
+                        Function = TemplateInstance.New<ICompiledFunctionDefinition>(compiledFunction.Function, compiledFunction.TypeArguments),
+                        Type = functionType,
+                        Location = variable.Location,
+                        SaveValue = variable.SaveValue,
+                    };
+                    return true;
+                }
+                else
+                {
+                    functionError = new PossibleDiagnostic($"To take the address of a generic function, all type parameters must be assigned", variable);
+                }
             }
         }
 
@@ -2047,15 +2087,16 @@ public partial class StatementCompiler
             }
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Symbol `{variable.Content}` not found", variable, ignoreOnPartialSource: true)
+        Diagnostics.AddRange(DiagnosticAt.Error($"Symbol `{variable.Content}` not found", variable, ignoreOnPartialSource: true, isTellingNothing: true)
             .WithSuberrors(
                 constantNotFoundError.ToError(variable),
                 parameterNotFoundError.ToError(variable),
                 variableNotFoundError.ToError(variable),
                 globalVariableNotFoundError.ToError(variable),
-                functionNotFoundError.ToError(variable),
+                functionError.ToError(variable),
                 instructionLabelError.ToError(variable)
-            ));
+            )
+            .ReduceNonTelling());
         return false;
     }
     bool CompileExpression(GetReferenceExpression addressGetter, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
@@ -2117,6 +2158,7 @@ public partial class StatementCompiler
                 }
 
                 SetStatementType(newInstance.Type, compiledType);
+                SetStatementType(newInstance.Type, pointerType);
                 SetStatementType(newInstance, compiledType);
 
                 compiledStatement = new CompiledReinterpretation()
@@ -2139,6 +2181,7 @@ public partial class StatementCompiler
                 }
 
                 SetStatementType(newInstance.Type, compiledType);
+                SetStatementType(newInstance.Type, structType);
                 SetStatementType(newInstance, compiledType);
                 structType.Struct.AddReference(newInstance.Type);
 
@@ -2161,6 +2204,7 @@ public partial class StatementCompiler
                 }
 
                 SetStatementType(newInstance.Type, compiledType);
+                SetStatementType(newInstance.Type, arrayType);
                 SetStatementType(newInstance, compiledType);
 
                 compiledStatement = new CompiledStackAllocation()
@@ -2391,20 +2435,27 @@ public partial class StatementCompiler
 
                     GeneralType functionType = GeneralType.TryInsertTypeParameters(new FunctionType(methodResult.Function.Type, methodResult.Function.Parameters.ToImmutableArray(v => v.Type), false), methodResult.TypeArguments);
 
-                    field.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName;
-                    SetStatementType(field, functionType);
-                    SetStatementReference(field, methodResult.Function);
-                    methodResult.Function.AddReference(field, field.Identifier.Position);
-
-                    Diagnostics.Add(DiagnosticAt.Warning($"This will take the raw address of `{methodResult.Function.ToReadable()}` without saving the reference to the object", new Location(field.Identifier.Position, field.File)));
-                    compiledStatement = new CompiledFunctionReference()
+                    if (functionType.AllGenericsDefined())
                     {
-                        Function = TemplateInstance.New<ICompiledFunctionDefinition>(methodResult.Function, methodResult.TypeArguments),
-                        Type = functionType,
-                        Location = field.Location,
-                        SaveValue = field.SaveValue,
-                    };
-                    return true;
+                        field.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName;
+                        SetStatementType(field, functionType);
+                        SetStatementReference(field, methodResult.Function);
+                        methodResult.Function.AddReference(field, field.Identifier.Position);
+
+                        Diagnostics.Add(DiagnosticAt.Warning($"This will take the raw address of `{methodResult.Function.ToReadable()}` without saving the reference to the object", new Location(field.Identifier.Position, field.File)));
+                        compiledStatement = new CompiledFunctionReference()
+                        {
+                            Function = TemplateInstance.New<ICompiledFunctionDefinition>(methodResult.Function, methodResult.TypeArguments),
+                            Type = functionType,
+                            Location = field.Location,
+                            SaveValue = field.SaveValue,
+                        };
+                        return true;
+                    }
+                    else
+                    {
+                        methodError = new PossibleDiagnostic($"Cannot take the address of a generic function", field);
+                    }
                 }
             }
 
@@ -2476,7 +2527,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type `{baseStatement.Type}` not found", index, ignoreOnPartialSource: true).WithSuberrors(baseStatement.Type.SameAs(BasicType.Any) ? null : notFoundError.ToError(index)));
+        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type `{baseStatement.Type}` not found", index, ignoreOnPartialSource: true, isTellingNothing: true).WithSuberrors(baseStatement.Type.SameAs(BasicType.Any) ? null : notFoundError.ToError(index)));
         return false;
     }
     bool CompileExpression(ArgumentExpression modifiedStatement, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
@@ -2741,6 +2792,51 @@ public partial class StatementCompiler
             else
             {
                 result.Add(compiledExpression);
+            }
+        }
+        compiledExpressions = result.ToImmutable();
+        return success;
+    }
+
+    bool CompileExpression(IEnumerable<TypeInstance> expressions, out ImmutableArray<CompiledTypeExpression> compiledExpressions)
+    {
+        bool success = true;
+        ImmutableArray<CompiledTypeExpression>.Builder result = ImmutableArray.CreateBuilder<CompiledTypeExpression>();
+        foreach (TypeInstance expression in expressions)
+        {
+            if (!CompileStatement(expression, out CompiledTypeExpression? compiledExpression, Diagnostics))
+            {
+                success = false;
+            }
+            else
+            {
+                result.Add(compiledExpression);
+            }
+        }
+        compiledExpressions = result.ToImmutable();
+        return success;
+    }
+
+    bool CompileExpression(IEnumerable<TypeInstance> expressions, out ImmutableArray<GeneralType> compiledExpressions)
+    {
+        bool success = true;
+        ImmutableArray<GeneralType>.Builder result = ImmutableArray.CreateBuilder<GeneralType>();
+        foreach (TypeInstance expression in expressions)
+        {
+            if (!CompileStatement(expression, out CompiledTypeExpression? compiledExpression, Diagnostics))
+            {
+                success = false;
+            }
+            else if (!CompileType(compiledExpression, out GeneralType? type, out PossibleDiagnostic? error))
+            {
+                success = false;
+                Diagnostics.Add(error.ToError(expression));
+            }
+            else
+            {
+                result.Add(type);
+                SetStatementType(expression, compiledExpression);
+                SetStatementType(expression, type);
             }
         }
         compiledExpressions = result.ToImmutable();

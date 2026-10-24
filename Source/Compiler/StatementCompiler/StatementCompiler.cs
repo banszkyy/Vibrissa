@@ -384,6 +384,7 @@ public partial class StatementCompiler
         {
             result = new CompiledBuiltinTypeExpression(builtinType, type.Location);
             type.Identifier.AnalyzedType = TokenAnalyzedType.BuiltinType;
+            SetStatementType(type, result);
             return true;
         }
 
@@ -397,6 +398,7 @@ public partial class StatementCompiler
                 {
                     type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
                     result = CompiledTypeExpression.CreateAnonymous(typeArgument, type.Location);
+                    SetStatementType(type, result);
                     goto ok;
                 }
 
@@ -407,6 +409,7 @@ public partial class StatementCompiler
                         type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
                         result = new CompiledGenericTypeExpression(Frames.Last.TypeParameters[i], type.File, type.Location);
                         SetStatementReference(type, Frames.Last.TypeParameters[i]);
+                        SetStatementType(type, result);
                         goto ok;
                     }
                 }
@@ -420,6 +423,7 @@ public partial class StatementCompiler
                         type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
                         result = new CompiledGenericTypeExpression(w, type.File, type.Location);
                         SetStatementReference(type, w);
+                        SetStatementType(type, result);
                         goto ok;
                     }
                 }
@@ -440,6 +444,7 @@ public partial class StatementCompiler
                     SetStatementReference(type, aliasDefinition);
 
                     result = new CompiledAliasTypeExpression(compiled, type.Location);
+                    SetStatementType(type, result);
                     goto ok;
                 }
 
@@ -452,6 +457,7 @@ public partial class StatementCompiler
                     SetStatementReference(type, enumDefinition);
 
                     result = new CompiledEnumTypeExpression(compiled, type.Location);
+                    SetStatementType(type, result);
                     goto ok;
                 }
             }
@@ -465,6 +471,7 @@ public partial class StatementCompiler
                 SetStatementReference(type, structDefinition);
 
                 result = new CompiledStructTypeExpression(compiled, type.File, type.Location);
+                SetStatementType(type, result);
                 goto ok;
             }
 
@@ -493,6 +500,7 @@ public partial class StatementCompiler
             }
         }
 
+        SetStatementType(type, result);
         return true;
     }
     bool CompileStatement(TypeInstanceFunction type, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics)
@@ -503,6 +511,7 @@ public partial class StatementCompiler
         if (!CompileStatement(type.FunctionParameterTypes, out ImmutableArray<CompiledTypeExpression> parameters, diagnostics)) return false;
 
         result = new CompiledFunctionTypeExpression(returnType, parameters, type.ClosureModifier is not null, type.Location);
+        SetStatementType(type, result);
         //type.SetAnalyzedType(result);
         return true;
     }
@@ -520,17 +529,20 @@ public partial class StatementCompiler
                 if (!CompileExpression(type.StackArraySize, out compiledLength, Settings.ArrayLengthType))
                 {
                     result = new CompiledArrayTypeExpression(of, null, type.Location);
+                    SetStatementType(type, result);
                     return false;
                 }
             }
 
             result = new CompiledArrayTypeExpression(of, compiledLength, type.Location);
+            SetStatementType(type, result);
             //SetTypeType(type, result);
             return true;
         }
         else
         {
             result = new CompiledArrayTypeExpression(of, null, type.Location);
+            SetStatementType(type, result);
             //SetTypeType(type, result);
             return true;
         }
@@ -542,6 +554,7 @@ public partial class StatementCompiler
         if (!CompileStatement(type.To, out CompiledTypeExpression? to, diagnostics)) return false;
 
         result = new CompiledPointerTypeExpression(to, type.Location);
+        SetStatementType(type, result);
         //type.SetAnalyzedType(result);
 
         return true;
@@ -553,6 +566,7 @@ public partial class StatementCompiler
         if (!CompileStatement(type.To, out CompiledTypeExpression? to, diagnostics)) return false;
 
         result = new CompiledReferenceTypeExpression(to, type.Location);
+        SetStatementType(type, result);
         //type.SetAnalyzedType(result);
 
         return true;
@@ -1015,7 +1029,7 @@ public partial class StatementCompiler
         {
             if (evaluatedCondition.Value)
             {
-                if (!StatementWalker.Visit(@if.Else, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>().Any())
+                if (!StatementWalker.EnumerateNodes(@if.Else, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>().Any())
                 {
                     Diagnostics.Add(DiagnosticAt.OptimizationNotice($"If condition trimmed away", @if.Condition));
                     if (Settings.Optimizations.HasFlag(OptimizationSettings.TrimUnreachable))
@@ -1026,7 +1040,7 @@ public partial class StatementCompiler
             }
             else
             {
-                if (!StatementWalker.Visit(@if, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>().Any())
+                if (!StatementWalker.EnumerateNodes(@if, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>().Any())
                 {
                     Diagnostics.Add(DiagnosticAt.OptimizationNotice($"If branch trimmed away", @if));
                     if (@if.Else is not null)
@@ -1386,12 +1400,13 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Symbol `{target.Content}` not found", target, ignoreOnPartialSource: true)
+        Diagnostics.AddRange(DiagnosticAt.Error($"Symbol `{target.Content}` not found", target, ignoreOnPartialSource: true, isTellingNothing: true)
             .WithSuberrors(
                 parameterNotFoundError.ToError(target),
                 variableNotFoundError.ToError(target),
                 globalVariableNotFoundError.ToError(target)
-            ));
+            )
+            .ReduceNonTelling());
         return false;
     }
     bool CompileSetter(FieldExpression target, Expression value, [NotNullWhen(true)] out CompiledStatement? compiledStatement)
@@ -1736,16 +1751,13 @@ public partial class StatementCompiler
 
         ImmutableArray<CompiledLabelDeclaration>.Builder localInstructionLabels = ImmutableArray.CreateBuilder<CompiledLabelDeclaration>();
 
-        foreach (Statement item in StatementWalker.Visit(function.Definition.Block, StatementWalkerFilter.FrameOnlyFilter))
+        foreach (InstructionLabelDeclaration instructionLabel in StatementWalker.EnumerateNodes(function.Definition.Block, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>())
         {
-            if (item is InstructionLabelDeclaration instructionLabel)
+            localInstructionLabels.Add(new CompiledLabelDeclaration()
             {
-                localInstructionLabels.Add(new CompiledLabelDeclaration()
-                {
-                    Identifier = instructionLabel.Identifier.Content,
-                    Location = instructionLabel.Location,
-                });
-            }
+                Identifier = instructionLabel.Identifier.Content,
+                Location = instructionLabel.Location,
+            });
         }
 
         using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
@@ -1911,7 +1923,7 @@ public partial class StatementCompiler
         foreach (InstructionLabelDeclaration instructionLabel in TopLevelStatements
             .Where(v => !cacheHits.Contains(v.File))
             .SelectMany(v => v.Statements)
-            .SelectMany(v => StatementWalker.Visit(v, StatementWalkerFilter.FrameOnlyFilter))
+            .SelectMany(v => StatementWalker.EnumerateNodes(v, StatementWalkerFilter.FrameOnlyFilter))
             .OfType<InstructionLabelDeclaration>())
         {
             globalInstructionLabels.Add(new CompiledLabelDeclaration()
@@ -1996,7 +2008,7 @@ public partial class StatementCompiler
 
         FunctionFlags topLevelFlags = default;
         Location? firstHeapUsageLocation = default;
-        StatementWalker.Visit(CompiledTopLevelStatements.Append(GeneratedFunctions.Where(v => v.Function is IExposeable exposeable && exposeable.ExposedFunctionName is not null).Select(v => v.Body)), v =>
+        foreach (CompiledStatement v in StatementWalker.EnumerateNodes(CompiledTopLevelStatements.Append(GeneratedFunctions.Where(v => v.Function is IExposeable exposeable && exposeable.ExposedFunctionName is not null).Select(v => v.Body)), StatementWalkerFilter.All))
         {
             FunctionFlags flags = GetStatementFlags(v);
             if (flags.HasFlag(FunctionFlags.AllocatesMemory) || topLevelFlags.HasFlag(FunctionFlags.DeallocatesMemory))
@@ -2004,8 +2016,7 @@ public partial class StatementCompiler
                 firstHeapUsageLocation ??= new Location(new Position(new Range<SinglePosition>(v.Location.Position.Range.Start, v.Location.Position.Range.Start), new Range<int>(v.Location.Position.AbsoluteRange.Start, v.Location.Position.AbsoluteRange.Start)), v.Location.File);
             }
             topLevelFlags |= flags;
-            return true;
-        });
+        }
 
         if (topLevelFlags.HasFlag(FunctionFlags.AllocatesMemory) || topLevelFlags.HasFlag(FunctionFlags.DeallocatesMemory))
         {
@@ -2028,6 +2039,7 @@ public partial class StatementCompiler
                 if (CompileFunctionCall(new FunctionCallExpression(
                     null,
                     Token.CreateAnonymous(result.Function.Identifier, TokenType.Identifier, firstHeapUsageLocation.Value.Position),
+                    null,
                     ArgumentListExpression.CreateAnonymous(TokenPair.CreateAnonymous(firstHeapUsageLocation.Value.Position, "(", ")"), entryFile),
                     entryFile
                 ), ImmutableArray<CompiledExpression>.Empty, ImmutableArray<ArgumentExpression>.Empty, result, out CompiledExpression? call))
@@ -2109,23 +2121,25 @@ public partial class StatementCompiler
     {
         FunctionFlags flags = default;
 
-        StatementWalker.VisitWithFunctions(GeneratedFunctions, statement, statement =>
+        foreach (CompiledStatement v in StatementWalker.EnumerateNodes(statement, StatementWalkerFilter.All))
         {
-            switch (statement)
+            switch (v)
             {
-                case CompiledLambda v:
-                    v.Flags = AnalyseFunction(v.Block, visited);
+                case CompiledLambda w:
+                    w.Flags = AnalyseFunction(w.Block, visited);
                     break;
                 default:
-                    flags |= GetStatementFlags(statement);
+                    flags |= GetStatementFlags(v);
                     break;
             }
-            return true;
-        }, function =>
-        {
-            AnalyseFunction(function, visited);
-            flags |= function.Flags;
-        });
+
+            foreach (CompiledFunction outgoingCall in StatementWalker.OutgoingCalls(GeneratedFunctions, v, StatementWalkerFilter.All))
+            {
+                AnalyseFunction(outgoingCall, visited);
+                flags |= outgoingCall.Flags;
+            }
+        }
+
         return flags;
     }
 

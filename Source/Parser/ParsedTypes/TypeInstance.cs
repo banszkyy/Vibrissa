@@ -6,7 +6,8 @@ public abstract class TypeInstance :
     IEquatable<TypeInstance>,
     IPositioned,
     IInFile,
-    ILocated
+    ILocated,
+    ISmallNode
 {
     public abstract Position Position { get; }
 

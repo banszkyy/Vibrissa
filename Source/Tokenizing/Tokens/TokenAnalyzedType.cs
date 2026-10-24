@@ -12,8 +12,6 @@ public enum TokenAnalyzedType
     VariableName,
     FieldName,
     ParameterName,
-    CompileTag,
-    CompileTagParameter,
     Statement,
     BuiltinType,
     TypeParameter,

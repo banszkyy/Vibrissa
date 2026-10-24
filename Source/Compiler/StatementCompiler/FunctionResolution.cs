@@ -10,6 +10,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, GeneralType> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<GeneralType>? arguments = null,
+            ImmutableArray<GeneralType>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null)
@@ -19,6 +20,7 @@ public partial class StatementCompiler
                 Identifier = identifier,
                 Arguments = arguments,
                 ArgumentCount = arguments?.Length,
+                TypeArguments = typeArguments,
                 Converter = v => v,
                 RelevantFile = relevantFile,
                 ReturnType = returnType,
@@ -29,6 +31,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, CompiledExpression> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<CompiledExpression> arguments,
+            ImmutableArray<GeneralType>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null)
@@ -38,6 +41,7 @@ public partial class StatementCompiler
                 Identifier = identifier,
                 Arguments = arguments,
                 ArgumentCount = arguments.Length,
+                TypeArguments = typeArguments,
                 Converter = v => v.Type,
                 RelevantFile = relevantFile,
                 ReturnType = returnType,
@@ -48,6 +52,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, GeneralType> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<GeneralType> arguments,
+            ImmutableArray<GeneralType>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null,
@@ -58,6 +63,7 @@ public partial class StatementCompiler
                 Identifier = identifier,
                 Arguments = arguments,
                 ArgumentCount = arguments.Length,
+                TypeArguments = typeArguments,
                 Converter = v => v,
                 RelevantFile = relevantFile,
                 ReturnType = returnType,
@@ -69,6 +75,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, CompiledExpression> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<CompiledExpression> arguments,
+            ImmutableArray<GeneralType>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null,
@@ -79,6 +86,7 @@ public partial class StatementCompiler
                 Identifier = identifier,
                 Arguments = arguments,
                 ArgumentCount = arguments.Length,
+                TypeArguments = typeArguments,
                 Converter = v => v.Type,
                 RelevantFile = relevantFile,
                 ReturnType = returnType,
@@ -94,6 +102,7 @@ public partial class StatementCompiler
         public Uri? RelevantFile { get; init; }
         public TArgument? Object { get; init; }
         public ImmutableArray<TArgument>? Arguments { get; init; }
+        public ImmutableArray<GeneralType>? TypeArguments { get; init; }
         public int? ArgumentCount { get; init; }
         public GeneralType? ReturnType { get; init; }
         public Action<TemplateInstance<TFunction>>? AddCompilable { get; init; }
@@ -220,6 +229,7 @@ public partial class StatementCompiler
         where TDefinition : notnull
     {
         public bool IsParameterCountMatches { get; set; }
+        public bool IsTypeArgumentCountMatches { get; set; }
 
         public CastLevel ReturnTypeMatch { get; set; }
         public int UsedUpDefaultParameterValues { get; set; }
@@ -243,6 +253,10 @@ public partial class StatementCompiler
             if (IdentifierBadness < other.IdentifierBadness) return Better;
             if (IdentifierBadness > other.IdentifierBadness) return Worse;
             if (!IsIdentifierMatched || !other.IsIdentifierMatched) return Same;
+
+            if (IsTypeArgumentCountMatches && !other.IsTypeArgumentCountMatches) return Better;
+            if (!IsTypeArgumentCountMatches && other.IsTypeArgumentCountMatches) return Worse;
+            if (!IsTypeArgumentCountMatches || !other.IsTypeArgumentCountMatches) return Same;
 
             if (IsParameterCountMatches && !other.IsParameterCountMatches) return Better;
             if (!IsParameterCountMatches && other.IsParameterCountMatches) return Worse;
@@ -280,6 +294,7 @@ public partial class StatementCompiler
         {
             if (other is null) return false;
             if (!base.Equals(other)) return false;
+            if (IsTypeArgumentCountMatches != other.IsTypeArgumentCountMatches) return false;
             if (IsParameterCountMatches != other.IsParameterCountMatches) return false;
             if (ReturnTypeMatch != other.ReturnTypeMatch) return false;
             if (UsedUpDefaultParameterValues != other.UsedUpDefaultParameterValues) return false;
@@ -334,7 +349,7 @@ public partial class StatementCompiler
 
             if (best.Errors.Count > 0)
             {
-                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", best.Errors.ToImmutableArray(), ignoreOnPartialSource: best.Errors.All(v => v.IgnoreOnPartialSource));
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", best.Errors.ToImmutableArray(), ignoreOnPartialSource: best.Errors.All(v => v.IgnoreOnPartialSource), isTellingNothing: true);
                 return false;
             }
 
@@ -346,8 +361,17 @@ public partial class StatementCompiler
                 }
                 else
                 {
-                    error = new PossibleDiagnostic($"No {kindName} found with name `{query.Identifier}`");
+                    error = new PossibleDiagnostic($"No {kindName} found with name `{query.Identifier}`", isTellingNothing: true);
                 }
+                return false;
+            }
+
+            if (!best.IsTypeArgumentCountMatches)
+            {
+                PossibleDiagnostic suberror = new($"Wrong number of type arguments passed: expected {(best.Definition.Definition is ITemplateable t ? (t.Template?.Parameters.Length ?? 0) : 0)} but got {query.TypeArguments?.Length ?? 0}");
+                if (best.Definition is FunctionThingDefinition ftd)
+                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ImmutableArray.Create(suberror), isTellingNothing: true);
                 return false;
             }
 
@@ -356,7 +380,7 @@ public partial class StatementCompiler
                 PossibleDiagnostic suberror = new($"Wrong number of arguments passed: expected {best.Definition.Parameters.Length} but got {query.ArgumentCount}");
                 if (best.Definition is FunctionThingDefinition ftd)
                 { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ImmutableArray.Create(suberror), isTellingNothing: true);
                 return false;
             }
 
@@ -367,7 +391,7 @@ public partial class StatementCompiler
                 GetFunctionMatch(best.Definition, query);
                 if (best.Definition is FunctionThingDefinition ftd)
                 { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ImmutableArray.Create(suberror), isTellingNothing: true);
                 return false;
             }
 
@@ -376,7 +400,7 @@ public partial class StatementCompiler
                 PossibleDiagnostic suberror = new($"Wrong return type (sorry I can't tell any more info)");
                 if (best.Definition is FunctionThingDefinition ftd)
                 { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ImmutableArray.Create(suberror), isTellingNothing: true);
                 return false;
             }
 
@@ -397,7 +421,7 @@ public partial class StatementCompiler
                     PossibleDiagnostic suberror = new($"Failed to resolve the template types");
                     if (best.Definition is FunctionThingDefinition ftd)
                     { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                    error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
+                    error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ImmutableArray.Create(suberror), isTellingNothing: true);
                     return false;
                 }
 
@@ -534,8 +558,8 @@ public partial class StatementCompiler
             result.UsedUpDefaultParameterValues = function.Parameters.Length - query.ArgumentCount.Value;
         }
 
+        result.IsTypeArgumentCountMatches = true;
         result.IsParameterCountMatches = true;
-
         result.IsGenericParameterCountMatches = true;
 
         if (query.RelevantFile is null ||
@@ -556,8 +580,6 @@ public partial class StatementCompiler
 
         void GetArgumentMatch(ref CastLevel typeMatch, ref CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, TArgument passed, List<PossibleDiagnostic> errors)
         {
-            if (typeMatch == CastLevel.None) return;
-
             PossibleDiagnostic? castError;
 
             if (passed is CompiledExpression expression)
@@ -599,6 +621,22 @@ public partial class StatementCompiler
         }
 
         Dictionary<string, GeneralType>? _typeArguments = function.Definition.IsTemplate ? new() : null;
+
+        if (query.TypeArguments is not null)
+        {
+            if ((query.TypeArguments.Value.Length == 0 && !function.Definition.IsTemplate) ||
+                (query.TypeArguments.Value.Length != (function.Definition.Template?.Parameters.Length ?? 0)))
+            {
+                result.IsTypeArgumentCountMatches = false;
+            }
+
+            int checkCount = Math.Min(query.TypeArguments.Value.Length, function.Definition.Template?.Parameters.Length ?? 0);
+            for (int i = 0; i < checkCount; i++)
+            {
+                GeneralType passed = query.TypeArguments.Value[i];
+                _typeArguments![function.Definition.Template!.Parameters[i].Content] = passed;
+            }
+        }
 
         if (!query.Arguments.HasValue)
         {

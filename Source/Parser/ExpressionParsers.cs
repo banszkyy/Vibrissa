@@ -751,13 +751,90 @@ public sealed partial class Parser
         ParseRestorePoint savepoint = SavePoint();
         anyCall = null;
 
+        ExpectTypeArguments(out TypeArgumentListExpression? typeArgumentList);
+
         if (!ExpectArguments(out ArgumentListExpression? argumentList))
         {
             savepoint.Restore();
             return false;
         }
 
-        anyCall = new AnyCallExpression(prevStatement, argumentList, File);
+        anyCall = new AnyCallExpression(prevStatement, typeArgumentList, argumentList, File);
+        return true;
+    }
+
+    bool ExpectTypeArguments([NotNullWhen(true)] out TypeArgumentListExpression? argumentList)
+    {
+        ParseRestorePoint savepoint = SavePoint();
+        argumentList = null;
+
+        if (!ExpectOperator("<", out Token? bracketStart))
+        {
+            savepoint.Restore();
+            return false;
+        }
+
+        if (ExpectOperator(">", out Token? bracketEnd))
+        {
+            argumentList = new TypeArgumentListExpression(ImmutableArray<TypeInstance>.Empty, ImmutableArray<Token>.Empty, new TokenPair(bracketStart, bracketEnd), File);
+            return true;
+        }
+
+        ImmutableArray<TypeInstance>.Builder arguments = ImmutableArray.CreateBuilder<TypeInstance>();
+        ImmutableArray<Token>.Builder commas = ImmutableArray.CreateBuilder<Token>();
+
+        EndlessCheck endlessSafe = new();
+        Position lastPosition = bracketStart.Position;
+
+        while (true)
+        {
+            if (!ExpectType(AllowedType.Any, out TypeInstance? argument))
+            {
+                if (commas.Count == 0)
+                {
+                    savepoint.Restore();
+                    return false;
+                }
+                argument = new MissingTypeInstance(lastPosition.After(), File);
+                Diagnostics.Add(DiagnosticAt.Error($"Expected type as an argument", argument, false));
+            }
+
+            arguments.Add(argument);
+
+            if (ExpectOperator(">", out bracketEnd))
+            { break; }
+
+            if (!ExpectOperator(",", out Token? comma))
+            {
+                if (commas.Count == 0)
+                {
+                    savepoint.Restore();
+                    return false;
+                }
+
+                Diagnostics.Add(DiagnosticAt.Error($"Expected `,` or `>`", argument.Location.After()));
+
+                int v = CurrentTokenIndex;
+                if (ExpectType(AllowedType.Any, out _))
+                {
+                    CurrentTokenIndex = v;
+                    comma = new MissingToken(TokenType.Operator, argument.Position.After(), ",");
+                }
+                else
+                {
+                    bracketEnd = new MissingToken(TokenType.Operator, argument.Position.After(), ">");
+                    break;
+                }
+            }
+
+            commas.Add(comma);
+
+            lastPosition = comma.Position;
+
+            endlessSafe.Step();
+        }
+
+        argumentList = new TypeArgumentListExpression(arguments.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
         return true;
     }
 

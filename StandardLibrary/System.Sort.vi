@@ -68,6 +68,9 @@ export void insertsort<T>(T[]* values, int length)
 
 inline int iLeftChild(int i) { return 2 * i + 1; }
 
+/*
+ * Source: https://en.wikipedia.org/wiki/Heapsort
+ */
 export void heapsort<T>(T[]* values, int length)
 {
     int start = length / 2;

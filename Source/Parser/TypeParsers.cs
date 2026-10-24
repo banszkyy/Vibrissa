@@ -92,6 +92,10 @@ public sealed partial class Parser
         {
             possibleType.AnalyzedType = TokenAnalyzedType.BuiltinType;
         }
+        else if (possibleType.Content == StatementKeywords.Var)
+        {
+            possibleType.AnalyzedType = TokenAnalyzedType.Keyword;
+        }
         else
         {
             possibleType.AnalyzedType = TokenAnalyzedType.Type;

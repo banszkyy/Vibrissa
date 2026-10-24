@@ -161,6 +161,7 @@ public static class LanguageConstants
         ProtectionKeywords.Private,
         ProtectionKeywords.Export,
 
+        StatementKeywords.Var,
         StatementKeywords.As,
         StatementKeywords.New,
         StatementKeywords.Delete,

@@ -1,427 +1,362 @@
 namespace LanguageCore.Compiler;
 
+[Flags]
+public enum StatementWalkerOptions
+{
+    None = 0x0,
+    IncludingLambdaBodies = 0x2,
+}
+
+public static partial class StatementWalkerFilter
+{
+    public static bool All(CompiledStatement _) => true;
+    public static Predicate<CompiledStatement> In(Uri file) => v => v.Location.File == file;
+}
+
 public static partial class StatementWalker
 {
-    public static void VisitWithFunctions(IReadOnlyCollection<CompiledFunction> functions, IEnumerable<CompiledStatement> statements, Func<CompiledStatement, bool> callback, Action<CompiledFunction> functionCallback)
-    {
-        foreach (CompiledStatement statement in statements) VisitWithFunctions(functions, statement, callback, functionCallback);
-    }
+    public static IEnumerable<CompiledFunction> OutgoingCalls(IEnumerable<CompiledFunction> functions, IEnumerable<CompiledStatement> statements, Predicate<CompiledStatement> predicate)
+        => statements.SelectMany(v => OutgoingCalls(functions, v, predicate));
 
-    public static void VisitWithFunctions(IReadOnlyCollection<CompiledFunction> functions, CompiledStatement statement, Func<CompiledStatement, bool> callback, Action<CompiledFunction> functionCallback)
+    public static IEnumerable<CompiledFunction> OutgoingCalls(IEnumerable<CompiledFunction> functions, CompiledStatement statement, Predicate<CompiledStatement> predicate)
     {
-        void TryFunctionCallback(ICompiledFunctionDefinition? function)
+        IEnumerable<CompiledFunction> TryFunctionCallback(ICompiledFunctionDefinition? function)
         {
-            if (function is null) return;
+            if (function is null) return Enumerable.Empty<CompiledFunction>();
             CompiledFunction? f = functions.FirstOrDefault(w => Utils.ReferenceEquals(w.Function, function) && StatementCompiler.TypeArgumentsEquals(w.TypeArguments, null));
-            if (f is null) return;
-            functionCallback(f);
+            if (f is null) return Enumerable.Empty<CompiledFunction>();
+            return Enumerable.Repeat(f, 1);
         }
 
-        Visit(statement, statement =>
+        foreach (CompiledStatement item in EnumerateNodes(statement, predicate))
         {
-            switch (statement)
+            switch (item)
             {
                 case CompiledCleanup v:
-                    TryFunctionCallback(v.Deallocator?.Template);
-                    TryFunctionCallback(v.Deinitializer?.Template);
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Deallocator?.Template)) yield return w;
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Deinitializer?.Template)) yield return w;
                     break;
                 case CompiledFunctionCall v:
-                    TryFunctionCallback(v.Function.Template);
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Function.Template)) yield return w;
                     break;
                 case CompiledExternalFunctionCall v:
-                    TryFunctionCallback(v.Declaration);
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Declaration)) yield return w;
                     break;
                 case CompiledHeapAllocation v:
-                    TryFunctionCallback(v.Allocator.Template);
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Allocator.Template)) yield return w;
                     break;
                 case CompiledConstructorCall v:
-                    TryFunctionCallback(v.Function.Template);
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Function.Template)) yield return w;
                     break;
                 case CompiledDesctructorCall v:
-                    TryFunctionCallback(v.Function.Template);
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Function.Template)) yield return w;
                     break;
                 case CompiledFunctionReference v:
-                    TryFunctionCallback(v.Function.Template);
+                    foreach (CompiledFunction w in TryFunctionCallback(v.Function.Template)) yield return w;
                     break;
             }
-            callback(statement);
-            return true;
-        });
+        }
     }
 
-    public static bool Visit(IEnumerable<CompiledStatement> statement, Func<CompiledStatement, bool> callback)
+    public static IEnumerable<CompiledStatement> EnumerateNodes(CompilerResult compilerResult, Predicate<CompiledStatement> predicate)
     {
+        if (!compilerResult.Statements.IsDefault)
+        {
+            foreach (CompiledStatement w in EnumerateNodes(compilerResult.Statements, predicate, StatementWalkerOptions.IncludingLambdaBodies)) yield return w;
+        }
+
+        if (!compilerResult.Enums.IsDefault)
+        {
+            foreach (CompiledExpression? item in compilerResult.Enums.SelectMany(v => v.Members).Select(v => v.Value))
+            {
+                foreach (CompiledStatement w in EnumerateNodes(item, predicate, StatementWalkerOptions.IncludingLambdaBodies)) yield return w;
+            }
+        }
+
+        if (!compilerResult.Functions.IsDefault)
+        {
+            foreach (CompiledFunction function in compilerResult.Functions)
+            {
+                foreach (CompiledStatement w in EnumerateNodes(function.Body, predicate, StatementWalkerOptions.IncludingLambdaBodies)) yield return w;
+            }
+        }
+    }
+
+    public static IEnumerable<CompiledStatement> EnumerateNodes(IEnumerable<CompiledStatement>? statement, Predicate<CompiledStatement> predicate, StatementWalkerOptions options = StatementWalkerOptions.None)
+    {
+        if (statement is null) yield break;
         foreach (CompiledStatement item in statement)
         {
-            if (!Visit(item, callback)) return false;
+            foreach (CompiledStatement w in EnumerateNodes(item, predicate, options)) yield return w;
         }
-        return true;
     }
-    public static bool Visit(CompiledStatement statement, Func<CompiledStatement, bool> callback)
+    public static IEnumerable<CompiledStatement> EnumerateNodes(CompiledStatement? statement, Predicate<CompiledStatement> predicate, StatementWalkerOptions options = StatementWalkerOptions.None)
     {
-        return statement switch
+        if (statement is null) yield break;
+        if (!predicate(statement)) yield break;
+        yield return statement;
+
+        switch (statement)
         {
-            CompiledExpression v => Visit(v, callback),
-            CompiledEmptyStatement => true,
-            CompiledBlock v => Visit(v, callback),
-            CompiledIf v => Visit(v, callback),
-            CompiledElse v => Visit(v, callback),
-            CompiledVariableDefinition v => Visit(v, callback),
-            CompiledCrash v => Visit(v, callback),
-            CompiledDelete v => Visit(v, callback),
-            CompiledReturn v => Visit(v, callback),
-            CompiledBreak v => Visit(v, callback),
-            CompiledGoto v => Visit(v, callback),
-            CompiledLabelDeclaration v => Visit(v, callback),
-            CompiledWhileLoop v => Visit(v, callback),
-            CompiledForLoop v => Visit(v, callback),
-            CompiledSetter v => Visit(v, callback),
-            CompiledCleanup v => Visit(v, callback),
-            _ => throw new UnreachableException(statement.GetType().Name),
-        };
+            case CompiledTypeExpression v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledDummyExpression v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Statement, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledList v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Values, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledRuntimeCall v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Function, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Arguments, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledFunctionCall v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Arguments, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledExternalFunctionCall v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Arguments, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledSizeof v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Of, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledArgument v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Cleanup, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledBinaryOperatorCall v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Left, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Right, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledUnaryOperatorCall v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Expression, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledConstantValue v:
+            {
+                break;
+            }
+            case CompiledGetReference v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Of, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledDereference v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Address, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledStackAllocation v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.TypeExpression, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledHeapAllocation v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.TypeExpression, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledConstructorCall v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Object, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Arguments, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledDesctructorCall v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledCast v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.TypeExpression, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledReinterpretation v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.TypeExpression, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledElementAccess v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Base, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Index, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledVariableAccess: break;
+            case CompiledExpressionVariableAccess: break;
+            case CompiledParameterAccess: break;
+            case CompiledFieldAccess v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Object, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledRegisterAccess: break;
+            case CompiledString v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Allocator, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledStackString: break;
+            case CompiledFunctionReference: break;
+            case CompiledLabelReference: break;
+            case CompiledCompilerVariableAccess: break;
+            case CompiledLambda v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Allocator, predicate, options)) yield return w;
+                if (options.HasFlag(StatementWalkerOptions.IncludingLambdaBodies))
+                {
+                    foreach (CompiledStatement w in EnumerateNodes(v.Block, predicate, options)) yield return w;
+                }
+                break;
+            }
+            case CompiledEnumMemberAccess v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.EnumMember.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledMeowExpression v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Statements, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledEmptyStatement: break;
+            case CompiledBlock v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Statements, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledIf v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Condition, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Body, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Next, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledElse v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Body, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledVariableDefinition v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.TypeExpression, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.InitialValue, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Cleanup, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledCrash v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledDelete v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Cleanup, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledReturn v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledBreak: break;
+            case CompiledGoto v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledLabelDeclaration: break;
+            case CompiledWhileLoop v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Condition, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Body, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledForLoop v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Initialization, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Condition, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Step, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Body, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledSetter v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Target, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledCleanup: break;
+            default: throw new NotImplementedException(statement.GetType().Name);
+        }
     }
-    static bool Visit(CompiledCleanup statement, Func<CompiledStatement, bool> callback)
+    public static IEnumerable<CompiledStatement> EnumerateNodes(CompiledTypeExpression? statement, Predicate<CompiledStatement> predicate, StatementWalkerOptions options = StatementWalkerOptions.None)
     {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledExpression statement, Func<CompiledStatement, bool> callback)
-    {
-        return statement switch
-        {
-            CompiledDummyExpression v => Visit(v.Statement, callback),
-            CompiledList v => Visit(v, callback),
-            CompiledRuntimeCall v => Visit(v, callback),
-            CompiledFunctionCall v => Visit(v, callback),
-            CompiledExternalFunctionCall v => Visit(v, callback),
-            CompiledSizeof v => Visit(v, callback),
-            CompiledArgument v => Visit(v, callback),
-            CompiledBinaryOperatorCall v => Visit(v, callback),
-            CompiledUnaryOperatorCall v => Visit(v, callback),
-            CompiledConstantValue v => Visit(v, callback),
-            CompiledGetReference v => Visit(v, callback),
-            CompiledDereference v => Visit(v, callback),
-            CompiledStackAllocation v => Visit(v, callback),
-            CompiledHeapAllocation v => Visit(v, callback),
-            CompiledConstructorCall v => Visit(v, callback),
-            CompiledDesctructorCall v => Visit(v, callback),
-            CompiledCast v => Visit(v, callback),
-            CompiledReinterpretation v => Visit(v, callback),
-            CompiledElementAccess v => Visit(v, callback),
-            CompiledVariableAccess v => Visit(v, callback),
-            CompiledExpressionVariableAccess v => Visit(v, callback),
-            CompiledParameterAccess v => Visit(v, callback),
-            CompiledFieldAccess v => Visit(v, callback),
-            CompiledRegisterAccess v => Visit(v, callback),
-            CompiledString v => Visit(v, callback),
-            CompiledStackString v => Visit(v, callback),
-            CompiledFunctionReference v => Visit(v, callback),
-            CompiledLabelReference v => Visit(v, callback),
-            CompiledCompilerVariableAccess v => Visit(v, callback),
-            CompiledLambda v => Visit(v, callback),
-            CompiledEnumMemberAccess v => Visit(v, callback),
-            CompiledMeowExpression v => Visit(v, callback),
-            _ => throw new UnreachableException(),
-        };
-    }
-    static bool Visit(CompiledMeowExpression statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledLambda statement, Func<CompiledStatement, bool> callback)
-    {
-        if (statement.Allocator is not null) if (!Visit(statement.Allocator, callback)) return false;
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Block, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledEnumMemberAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.EnumMember.Value, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledTypeExpression statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
+        if (statement is null) yield break;
+        if (!predicate(statement)) yield break;
+        yield return statement;
+
         switch (statement)
         {
             case CompiledAliasTypeExpression v:
-                return Visit(v.Value, callback);
-            case CompiledEnumTypeExpression v:
-                return true;
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledEnumTypeExpression: break;
             case CompiledArrayTypeExpression v:
-                if (!Visit(v.Of, callback)) return false;
-                if (v.Length is not null) if (!Visit(v.Length, callback)) return false;
-                return true;
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Of, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Length, predicate, options)) yield return w;
+                break;
+            }
             case CompiledFunctionTypeExpression v:
-                if (!Visit(v.ReturnType, callback)) return false;
-                foreach (CompiledTypeExpression i in v.Parameters) if (!Visit(i, callback)) return false;
-                return true;
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.ReturnType, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Parameters, predicate, options)) yield return w;
+                break;
+            }
             case CompiledPointerTypeExpression v:
-                return Visit(v.To, callback);
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.To, predicate, options)) yield return w;
+                break;
+            }
             case CompiledReferenceTypeExpression v:
-                return Visit(v.To, callback);
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.To, predicate, options)) yield return w;
+                break;
+            }
             case CompiledStructTypeExpression v:
-                foreach (KeyValuePair<string, CompiledTypeExpression> i in v.TypeArguments) if (!Visit(i.Value, callback)) return false;
-                return true;
-            case CompiledBuiltinTypeExpression:
-            case CompiledGenericTypeExpression:
-                return true;
-            default:
-                throw new UnreachableException();
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.TypeArguments.Values, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledBuiltinTypeExpression: break;
+            case CompiledGenericTypeExpression: break;
+            default: throw new UnreachableException();
         }
-    }
-    static bool Visit(CompiledBlock statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Statements, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledSetter statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Target, callback)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledIf statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Condition, callback)) return false;
-        if (!Visit(statement.Body, callback)) return false;
-        if (statement.Next is not null) if (!Visit(statement.Next, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledElse statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Body, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledVariableDefinition statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.TypeExpression, callback)) return false;
-        if (statement.InitialValue is not null) if (!Visit(statement.InitialValue, callback)) return false;
-        if (statement.Cleanup is not null) if (!Visit(statement.Cleanup, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledCrash statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledDelete statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledReturn statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (statement.Value is not null) if (!Visit(statement.Value, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledBreak statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledGoto statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledLabelDeclaration statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledWhileLoop statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Condition, callback)) return false;
-        if (!Visit(statement.Body, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledForLoop statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (statement.Initialization is not null) if (!Visit(statement.Initialization, callback)) return false;
-        if (statement.Condition is not null) if (!Visit(statement.Condition, callback)) return false;
-        if (statement.Step is not null) if (!Visit(statement.Step, callback)) return false;
-        if (!Visit(statement.Body, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledList statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Values, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledRuntimeCall statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Function, callback)) return false;
-        if (!Visit(statement.Arguments, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledFunctionCall statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Arguments, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledExternalFunctionCall statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Arguments, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledSizeof statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Of, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledArgument statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        if (!Visit(statement.Cleanup, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledBinaryOperatorCall statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Left, callback)) return false;
-        if (!Visit(statement.Right, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledUnaryOperatorCall statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Expression, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledConstantValue statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledGetReference statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Of, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledDereference statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Address, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledStackAllocation statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.TypeExpression, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledHeapAllocation statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.TypeExpression, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledConstructorCall statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Object, callback)) return false;
-        if (!Visit(statement.Arguments, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledDesctructorCall statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledCast statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        if (!Visit(statement.TypeExpression, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledReinterpretation statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Value, callback)) return false;
-        if (!Visit(statement.TypeExpression, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledElementAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Base, callback)) return false;
-        if (!Visit(statement.Index, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledExpressionVariableAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledVariableAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledParameterAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledFieldAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Object, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledRegisterAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledString statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        if (!Visit(statement.Allocator, callback)) return false;
-        return true;
-    }
-    static bool Visit(CompiledStackString statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledFunctionReference statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledLabelReference statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
-    }
-    static bool Visit(CompiledCompilerVariableAccess statement, Func<CompiledStatement, bool> callback)
-    {
-        if (!callback(statement)) return false;
-        return true;
     }
 }

@@ -11,16 +11,19 @@ public class AnyCallExpression : Expression,
     public StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition>? Reference { get; set; }
 
     public Expression Expression { get; }
+    public TypeArgumentListExpression? TypeArguments { get; }
     public ArgumentListExpression Arguments { get; }
 
     public override Position Position => new(Expression, Arguments);
 
     public AnyCallExpression(
         Expression expression,
+        TypeArgumentListExpression? s,
         ArgumentListExpression arguments,
         Uri file) : base(file)
     {
         Expression = expression;
+        TypeArguments = s;
         Arguments = arguments;
     }
 
@@ -31,6 +34,7 @@ public class AnyCallExpression : Expression,
         result.Append(SurroundingBrackets?.Start);
 
         result.Append(Expression);
+        result.Append(TypeArguments?.ToString());
         result.Append(Arguments.ToString());
 
         result.Append(SurroundingBrackets?.End);

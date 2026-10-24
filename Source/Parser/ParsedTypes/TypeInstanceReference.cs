@@ -8,6 +8,9 @@ public class TypeInstanceReference : TypeInstance, IEquatable<TypeInstanceRefere
     /// <summary> Set by the compiler </summary>
     public ReferenceType? CompiledType { get; set; }
 
+    /// <summary> Set by the compiler </summary>
+    public CompiledReferenceTypeExpression? CompiledTypeExpression { get; set; }
+
     public TypeInstance To { get; }
     public Token Operator { get; }
 

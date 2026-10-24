@@ -8,35 +8,37 @@ public class Diagnostic : IEquatable<Diagnostic>
     public ImmutableArray<DiagnosticRelatedInformation> RelatedInformation { get; }
     public ImmutableArray<Diagnostic> SubErrors { get; }
     public bool IgnoreOnPartialSource { get; }
+    public bool IsTellingNothing { get; }
 
 #if DEBUG && !UNITY
     bool IsDebugged;
 #endif
 
-    protected Diagnostic(DiagnosticsLevel level, string message, bool @break, bool ignoreOnPartialSource, ImmutableArray<Diagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation)
+    protected Diagnostic(DiagnosticsLevel level, string message, bool @break, bool ignoreOnPartialSource, bool isTellingNothing, ImmutableArray<Diagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation)
     {
         Level = level;
         Message = message;
         SubErrors = suberrors;
         RelatedInformation = relatedInformation;
         IgnoreOnPartialSource = ignoreOnPartialSource;
+        IsTellingNothing = isTellingNothing;
 
         if (@break)
         { Break(); }
     }
 
     public Diagnostic(DiagnosticsLevel level, string message, ImmutableArray<Diagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation)
-        : this(level, message, level == DiagnosticsLevel.Error, false, suberrors, relatedInformation) { }
+        : this(level, message, level == DiagnosticsLevel.Error, false, false, suberrors, relatedInformation) { }
 
-    public virtual Diagnostic WithSuberrors(Diagnostic? suberror) => suberror is null ? this : new(Level, Message, false, IgnoreOnPartialSource, ImmutableArray.Create(suberror), RelatedInformation);
+    public virtual Diagnostic WithSuberrors(Diagnostic? suberror) => suberror is null ? this : new(Level, Message, false, IgnoreOnPartialSource, IsTellingNothing, ImmutableArray.Create(suberror), RelatedInformation);
     public virtual Diagnostic WithSuberrors(params Diagnostic?[] suberrors) => WithSuberrors(suberrors.Where(v => v is not null).ToImmutableArray()!);
     public virtual Diagnostic WithSuberrors(IEnumerable<Diagnostic?> suberrors) => WithSuberrors(suberrors.Where(v => v is not null).ToImmutableArray()!);
-    public virtual Diagnostic WithSuberrors(ImmutableArray<Diagnostic> suberrors) => suberrors.IsDefaultOrEmpty ? this : new(Level, Message, false, IgnoreOnPartialSource, SubErrors.AddRange(suberrors), RelatedInformation);
+    public virtual Diagnostic WithSuberrors(ImmutableArray<Diagnostic> suberrors) => suberrors.IsDefaultOrEmpty ? this : new(Level, Message, false, IgnoreOnPartialSource, IsTellingNothing, SubErrors.AddRange(suberrors), RelatedInformation);
 
-    public virtual Diagnostic WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Level, Message, false, IgnoreOnPartialSource, SubErrors, ImmutableArray.Create(relatedInfo));
+    public virtual Diagnostic WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Level, Message, false, IgnoreOnPartialSource, IsTellingNothing, SubErrors, ImmutableArray.Create(relatedInfo));
     public virtual Diagnostic WithRelatedInfo(params DiagnosticRelatedInformation?[] relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);
     public virtual Diagnostic WithRelatedInfo(IEnumerable<DiagnosticRelatedInformation?> relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);
-    public virtual Diagnostic WithRelatedInfo(ImmutableArray<DiagnosticRelatedInformation> relatedInfo) => relatedInfo.IsDefaultOrEmpty ? this : new(Level, Message, false, IgnoreOnPartialSource, SubErrors, RelatedInformation.AddRange(relatedInfo));
+    public virtual Diagnostic WithRelatedInfo(ImmutableArray<DiagnosticRelatedInformation> relatedInfo) => relatedInfo.IsDefaultOrEmpty ? this : new(Level, Message, false, IgnoreOnPartialSource, IsTellingNothing, SubErrors, RelatedInformation.AddRange(relatedInfo));
 
     [DoesNotReturn]
     public virtual void Throw() => throw ToException();
@@ -44,13 +46,13 @@ public class Diagnostic : IEquatable<Diagnostic>
     public virtual LanguageException ToException() => new(Message, SubErrors.ToImmutableArray(v => v.ToException() as Exception));
 
     public static Diagnostic Internal(string message, bool @break = true)
-        => new(DiagnosticsLevel.Error, message, @break, false, ImmutableArray<Diagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty);
+        => new(DiagnosticsLevel.Error, message, @break, false, false, ImmutableArray<Diagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty);
 
-    public static Diagnostic Error(string message, bool @break = true, bool ignoreOnPartialSource = false)
-        => new(DiagnosticsLevel.Error, message, @break, ignoreOnPartialSource, ImmutableArray<Diagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty);
+    public static Diagnostic Error(string message, bool @break = true, bool ignoreOnPartialSource = false, bool isTellingNothing = false)
+        => new(DiagnosticsLevel.Error, message, @break, ignoreOnPartialSource, isTellingNothing, ImmutableArray<Diagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty);
 
-    public static Diagnostic Warning(string message, bool @break = true, bool ignoreOnPartialSource = false)
-        => new(DiagnosticsLevel.Warning, message, @break, ignoreOnPartialSource, ImmutableArray<Diagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty);
+    public static Diagnostic Warning(string message, bool @break = true, bool ignoreOnPartialSource = false, bool isTellingNothing = false)
+        => new(DiagnosticsLevel.Warning, message, @break, ignoreOnPartialSource, isTellingNothing, ImmutableArray<Diagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty);
 
     public virtual Diagnostic Break()
     {
@@ -95,7 +97,46 @@ public class Diagnostic : IEquatable<Diagnostic>
     {
         LanguageExceptionAt ex => ex.ToDiagnostic(),
         LanguageException ex => ex.ToDiagnostic(),
-        AggregateException ex => new Diagnostic(DiagnosticsLevel.Error, ex.Message, false, false, ex.InnerExceptions is null ? ImmutableArray<Diagnostic>.Empty : ex.InnerExceptions.ToImmutableArray(FromException), ImmutableArray<DiagnosticRelatedInformation>.Empty),
-        _ => new Diagnostic(DiagnosticsLevel.Error, exception.Message, false, false, exception.InnerException is null ? ImmutableArray<Diagnostic>.Empty : ImmutableArray.Create(FromException(exception.InnerException)), ImmutableArray<DiagnosticRelatedInformation>.Empty)
+        AggregateException ex => new Diagnostic(DiagnosticsLevel.Error, ex.Message, false, false, false, ex.InnerExceptions is null ? ImmutableArray<Diagnostic>.Empty : ex.InnerExceptions.ToImmutableArray(FromException), ImmutableArray<DiagnosticRelatedInformation>.Empty),
+        _ => new Diagnostic(DiagnosticsLevel.Error, exception.Message, false, false, false, exception.InnerException is null ? ImmutableArray<Diagnostic>.Empty : ImmutableArray.Create(FromException(exception.InnerException)), ImmutableArray<DiagnosticRelatedInformation>.Empty)
     };
+
+    void ReduceNonTellingInternal(List<Diagnostic> result)
+    {
+        if (IsTellingNothing)
+        {
+            foreach (Diagnostic subError in SubErrors)
+            {
+                subError.ReduceNonTellingInternal(result);
+            }
+        }
+        else
+        {
+            result.Add(this);
+        }
+    }
+
+    public IEnumerable<Diagnostic> ReduceNonTelling()
+    {
+        List<Diagnostic> result = new();
+
+        if (IsTellingNothing)
+        {
+            foreach (Diagnostic subError in SubErrors)
+            {
+                subError.ReduceNonTellingInternal(result);
+            }
+        }
+        else
+        {
+            result.Add(this);
+        }
+
+        if (result.Count == 0)
+        {
+            result.Add(this);
+        }
+
+        return result;
+    }
 }

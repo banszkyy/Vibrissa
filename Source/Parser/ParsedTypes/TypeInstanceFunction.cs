@@ -9,6 +9,9 @@ public class TypeInstanceFunction : TypeInstance, IEquatable<TypeInstanceFunctio
     /// <summary> Set by the compiler </summary>
     public FunctionType? CompiledType { get; set; }
 
+    /// <summary> Set by the compiler </summary>
+    public CompiledFunctionTypeExpression? CompiledTypeExpression { get; set; }
+
     public TypeInstance FunctionReturnType { get; }
     public ImmutableArray<TypeInstance> FunctionParameterTypes { get; }
     public Token? ClosureModifier { get; }

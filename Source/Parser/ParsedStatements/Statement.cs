@@ -2,7 +2,7 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Parser.Statements;
 
-public abstract class Statement : IPositioned, IInFile, ILocated
+public abstract class Statement : IPositioned, IInFile, ILocated, ISmallNode
 {
     /// <summary>
     /// Set by the <see cref="Parser"/>

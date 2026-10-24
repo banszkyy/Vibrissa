@@ -32,6 +32,7 @@ class OrderedDiagnosticCollection : IEnumerable<OrderedDiagnostic>
         diagnostic.Diagnostic.File,
         false,
         diagnostic.Diagnostic.IgnoreOnPartialSource,
+        diagnostic.Diagnostic.IsTellingNothing,
         diagnostic.SubDiagnostics.ToImmutableArray(Compile),
         diagnostic.Diagnostic.RelatedInformation,
         diagnostic.Diagnostic.Tag

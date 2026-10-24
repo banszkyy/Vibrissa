@@ -78,7 +78,7 @@ public partial class StatementCompiler
                 {
                     if (perfectus < ConstantPerfectus.Name ||
                         notFoundError is null)
-                    { notFoundError = new PossibleDiagnostic($"Constant `{_constant.Identifier}` not found"); }
+                    { notFoundError = new PossibleDiagnostic($"Constant `{_constant.Identifier}` not found", isTellingNothing: true); }
                     continue;
                 }
                 perfectus = ConstantPerfectus.Name;
@@ -116,7 +116,7 @@ public partial class StatementCompiler
             {
                 if (perfectus < ConstantPerfectus.Name ||
                     notFoundError is null)
-                { notFoundError = new PossibleDiagnostic($"Constant `{identifier}` not found"); }
+                { notFoundError = new PossibleDiagnostic($"Constant `{identifier}` not found", isTellingNothing: true); }
                 continue;
             }
             perfectus = ConstantPerfectus.Name;
@@ -157,7 +157,7 @@ public partial class StatementCompiler
 
         if (constant is null)
         {
-            notFoundError = new PossibleDiagnostic($"Constant `{identifier}` not found");
+            notFoundError = new PossibleDiagnostic($"Constant `{identifier}` not found", isTellingNothing: true);
             return false;
         }
 
@@ -316,7 +316,7 @@ public partial class StatementCompiler
         Action<TemplateInstance<CompiledFunctionDefinition>>? addCompilable = null)
     {
         ImmutableArray<CompiledExpression> arguments = ImmutableArray.Create(prevType, indexType);
-        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(BuiltinFunctionIdentifiers.IndexerGet, arguments, relevantFile, null, addCompilable);
+        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(BuiltinFunctionIdentifiers.IndexerGet, arguments, null, relevantFile, null, addCompilable);
         return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
             GetFunctions(),
             "function",
@@ -340,7 +340,7 @@ public partial class StatementCompiler
         Action<TemplateInstance<CompiledFunctionDefinition>>? addCompilable = null)
     {
         ImmutableArray<CompiledExpression> arguments = ImmutableArray.Create(prevType, indexType, elementType);
-        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(BuiltinFunctionIdentifiers.IndexerSet, arguments, relevantFile, null, addCompilable);
+        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(BuiltinFunctionIdentifiers.IndexerSet, arguments, null, relevantFile, null, addCompilable);
         return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
             GetFunctions(),
             "function",
@@ -370,7 +370,7 @@ public partial class StatementCompiler
             CompilableFunctions
             .Where(v => v.Template.Definition.BuiltinFunctionName == builtinName);
 
-        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(null as string, arguments, relevantFile, null, addCompilable);
+        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(null as string, arguments, null, relevantFile, null, addCompilable);
 
         return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
             new Functions<CompiledFunctionDefinition>()
@@ -400,6 +400,7 @@ public partial class StatementCompiler
         FunctionQuery<CompiledOperatorDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledOperatorDefinition, string, string>(
             identifier,
             arguments,
+            null,
             relevantFile,
             null,
             addCompilable);
@@ -442,7 +443,7 @@ public partial class StatementCompiler
             "general function",
             CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.ToString()), null),
 
-            FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, relevantFile, null, addCompilable),
+            FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, null, relevantFile, null, addCompilable),
 
             out result,
             out error
@@ -476,7 +477,7 @@ public partial class StatementCompiler
             "general function",
             CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.ToString()), null),
 
-            FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, relevantFile, null, addCompilable),
+            FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, null, relevantFile, null, addCompilable),
 
             out result,
             out error
@@ -501,7 +502,7 @@ public partial class StatementCompiler
         }
 
         return GetFunction(
-            FunctionQuery.Create<CompiledFunctionDefinition, string, string>(identifier, functionType.Parameters, null, functionType.ReturnType, addCompilable),
+            FunctionQuery.Create<CompiledFunctionDefinition, string, string>(identifier, functionType.Parameters, null, null, functionType.ReturnType, addCompilable),
             CompiledFunctionDefinition.ToReadable(identifier, functionType.Parameters.Select(v => v.ToString()), functionType.ReturnType.ToString()),
             out result,
             out error
@@ -511,6 +512,7 @@ public partial class StatementCompiler
     bool GetFunction(
         string identifier,
         ImmutableArray<CompiledExpression> arguments,
+        ImmutableArray<GeneralType>? typeArguments,
         Uri file,
 
         [NotNullWhen(true)] out FunctionQueryResult<CompiledFunctionDefinition>? result,
@@ -520,6 +522,7 @@ public partial class StatementCompiler
         FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(
             identifier,
             arguments,
+            typeArguments,
             file,
             null,
             addCompilable);
@@ -794,7 +797,7 @@ public partial class StatementCompiler
 
         if (candidates.Count == 0)
         {
-            error = new PossibleDiagnostic($"Struct `{structName}` not found");
+            error = new PossibleDiagnostic($"Struct `{structName}` not found", isTellingNothing: true);
             result = null;
             return false;
         }
@@ -809,7 +812,7 @@ public partial class StatementCompiler
 
         if (candidates[0].Errors.Count > 0)
         {
-            error = new PossibleDiagnostic($"Struct `{structName}` not found", candidates[0].Errors.ToImmutableArray());
+            error = new PossibleDiagnostic($"Struct `{structName}` not found", candidates[0].Errors.ToImmutableArray(), isTellingNothing: true);
             result = candidates[0].Definition;
             return false;
         }
@@ -910,7 +913,7 @@ public partial class StatementCompiler
 
         if (candidates.Count == 0)
         {
-            error = new PossibleDiagnostic($"Alias `{aliasName}` not found");
+            error = new PossibleDiagnostic($"Alias `{aliasName}` not found", isTellingNothing: true);
             result = null;
             return false;
         }
@@ -925,7 +928,7 @@ public partial class StatementCompiler
 
         if (candidates[0].Errors.Count > 0)
         {
-            error = new PossibleDiagnostic($"Alias `{aliasName}` not found", candidates[0].Errors.ToImmutableArray());
+            error = new PossibleDiagnostic($"Alias `{aliasName}` not found", candidates[0].Errors.ToImmutableArray(), isTellingNothing: true);
             result = candidates[0].Definition;
             return false;
         }
@@ -1048,7 +1051,7 @@ public partial class StatementCompiler
 
         if (candidates.Count == 0)
         {
-            error = new PossibleDiagnostic($"Enum `{enumName}` not found");
+            error = new PossibleDiagnostic($"Enum `{enumName}` not found", isTellingNothing: true);
             result = null;
             return false;
         }
@@ -1063,7 +1066,7 @@ public partial class StatementCompiler
 
         if (candidates[0].Errors.Count > 0)
         {
-            error = new PossibleDiagnostic($"Enum `{enumName}` not found", candidates[0].Errors.ToImmutableArray());
+            error = new PossibleDiagnostic($"Enum `{enumName}` not found", candidates[0].Errors.ToImmutableArray(), isTellingNothing: true);
             result = candidates[0].Definition;
             return false;
         }
@@ -1114,7 +1117,7 @@ public partial class StatementCompiler
             }
         }
 
-        error = new PossibleDiagnostic($"Variable `{variableName}` not found");
+        error = new PossibleDiagnostic($"Variable `{variableName}` not found", isTellingNothing: true);
         compiledVariable = null;
         return false;
     }
@@ -1194,7 +1197,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        error = error_ ?? new PossibleDiagnostic($"Global variable `{variableName}` not found");
+        error = error_ ?? new PossibleDiagnostic($"Global variable `{variableName}` not found", isTellingNothing: true);
         result = null;
         return false;
     }
@@ -1213,7 +1216,7 @@ public partial class StatementCompiler
             }
         }
 
-        error = new PossibleDiagnostic($"Parameter `{parameterName}` not found");
+        error = new PossibleDiagnostic($"Parameter `{parameterName}` not found", isTellingNothing: true);
         parameter = null;
         return false;
     }
@@ -1236,7 +1239,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        error = new PossibleDiagnostic($"Instruction label `{identifier}` not found");
+        error = new PossibleDiagnostic($"Instruction label `{identifier}` not found", isTellingNothing: true);
         instructionLabel = null;
         return false;
     }
@@ -1331,7 +1334,7 @@ public partial class StatementCompiler
 
         {
             if (destination.Is(out PointerType? dstPointer) &&
-                source.Is(out FunctionType? srcFunction)
+                source.Is(out FunctionType? _)
                 && dstPointer.To.SameAs(BasicType.Any))
             {
                 castLevel = CastLevel.Assignable;
@@ -1861,6 +1864,7 @@ public partial class StatementCompiler
         if (!Frames.Last.IsTemplateInstance) expression.CompiledType = type;
         return type;
     }
+
     TType SetStatementType<TType>(TypeInstance expression, TType type)
         where TType : GeneralType
     {
@@ -1922,6 +1926,48 @@ public partial class StatementCompiler
 
         return type;
     }
+
+    void SetStatementType(TypeInstance expression, CompiledTypeExpression type)
+    {
+        switch (expression, type)
+        {
+            case (TypeInstanceFunction v, CompiledFunctionTypeExpression w): SetStatementType(v, w); break;
+            case (TypeInstancePointer v, CompiledPointerTypeExpression w): SetStatementType(v, w); break;
+            case (TypeInstanceReference v, CompiledReferenceTypeExpression w): SetStatementType(v, w); break;
+            case (TypeInstanceStackArray v, CompiledArrayTypeExpression w): SetStatementType(v, w); break;
+            case (TypeInstanceSimple v, _): SetStatementType(v, type); break;
+            default: break;
+        }
+    }
+    void SetStatementType(TypeInstanceFunction expression, CompiledFunctionTypeExpression type)
+    {
+        if (Frames.Last.IsTemplateInstance) return;
+        expression.CompiledTypeExpression = type;
+    }
+    void SetStatementType(TypeInstancePointer expression, CompiledPointerTypeExpression type)
+    {
+        if (Frames.Last.IsTemplateInstance) return;
+        expression.CompiledTypeExpression = type;
+        SetStatementType(expression.To, type.To);
+    }
+    void SetStatementType(TypeInstanceReference expression, CompiledReferenceTypeExpression type)
+    {
+        if (Frames.Last.IsTemplateInstance) return;
+        expression.CompiledTypeExpression = type;
+        SetStatementType(expression.To, type.To);
+    }
+    void SetStatementType(TypeInstanceStackArray expression, CompiledArrayTypeExpression type)
+    {
+        if (Frames.Last.IsTemplateInstance) return;
+        expression.CompiledTypeExpression = type;
+        SetStatementType(expression.StackArrayOf, type.Of);
+    }
+    void SetStatementType(TypeInstanceSimple expression, CompiledTypeExpression type)
+    {
+        if (Frames.Last.IsTemplateInstance) return;
+        expression.CompiledTypeExpression = type;
+    }
+
     void TrySetStatementReference<TRef>(Statement statement, TRef? reference) where TRef : class
     {
         if (statement is IReferenceableTo<TRef> v1) SetStatementReference(v1, reference);
@@ -3193,7 +3239,7 @@ public partial class StatementCompiler
         if (!context.TryGetVariable(identifier.Variable, out value))
         {
             value = CompiledValue.Null;
-            error = new PossibleDiagnostic($"Variable `{identifier.Variable.Identifier}` not found", identifier);
+            error = new PossibleDiagnostic($"Variable `{identifier.Variable.Identifier}` not found", identifier, isTellingNothing: true);
             return false;
         }
 
@@ -3205,7 +3251,7 @@ public partial class StatementCompiler
         if (!context.TryGetParameter(identifier.Parameter.Identifier, out value))
         {
             value = CompiledValue.Null;
-            error = new PossibleDiagnostic($"Parameter `{identifier.Parameter.Identifier}` not found", identifier);
+            error = new PossibleDiagnostic($"Parameter `{identifier.Parameter.Identifier}` not found", identifier, isTellingNothing: true);
             return false;
         }
 
@@ -3738,7 +3784,7 @@ public partial class StatementCompiler
         {
             if (!context.TrySetVariable(targetVariable.Variable, value))
             {
-                error = new PossibleDiagnostic($"Variable `{targetVariable.Variable}` not found", targetVariable);
+                error = new PossibleDiagnostic($"Variable `{targetVariable.Variable}` not found", targetVariable, isTellingNothing: true);
                 return false;
             }
         }
@@ -3746,7 +3792,7 @@ public partial class StatementCompiler
         {
             if (!context.TrySetParameter(targetParameter.Parameter.Identifier, value))
             {
-                error = new PossibleDiagnostic($"Variable `{targetParameter.Parameter.Identifier}` not found", targetParameter);
+                error = new PossibleDiagnostic($"Variable `{targetParameter.Parameter.Identifier}` not found", targetParameter, isTellingNothing: true);
                 return false;
             }
         }

@@ -72,7 +72,7 @@ public partial class Tokenizer
             {
                 TrimmedRange trimmedRange = preprocessorResult.TrimmedRanges[k];
 
-                Tokens.Add(new Token(TokenType.PreprocessSkipped, string.Empty, new Position(new Range<SinglePosition>(new SinglePosition(CurrentLine, CurrentColumn), new SinglePosition(CurrentLine + trimmedRange.Lines, 0)), new Range<int>(j, j + trimmedRange.Absolute))));
+                Tokens.Add(new Token(TokenType.PreprocessSkipped, string.Empty, new Position(new Range<SinglePosition>(new SinglePosition(CurrentLine, CurrentColumn), new SinglePosition(CurrentLine + trimmedRange.Lines, 1)), new Range<int>(j, j + trimmedRange.Absolute))));
 
                 j += trimmedRange.Absolute;
                 CurrentLine += trimmedRange.Lines;

@@ -8,6 +8,9 @@ public class TypeInstanceStackArray : TypeInstance, IEquatable<TypeInstanceStack
     /// <summary> Set by the compiler </summary>
     public ArrayType? CompiledType { get; set; }
 
+    /// <summary> Set by the compiler </summary>
+    public CompiledArrayTypeExpression? CompiledTypeExpression { get; set; }
+
     public Expression? StackArraySize { get; }
     public TypeInstance StackArrayOf { get; }
     public TokenPair SquareBrackets { get; }

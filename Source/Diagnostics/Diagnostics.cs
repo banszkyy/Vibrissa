@@ -135,11 +135,15 @@ public class DiagnosticsCollection : IReadOnlyDiagnosticsCollection
         return false;
     }
 
-    public void AddRange(IEnumerable<DiagnosticAt> diagnostic)
-    { foreach (DiagnosticAt item in diagnostic) Add(item); }
+    public void AddRange(IEnumerable<DiagnosticAt>? diagnostic)
+    {
+        if (diagnostic is not null) foreach (DiagnosticAt item in diagnostic) Add(item);
+    }
 
-    public void AddRange(IEnumerable<Diagnostic> diagnostic)
-    { foreach (Diagnostic item in diagnostic) Add(item); }
+    public void AddRange(IEnumerable<Diagnostic>? diagnostic)
+    {
+        if (diagnostic is not null) foreach (Diagnostic item in diagnostic) Add(item);
+    }
 }
 
 public static class DiagnosticsCollectionExtensions

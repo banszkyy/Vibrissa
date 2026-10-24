@@ -11,6 +11,9 @@ public class TypeInstanceSimple : TypeInstance,
     /// <summary> Set by the compiler </summary>
     public GeneralType? CompiledType { get; set; }
 
+    /// <summary> Set by the compiler </summary>
+    public CompiledTypeExpression? CompiledTypeExpression { get; set; }
+
     public Token Identifier { get; }
     TokenPair? TypeArgumentsBrackets { get; }
     public ImmutableArray<TypeInstance>? TypeArguments { get; }

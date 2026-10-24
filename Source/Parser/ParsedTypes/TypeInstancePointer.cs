@@ -8,6 +8,9 @@ public class TypeInstancePointer : TypeInstance, IEquatable<TypeInstancePointer?
     /// <summary> Set by the compiler </summary>
     public PointerType? CompiledType { get; set; }
 
+    /// <summary> Set by the compiler </summary>
+    public CompiledPointerTypeExpression? CompiledTypeExpression { get; set; }
+
     public TypeInstance To { get; }
     public Token Operator { get; }
 

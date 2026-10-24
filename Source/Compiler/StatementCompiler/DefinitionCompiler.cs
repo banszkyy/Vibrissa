@@ -1049,7 +1049,7 @@ public partial class StatementCompiler
         }
     }
 
-    CompilerResult CompileMainFile(string file)
+    public CompilerResult CompileFile(string file)
     {
         SourceCodeManagerResult res = SourceCodeManager.Collect(file, Diagnostics, Settings.GetSourceManagerSettings() with { PreprocessorVariables = PreprocessorVariables }, Logger);
 
@@ -1058,10 +1058,14 @@ public partial class StatementCompiler
         PurgeInvalidCache(cacheHits);
 
         foreach (ParsedFile parsedFile in res.ParsedFiles)
-        { AddAST(parsedFile, parsedFile.File != res.ResolvedEntry); }
+        {
+            if (cacheHits.Contains(parsedFile.File)) continue;
+            AddAST(parsedFile, parsedFile.File != res.ResolvedEntry);
+        }
 
         foreach (ParsedFile parsedFile in res.ParsedFiles)
         {
+            if (cacheHits.Contains(parsedFile.File)) continue;
             if (parsedFile.File != res.ResolvedEntry) continue;
             TopLevelStatements.Add((parsedFile.AST.TopLevelStatements, parsedFile.File));
         }
@@ -1209,7 +1213,7 @@ public partial class StatementCompiler
         ITraceLogger? logger = null)
     {
         StatementCompiler compiler = new(settings, diagnostics, logger);
-        return compiler.CompileMainFile(file);
+        return compiler.CompileFile(file);
     }
 
     public static CompilerResult CompileExpression(

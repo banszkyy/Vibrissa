@@ -39,5 +39,5 @@ public class TypeInstanceStackArray : TypeInstance, IEquatable<TypeInstanceStack
     public override Position Position => new(StackArrayOf, StackArraySize, SquareBrackets);
 
     public override string ToString() => $"{StackArrayOf}[{StackArraySize}]";
-    public override string ToString(IReadOnlyDictionary<string, GeneralType>? typeArguments) => $"{StackArrayOf.ToString(typeArguments)}[{StackArraySize}]";
+    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments) => $"{StackArrayOf.ToString(typeArguments)}[{StackArraySize}]";
 }

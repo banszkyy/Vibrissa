@@ -45,6 +45,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 if (!ToType(v, out Type? _type2, out error)) return false;
                 il.Emit(OpCodes.Ldobj, _type2);
                 return true;
+            case TupleType v:
+                throw new NotImplementedException();
             default:
                 break;
         }
@@ -92,6 +94,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 if (!ToType(v, out Type? _type2, out error)) return false;
                 il.Emit(OpCodes.Stobj, _type2);
                 return true;
+            case TupleType v:
+                throw new NotImplementedException();
             default:
                 break;
         }
@@ -247,6 +251,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
             {
                 return EmitDefaultValue(v.Definition.Type, il, out error);
             }
+            case TupleType v:
+                throw new NotImplementedException();
             default:
                 Debugger.Break();
                 error = new PossibleDiagnostic($"Unimplemented return type `{type}`");

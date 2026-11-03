@@ -87,10 +87,10 @@ public class RuntimeException : LanguageException
                     if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
                     result.Append('[');
 
-                    if (v.Length.HasValue)
+                    if (v.Length is not null)
                     {
                         if (colored) result.SetGraphics(Ansi.ForegroundWhite);
-                        result.Append(v.Length.Value);
+                        result.Append(v.Length.ToString());
                     }
                     else if (v.Length is not null)
                     {
@@ -175,6 +175,28 @@ public class RuntimeException : LanguageException
                     if (colored) result.SetGraphics(Ansi.ForegroundGreen);
                     result.Append(enumType.ToString());
                     break;
+                case TupleType v:
+                    if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
+                    result.Append("tuple");
+
+                    if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
+                    result.Append('(');
+
+                    for (int i = 0; i < v.Items.Length; i++)
+                    {
+                        if (i > 0)
+                        {
+                            if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
+                            result.Append(", ");
+                        }
+
+                        AppendType(v.Items[i]);
+                    }
+
+                    if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
+                    result.Append(')');
+
+                    break;
                 default:
                     if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
                     result.Append(type.ToString());
@@ -238,7 +260,7 @@ public class RuntimeException : LanguageException
                         Encoding.UTF8.GetString(context.Memory.AsSpan()[i..j]);
                         result.Append('"');
                     }
-                    else if (!toArrayType.Length.HasValue)
+                    else if (toArrayType.Length is null)
                     {
                         result.Append('*');
                         result.Append(value.To<int>());
@@ -304,9 +326,9 @@ public class RuntimeException : LanguageException
             else if (type.Is(out ArrayType? arrayType))
             {
                 result.Append('[');
-                if (arrayType.Length.HasValue && StatementCompiler.FindSize(arrayType.Of, out int elementSize, out _, runtimeInfo))
+                if (arrayType.TryGetLength(out int l) && StatementCompiler.FindSize(arrayType.Of, out int elementSize, out _, runtimeInfo))
                 {
-                    for (int i = 0; i < arrayType.Length.Value; i++)
+                    for (int i = 0; i < l; i++)
                     {
                         if (i > 0) result.Append(',');
                         result.Append(' ');
@@ -353,11 +375,15 @@ public class RuntimeException : LanguageException
                     }
                 }
             }
+            else if (type.Is(out TupleType? tupleType))
+            {
+                result.Append(":3");
+            }
             else
             { result.AppendJoin(' ', value.ToArray()); }
         }
 
-        void AppendScope(CallTraceItem tracedScope, ImmutableDictionary<string, GeneralType>? typeArguments)
+        void AppendScope(CallTraceItem tracedScope, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
         {
             if (DebugInformation.IsEmpty) return;
             ImmutableArray<ScopeInformation> scopes = DebugInformation.GetScopes(tracedScope.InstructionPointer);
@@ -516,7 +542,7 @@ public class RuntimeException : LanguageException
             }
             else
             {
-                result.Append("<unknown>");
+                result.Append($"<{callTraceItem.InstructionPointer}>");
                 if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation, true))
                 {
                     result.Append(' ');

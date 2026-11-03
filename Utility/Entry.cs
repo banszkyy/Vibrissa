@@ -102,7 +102,7 @@ public static class Entry
         {
             ExternalFunctions = externalFunctions.ToImmutableArray(),
             ExternalConstants = [
-                new ExternalConstant("heap_size", BytecodeInterpreterSettings.Default.HeapSize),
+                new ExternalConstant("memory_size", BytecodeInterpreterSettings.Default.MemorySize),
                 ..config.ExternalConstants,
             ],
             AdditionalImports = config.AdditionalImports,
@@ -245,9 +245,13 @@ public static class Entry
                     }
                 }));
 
+                BytecodeInterpreterSettings bytecodeInterpreterSettings = new(BytecodeInterpreterSettings.Default)
+                {
+                };
+
                 List<ExternalConstant> externalConstants = new()
                 {
-                    new ExternalConstant("heap_size", arguments.HeapSize ?? BytecodeInterpreterSettings.Default.HeapSize )
+                    new ExternalConstant("memory_size", bytecodeInterpreterSettings.MemorySize )
                 };
 
                 CompilerSettings compilerSettings = new(CodeGeneratorForMain.DefaultCompilerSettings)
@@ -271,18 +275,12 @@ public static class Entry
                 {
                     CheckNullPointers = !arguments.NoNullcheck,
                     Optimizations = arguments.DontOptimize ? GeneratorOptimizationSettings.None : GeneratorOptimizationSettings.All,
-                    StackSize = arguments.StackSize ?? MainGeneratorSettings.Default.StackSize,
                     //ILGeneratorSettings = new IL.Generator.ILGeneratorSettings()
                     //{
                     //    AllowCrash = true,
                     //    // AllowHeap = true,
                     //    AllowPointers = true,
                     //},
-                };
-                BytecodeInterpreterSettings bytecodeInterpreterSettings = new(BytecodeInterpreterSettings.Default)
-                {
-                    StackSize = arguments.StackSize ?? BytecodeInterpreterSettings.Default.StackSize,
-                    HeapSize = arguments.HeapSize ?? BytecodeInterpreterSettings.Default.HeapSize,
                 };
 
                 try
@@ -1061,7 +1059,6 @@ public static class Entry
                 {
                     CheckNullPointers = !arguments.NoNullcheck,
                     Optimizations = arguments.DontOptimize ? GeneratorOptimizationSettings.None : GeneratorOptimizationSettings.All,
-                    StackSize = arguments.StackSize ?? MainGeneratorSettings.Default.StackSize,
                     PointerSize = nint.Size,
                 };
 

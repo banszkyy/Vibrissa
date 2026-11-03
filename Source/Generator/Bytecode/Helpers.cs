@@ -387,8 +387,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             Code.Emit(Opcode.MathSub, Register.StackPointer, InstructionOperand.Immediate(size));
             ScopeSizes.LastRef += size;
-            if (ScopeSizes.Last >= Settings.StackSize)
-            { Diagnostics.Add(Diagnostic.Warning("Stack will overflow")); }
+            //if (ScopeSizes.Last >= Settings.StackSize)
+            //{ Diagnostics.Add(Diagnostic.Warning("Stack will overflow")); }
             return;
         }
 
@@ -749,8 +749,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         Code.Emit(Opcode.Push, value);
         ScopeSizes.LastRef += (int)value.BitWidth;
-        if (ScopeSizes.Last >= Settings.StackSize)
-        { Diagnostics.Add(Diagnostic.Warning("Stack will overflow")); }
+        //if (ScopeSizes.Last >= Settings.StackSize)
+        //{ Diagnostics.Add(Diagnostic.Warning("Stack will overflow")); }
     }
     void Push(PreparationInstructionOperand value)
     {
@@ -763,8 +763,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
             PreparationInstructionOperandKind.Variable => (int)BitWidth._32,
             _ => throw new UnreachableException(),
         };
-        if (ScopeSizes.Last >= Settings.StackSize)
-        { Diagnostics.Add(Diagnostic.Warning("Stack will overflow")); }
+        //if (ScopeSizes.Last >= Settings.StackSize)
+        //{ Diagnostics.Add(Diagnostic.Warning("Stack will overflow")); }
     }
 
     void CheckPointerNull(bool preservePointer = true)
@@ -1051,42 +1051,42 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     #endregion
 
-    int GenerateString(string value, bool isAscii)
-    {
-        List<byte> res = new();
-        if (isAscii)
-        {
-            foreach (char c in value)
-            {
-                res.Add((byte)c);
-            }
-            res.Add(0);
-        }
-        else
-        {
-            foreach (char c in value)
-            {
-                res.Add((byte)(c & 0x00ff));
-                res.Add((byte)((c & 0xff00) >> 8));
-            }
-            res.Add(0);
-            res.Add(0);
-        }
-        return GenerateString(res.ToImmutableArray());
-    }
-
-    int GenerateString(ImmutableArray<byte> value)
-    {
-        int currentOffset = 0;
-        foreach (GeneratedString item in Strings)
-        {
-            if (value.SequenceEqual(item.Value))
-            {
-                return item.Offset;
-            }
-            currentOffset += item.Value.Length;
-        }
-        Strings.Add(new GeneratedString(value, currentOffset));
-        return currentOffset;
-    }
+    //int GenerateString(string value, bool isAscii)
+    //{
+    //    List<byte> res = new();
+    //    if (isAscii)
+    //    {
+    //        foreach (char c in value)
+    //        {
+    //            res.Add((byte)c);
+    //        }
+    //        res.Add(0);
+    //    }
+    //    else
+    //    {
+    //        foreach (char c in value)
+    //        {
+    //            res.Add((byte)(c & 0x00ff));
+    //            res.Add((byte)((c & 0xff00) >> 8));
+    //        }
+    //        res.Add(0);
+    //        res.Add(0);
+    //    }
+    //    return GenerateString(res.ToImmutableArray());
+    //}
+    //
+    //int GenerateString(ImmutableArray<byte> value)
+    //{
+    //    int currentOffset = 0;
+    //    foreach (GeneratedString item in Strings)
+    //    {
+    //        if (value.SequenceEqual(item.Value))
+    //        {
+    //            return item.Offset;
+    //        }
+    //        currentOffset += item.Value.Length;
+    //    }
+    //    Strings.Add(new GeneratedString(value, currentOffset));
+    //    return currentOffset;
+    //}
 }

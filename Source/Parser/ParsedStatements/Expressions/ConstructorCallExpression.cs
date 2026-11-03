@@ -13,6 +13,7 @@ public class ConstructorCallExpression : Expression, IReferenceableTo<CompiledGe
     public Token Keyword { get; }
     public TypeInstance Type { get; }
     public ArgumentListExpression Arguments { get; }
+    public InitializationExpression? Initialization { get; }
 
     public override Position Position =>
         new Position(Keyword, Type, Arguments)
@@ -22,11 +23,13 @@ public class ConstructorCallExpression : Expression, IReferenceableTo<CompiledGe
         Token keyword,
         TypeInstance typeName,
         ArgumentListExpression arguments,
+        InitializationExpression? initialization,
         Uri file) : base(file)
     {
         Keyword = keyword;
         Type = typeName;
         Arguments = arguments;
+        Initialization = initialization;
     }
 
     public override string ToString()
@@ -37,7 +40,8 @@ public class ConstructorCallExpression : Expression, IReferenceableTo<CompiledGe
         result.Append(Keyword);
         result.Append(' ');
         result.Append(Type);
-        result.Append(Arguments.ToString());
+        result.Append(Arguments);
+        result.Append(Initialization);
 
         result.Append(SurroundingBrackets?.End);
         result.Append(Semicolon);

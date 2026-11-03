@@ -163,6 +163,41 @@ public static partial class Stringifier
         builder.Append(StatementKeywords.New);
         builder.Append(' ');
         Stringify(expression.TypeExpression, builder);
+        Stringify(expression.Initialization, builder);
+    }
+    public static void Stringify(ImmutableArray<CompiledInitializationItem> expression, BuilderBase builder, StringifyContext context = default)
+    {
+        if (!expression.IsEmpty)
+        {
+            builder.NewLine();
+            builder.Append('{');
+            builder.IndentLevel++;
+            for (int i = 0; i < expression.Length; i++)
+            {
+                builder.NewLine();
+                builder.Indent();
+                Stringify(expression[i], builder);
+                if (i + 1 < expression.Length || !builder.Minimize) builder.Append(',');
+            }
+            builder.IndentLevel--;
+            builder.NewLine();
+            builder.Append('}');
+        }
+    }
+    public static void Stringify(CompiledPack expression, BuilderBase builder, StringifyContext context = default)
+    {
+        builder.Append('{');
+        builder.IndentLevel++;
+        for (int i = 0; i < expression.Values.Length; i++)
+        {
+            builder.NewLine();
+            builder.Indent();
+            Stringify(expression.Values[i], builder);
+            if (i + 1 < expression.Values.Length || !builder.Minimize) builder.Append(',');
+        }
+        builder.IndentLevel--;
+        builder.NewLine();
+        builder.Append('}');
     }
     public static void Stringify(CompiledConstructorCall expression, BuilderBase builder, StringifyContext context = default)
     {
@@ -179,6 +214,7 @@ public static partial class Stringifier
         builder.Append('(');
         builder.AppendJoin(expression.Arguments, Stringify);
         builder.Append(')');
+        Stringify(expression.Initialization, builder);
     }
     public static void Stringify(CompiledString expression, BuilderBase builder, StringifyContext context = default)
     {
@@ -259,7 +295,6 @@ public static partial class Stringifier
         builder.Append('.');
         builder.Append(expression.EnumMember.Identifier);
     }
-
     public static void Stringify(CompiledMeowExpression expression, BuilderBase builder, StringifyContext context = default)
     {
         foreach (CompiledStatement item in expression.Statements)
@@ -272,6 +307,15 @@ public static partial class Stringifier
             }
         }
     }
+    public static void Stringify(CompiledInitializationItem expression, BuilderBase builder, StringifyContext context = default)
+    {
+        builder.Append(expression.Field.Identifier);
+        builder.Space();
+        builder.Append('=');
+        builder.Space();
+        Stringify(expression.Value, builder);
+    }
+
     public static void Stringify(CompiledExpression? expression, BuilderBase builder, StringifyContext context = default)
     {
         switch (expression)
@@ -305,6 +349,7 @@ public static partial class Stringifier
             case CompiledCompilerVariableAccess v: Stringify(v, builder, context); break;
             case CompiledEnumMemberAccess v: Stringify(v, builder, context); break;
             case CompiledMeowExpression v: Stringify(v, builder, context); break;
+            case CompiledPack v: Stringify(v, builder, context); break;
             default: throw new NotImplementedException(expression.GetType().Name);
         }
     }

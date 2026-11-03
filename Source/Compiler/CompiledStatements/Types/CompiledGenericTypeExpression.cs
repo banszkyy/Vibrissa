@@ -8,21 +8,13 @@ public class CompiledGenericTypeExpression : CompiledTypeExpression,
     IReferenceableTo<Token>
 {
     public string Identifier { get; }
-    public Token? Definition { get; }
+    public Token Definition { get; }
     public Uri File { get; }
 
     Token? IReferenceableTo<Token>.Reference
     {
         get => Definition;
         set => throw new InvalidOperationException();
-    }
-
-    [SetsRequiredMembers]
-    public CompiledGenericTypeExpression(string identifier, Uri originalFile, Location location) : base(location)
-    {
-        Identifier = identifier;
-        Definition = null;
-        File = originalFile;
     }
 
     [SetsRequiredMembers]
@@ -59,7 +51,7 @@ public class CompiledGenericTypeExpression : CompiledTypeExpression,
     public static CompiledGenericTypeExpression CreateAnonymous(GenericType type, ILocated location)
     {
         return new(
-            type.Identifier,
+            Token.CreateAnonymous(type.Identifier),
             type.File,
             location.Location
         );

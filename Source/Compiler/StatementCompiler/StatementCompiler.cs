@@ -204,6 +204,48 @@ public partial class StatementCompiler
         return true;
     }
 
+    public bool CompileStatement(ImmutableArray<TemplateArgumentExpression> types, [NotNullWhen(true)] out ImmutableArray<CompiledTemplateArgumentExpression> result, DiagnosticsCollection diagnostics)
+    {
+        result = default;
+
+        ImmutableArray<CompiledTemplateArgumentExpression>.Builder _result = ImmutableArray.CreateBuilder<CompiledTemplateArgumentExpression>(types.Length);
+        foreach (TemplateArgumentExpression item in types)
+        {
+            if (!CompileStatement(item, out CompiledTemplateArgumentExpression? _item, diagnostics)) return false;
+            _result.Add(_item);
+        }
+        result = _result.MoveToImmutable();
+        return true;
+    }
+
+    public bool CompileStatement(TemplateArgumentExpression expression, [NotNullWhen(true)] out CompiledTemplateArgumentExpression? result, DiagnosticsCollection diagnostics)
+    {
+        result = null;
+        switch (expression)
+        {
+            case TemplateArgumentExpressionType w:
+            {
+                if (!CompileStatement(w.Value, out CompiledTypeExpression? v, diagnostics)) return false;
+                result = new CompiledTemplateArgumentTypeExpression()
+                {
+                    Value = v,
+                };
+                return true;
+            }
+            case TemplateArgumentExpressionValue w:
+            {
+                if (!CompileStatement(w.Value, out CompiledStatement? v)) return false;
+                result = new CompiledTemplateArgumentValueExpression()
+                {
+                    Value = v is CompiledExpression x ? x : throw new NotImplementedException(),
+                };
+                return true;
+            }
+            default:
+                throw new UnreachableException();
+        }
+    }
+
     bool CompileCleanup(GeneralType deallocateableType, Location location, [NotNullWhen(true)] out CompiledCleanup? compiledCleanup)
     {
         compiledCleanup = null;
@@ -391,15 +433,25 @@ public partial class StatementCompiler
         {
             PossibleDiagnostic? aliasError = null;
             PossibleDiagnostic? enumError = null;
+            PossibleDiagnostic? genericTypeError = null;
 
             if (!type.TypeArguments.HasValue)
             {
-                if (Frames.Last.TypeArguments.TryGetValue(type.Identifier.Content, out GeneralType? typeArgument))
+                if (Frames.Last.TypeArguments.TryGetValue(type.Identifier.Content, out CompiledTemplateArgument? typeArgument))
                 {
-                    type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
-                    result = CompiledTypeExpression.CreateAnonymous(typeArgument, type.Location);
-                    SetStatementType(type, result);
-                    goto ok;
+                    if (typeArgument is CompiledTemplateArgumentType w)
+                    {
+                        type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
+                        result = CompiledTypeExpression.CreateAnonymous(w.Value, type.Location);
+                        SetStatementType(type, result);
+                        goto ok;
+                    }
+                    else
+                    {
+                        result = null;
+                        diagnostics.Add(DiagnosticAt.Error("Meow", type));
+                        return false;
+                    }
                 }
 
                 {
@@ -427,6 +479,7 @@ public partial class StatementCompiler
                         goto ok;
                     }
                 }
+                genericTypeError = new PossibleDiagnostic($"Generic type `{type.Identifier.Content}` not found", isTellingNothing: true);
 
                 if (GetAlias(type.Identifier.Content, type.File, out AliasDefinition? aliasDefinition, out aliasError))
                 {
@@ -479,7 +532,8 @@ public partial class StatementCompiler
             diagnostics.Add(DiagnosticAt.Error($"Can't find type `{type}`", type, ignoreOnPartialSource: true).WithSuberrors(ImmutableArray.Create(
                 aliasError?.ToError(type),
                 structError?.ToError(type),
-                enumError?.ToError(type)
+                enumError?.ToError(type),
+                genericTypeError?.ToError(type)
             )));
             return false;
 
@@ -491,7 +545,7 @@ public partial class StatementCompiler
         {
             if (type.TypeArguments.HasValue)
             {
-                if (!CompileStatement(type.TypeArguments.Value, out ImmutableArray<CompiledTypeExpression> typeParameters, diagnostics)) return false;
+                if (!CompileStatement(type.TypeArguments.Value, out ImmutableArray<CompiledTemplateArgumentExpression> typeParameters, diagnostics)) return false;
                 result = new CompiledStructTypeExpression(resultStructType.Struct, type.File, typeParameters, type.Location);
             }
             else
@@ -601,7 +655,13 @@ public partial class StatementCompiler
                     if (newVariable.InitialValue is ListExpression literalList &&
                         arrayType.Length is null)
                     {
-                        type = new ArrayType(arrayType.Of, literalList.Values.Length);
+                        type = new ArrayType(arrayType.Of, new CompiledConstantValue()
+                        {
+                            Value = literalList.Values.Length,
+                            Type = BuiltinType.I32,
+                            Location = newVariable.Type.Location,
+                            SaveValue = true,
+                        });
                     }
 
                     if (newVariable.InitialValue is StringLiteralExpression literalStatement)
@@ -621,19 +681,25 @@ public partial class StatementCompiler
                             goto skip;
                         }
 
-                        int definedLength = realLength + 1;
-
-                        if (arrayType.Length.HasValue)
+                        CompiledConstantAccess definedLength = new CompiledConstantValue()
                         {
-                            definedLength = arrayType.Length.Value;
-                        }
-                        else if (arrayType.Length.HasValue)
+                            Value = realLength + 1,
+                            Type = BuiltinType.I32,
+                            Location = newVariable.Type.Location,
+                            SaveValue = true,
+                        };
+
+                        if (arrayType.Length is not null)
                         {
-                            definedLength = arrayType.Length.Value;
+                            definedLength = arrayType.Length;
+                        }
+                        else if (arrayType.Length is not null)
+                        {
+                            definedLength = arrayType.Length;
                         }
 
-                        if (definedLength != realLength &&
-                            definedLength != realLength + 1)
+                        if (!definedLength.SameAs(realLength) &&
+                            !definedLength.SameAs(realLength + 1))
                         {
                             Diagnostics.Add(DiagnosticAt.Error($"String literal's length ({realLength}) doesn't match with the type's length ({definedLength})", literalStatement));
                         }
@@ -1291,6 +1357,21 @@ public partial class StatementCompiler
             return false;
         }
 
+        if (Frames.Last.TypeArguments.TryGetValue(target.Content, out CompiledTemplateArgument? typeArgument))
+        {
+            SetStatementReference(target, typeArgument);
+            Diagnostics.Add(DiagnosticAt.Error($"Cannot set a template parameter", target));
+
+            if (typeArgument is CompiledTemplateArgumentValue templateArgumentValue)
+            {
+                target.AnalyzedType = TokenAnalyzedType.ConstantName;
+                SetStatementType(target, BuiltinType.Create(templateArgumentValue.Value.Type));
+                templateArgumentValue.AddReference(target);
+            }
+
+            return false;
+        }
+
         if (GetParameter(target.Content, out CompiledParameter? parameter, out PossibleDiagnostic? parameterNotFoundError))
         {
             if (target.Content != StatementKeywords.This)
@@ -1701,7 +1782,7 @@ public partial class StatementCompiler
 #if UNITY
     static readonly Unity.Profiling.ProfilerMarker _m2 = new("LanguageCore.Compiler.Function");
 #endif
-    bool CompileFunction<TFunction>(TFunction function, ImmutableDictionary<string, GeneralType>? typeArguments)
+    bool CompileFunction<TFunction>(TFunction function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
         where TFunction : ICompiledFunctionDefinition, ICompiledDefinition<FunctionThingDefinition>
     {
         foreach (TemplateInstance<FunctionThingDefinition> item in _generatedFunctions)
@@ -1762,7 +1843,7 @@ public partial class StatementCompiler
 
         using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
         {
-            TypeArguments = typeArguments ?? ImmutableDictionary<string, GeneralType>.Empty,
+            TypeArguments = typeArguments ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
             IsTemplateInstance = typeArguments is not null,
             IsTemplate = function.Definition.IsTemplate,
             TypeParameters = function.Definition.Template?.Parameters ?? ImmutableArray<Token>.Empty,
@@ -1935,7 +2016,7 @@ public partial class StatementCompiler
 
         using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
         {
-            TypeArguments = ImmutableDictionary<string, GeneralType>.Empty,
+            TypeArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
             IsTemplateInstance = false,
             IsTemplate = false,
             TypeParameters = ImmutableArray<Token>.Empty,

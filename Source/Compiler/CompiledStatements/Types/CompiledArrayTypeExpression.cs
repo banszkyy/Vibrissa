@@ -57,16 +57,7 @@ public class CompiledArrayTypeExpression : CompiledTypeExpression,
 
     public static CompiledArrayTypeExpression CreateAnonymous(ArrayType type, ILocated location)
     {
-        return new(
-            CreateAnonymous(type.Of, location),
-            type.Length.HasValue ? new CompiledConstantValue()
-            {
-                Value = type.Length.Value,
-                Location = location.Location,
-                SaveValue = true,
-                Type = new BuiltinType(BasicType.I32),
-            } : null,
-            location.Location
+        return new(CreateAnonymous(type.Of, location), type.Length, location.Location
         );
     }
 }

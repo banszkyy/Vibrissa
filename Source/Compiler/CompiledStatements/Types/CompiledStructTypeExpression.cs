@@ -7,7 +7,7 @@ public class CompiledStructTypeExpression : CompiledTypeExpression,
     IReferenceableTo<CompiledStruct>
 {
     public CompiledStruct Struct { get; }
-    public ImmutableDictionary<string, CompiledTypeExpression> TypeArguments { get; }
+    public ImmutableDictionary<string, CompiledTemplateArgumentExpression> TypeArguments { get; }
     public Uri File { get; }
 
     CompiledStruct? IReferenceableTo<CompiledStruct>.Reference
@@ -31,21 +31,24 @@ public class CompiledStructTypeExpression : CompiledTypeExpression,
         if (@struct.Definition.Template is not null)
         {
             TypeArguments = @struct.Definition.Template.Parameters
-                .Select(v => new KeyValuePair<string, CompiledTypeExpression>(v.Content, new CompiledGenericTypeExpression(v, originalFile, location)))
+                .Select(v => new KeyValuePair<string, CompiledTemplateArgumentExpression>(v.Content, new CompiledTemplateArgumentTypeExpression()
+                {
+                    Value = new CompiledGenericTypeExpression(v, originalFile, location),
+                }))
                 .ToImmutableDictionary();
         }
         else
-        { TypeArguments = ImmutableDictionary<string, CompiledTypeExpression>.Empty; }
+        { TypeArguments = ImmutableDictionary<string, CompiledTemplateArgumentExpression>.Empty; }
         File = originalFile;
     }
 
     [SetsRequiredMembers]
-    public CompiledStructTypeExpression(CompiledStruct @struct, Uri originalFile, IReadOnlyList<CompiledTypeExpression> typeArguments, Location location) : base(location)
+    public CompiledStructTypeExpression(CompiledStruct @struct, Uri originalFile, IReadOnlyList<CompiledTemplateArgumentExpression> typeArguments, Location location) : base(location)
     {
         Struct = @struct;
         if (@struct.Definition.Template is not null)
         {
-            Dictionary<string, CompiledTypeExpression> result = new(@struct.Definition.Template.Parameters.Length);
+            Dictionary<string, CompiledTemplateArgumentExpression> result = new(@struct.Definition.Template.Parameters.Length);
 
             if (@struct.Definition.Template.Parameters.Length != typeArguments.Count)
             { throw new InternalExceptionWithoutContext("Length of type parameters doesn't matching with length of type arguments"); }
@@ -56,32 +59,16 @@ public class CompiledStructTypeExpression : CompiledTypeExpression,
             TypeArguments = result.ToImmutableDictionary();
         }
         else
-        { TypeArguments = ImmutableDictionary<string, CompiledTypeExpression>.Empty; }
+        { TypeArguments = ImmutableDictionary<string, CompiledTemplateArgumentExpression>.Empty; }
         File = originalFile;
     }
 
     [SetsRequiredMembers]
-    public CompiledStructTypeExpression(CompiledStruct @struct, Uri originalFile, ImmutableDictionary<string, CompiledTypeExpression> typeArguments, Location location) : base(location)
+    public CompiledStructTypeExpression(CompiledStruct @struct, Uri originalFile, ImmutableDictionary<string, CompiledTemplateArgumentExpression> typeArguments, Location location) : base(location)
     {
         Struct = @struct;
         TypeArguments = typeArguments;
         File = originalFile;
-    }
-
-    public CompiledTypeExpression ReplaceType(CompiledTypeExpression type, out PossibleDiagnostic? error)
-    {
-        error = null;
-
-        if (!type.Is(out CompiledGenericTypeExpression? genericType))
-        { return type; }
-
-        if (!TypeArguments.TryGetValue(genericType.Identifier, out CompiledTypeExpression? result))
-        {
-            error = new PossibleDiagnostic($"Type argument `{genericType.Identifier}` not found", genericType, isTellingNothing: true);
-            return type;
-        }
-
-        return result;
     }
 
     public override bool Equals(object? other) => Equals(other as CompiledStructTypeExpression);
@@ -125,7 +112,15 @@ public class CompiledStructTypeExpression : CompiledTypeExpression,
         return new(
             type.Struct,
             type.File,
-            type.TypeArguments?.Select(v => new KeyValuePair<string, CompiledTypeExpression>(v.Key, CreateAnonymous(v.Value, location))).ToImmutableDictionary() ?? ImmutableDictionary<string, CompiledTypeExpression>.Empty,
+            type.TypeArguments?.Select(v => new KeyValuePair<string, CompiledTemplateArgumentExpression>(v.Key, v.Value switch
+            {
+                CompiledTemplateArgumentType w => new CompiledTemplateArgumentTypeExpression()
+                {
+                    Value = CreateAnonymous(w.Value, location),
+                },
+                CompiledTemplateArgumentValue w => throw new NotImplementedException(),
+                _ => throw new UnreachableException(),
+            })).ToImmutableDictionary() ?? ImmutableDictionary<string, CompiledTemplateArgumentExpression>.Empty,
             location.Location
         );
     }

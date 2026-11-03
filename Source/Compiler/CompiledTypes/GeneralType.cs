@@ -67,7 +67,7 @@ public abstract class GeneralType :
         _ => false,
     };
 
-    public static bool TryGetTypeParameters(GeneralType defined, GeneralType passed, Dictionary<string, GeneralType> typeParameters)
+    public static bool TryGetTypeParameters(GeneralType defined, GeneralType passed, Dictionary<string, CompiledTemplateArgument> typeParameters)
     {
         if (passed.Is(out GenericType? passedGenericType))
         {
@@ -78,13 +78,18 @@ public abstract class GeneralType :
 
         if (defined.Is(out GenericType? definedGenericType))
         {
-            if (typeParameters.TryGetValue(definedGenericType.Identifier, out GeneralType? addedTypeParameter))
+            if (typeParameters.TryGetValue(definedGenericType.Identifier, out CompiledTemplateArgument? addedTypeParameter))
             {
-                if (!addedTypeParameter.SameAs(passed)) return false;
+                if (addedTypeParameter is not CompiledTemplateArgumentType w) return false;
+                if (!w.Value.SameAs(passed)) return false;
             }
             else
             {
-                typeParameters.Add(definedGenericType.Identifier, passed);
+                typeParameters.Add(definedGenericType.Identifier, new CompiledTemplateArgumentType()
+                {
+                    Value = passed,
+                    Definition = definedGenericType.Definition,
+                });
             }
 
             return true;
@@ -94,10 +99,10 @@ public abstract class GeneralType :
         {
             if (definedPointerType.To is ArrayType definedArrayType && passedPointerType.To is ArrayType passedArrayType)
             {
-                if (definedArrayType.Length.HasValue)
+                if (definedArrayType.Length is not null)
                 {
-                    if (!passedArrayType.Length.HasValue) return false;
-                    if (definedArrayType.Length.Value != passedArrayType.Length.Value) return false;
+                    if (passedArrayType.Length is null) return false;
+                    if (!definedArrayType.Length.SameAs(passedArrayType.Length)) return false;
                 }
 
                 return TryGetTypeParameters(definedArrayType.Of, passedArrayType.Of, typeParameters);
@@ -133,9 +138,9 @@ public abstract class GeneralType :
                 for (int i = 0; i < definedStructType.Struct.Definition.Template.Parameters.Length; i++)
                 {
                     string typeParamName = definedStructType.Struct.Definition.Template.Parameters[i].Content;
-                    GeneralType typeParamValue = passedStructType.TypeArguments[typeParamName];
+                    CompiledTemplateArgument typeParamValue = passedStructType.TypeArguments[typeParamName];
 
-                    if (typeParameters.TryGetValue(typeParamName, out GeneralType? addedTypeParameter))
+                    if (typeParameters.TryGetValue(typeParamName, out CompiledTemplateArgument? addedTypeParameter))
                     { if (!addedTypeParameter.SameAs(typeParamValue)) return false; }
                     else
                     { typeParameters.Add(typeParamName, typeParamValue); }
@@ -151,6 +156,16 @@ public abstract class GeneralType :
             {
                 return true;
             }
+        }
+
+        if (defined.Is(out TupleType? definedTupleType) && passed.Is(out TupleType? passedTupleType))
+        {
+            if (definedTupleType.Items.Length != passedTupleType.Items.Length) return false;
+            for (int i = 0; i < definedTupleType.Items.Length; i++)
+            {
+                if (!TryGetTypeParameters(definedTupleType.Items[i], passedTupleType.Items[i], typeParameters)) return false;
+            }
+            return true;
         }
 
         if (!defined.SameAs(passed)) return false;
@@ -184,15 +199,25 @@ public abstract class GeneralType :
                 return structType.TypeArguments is not null;
             }
 
+            case TupleType tupleType:
+            {
+                for (int i = 0; i < tupleType.Items.Length; i++)
+                {
+                    if (!tupleType.Items[i].AllGenericsDefined())
+                    { return false; }
+                }
+                return true;
+            }
+
             default: throw new NotImplementedException();
         }
     }
 
-    public static GeneralType TryInsertTypeParameters(GeneralType type, IReadOnlyDictionary<string, GeneralType>? typeArguments)
+    public static GeneralType TryInsertTypeParameters(GeneralType type, IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments)
         => InsertTypeParameters(type, typeArguments) ?? type;
 
     [return: NotNullIfNotNull(nameof(typeArguments))]
-    public static GeneralType? InsertTypeParameters(GeneralType type, IReadOnlyDictionary<string, GeneralType>? typeArguments)
+    public static GeneralType? InsertTypeParameters(GeneralType type, IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments)
     {
         if (typeArguments is null) return null;
 
@@ -200,9 +225,10 @@ public abstract class GeneralType :
         {
             case GenericType genericType:
             {
-                if (!typeArguments.TryGetValue(genericType.Identifier, out GeneralType? passedTypeArgument))
+                if (!typeArguments.TryGetValue(genericType.Identifier, out CompiledTemplateArgument? passedTypeArgument))
                 { return type; }
-                return passedTypeArgument;
+                if (passedTypeArgument is not CompiledTemplateArgumentType w) throw new NotImplementedException();
+                return w.Value;
             }
 
             case PointerType pointerType:
@@ -212,15 +238,33 @@ public abstract class GeneralType :
                 return new ReferenceType(InsertTypeParameters(referenceType.To, typeArguments));
 
             case ArrayType arrayType:
-                return new ArrayType(InsertTypeParameters(arrayType.Of, typeArguments), arrayType.Length);
+            {
+                GeneralType of = InsertTypeParameters(arrayType.Of, typeArguments);
+                if (arrayType.Length is CompiledTemplateParameterAccess compiledTemplateParameterAccess
+                    && typeArguments.TryGetValue(compiledTemplateParameterAccess.Parameter.Content, out CompiledTemplateArgument? v))
+                {
+                    if (v is not CompiledTemplateArgumentValue w) throw new LanguageExceptionAt($"Template argument `{compiledTemplateParameterAccess.Parameter}` is not a value", compiledTemplateParameterAccess.Location.Position, compiledTemplateParameterAccess.Location.File);
+                    return new ArrayType(of, new CompiledConstantValue()
+                    {
+                        Value = w.Value,
+                        Location = arrayType.Length.Location,
+                        SaveValue = true,
+                        Type = BuiltinType.Create(w.Value.Type),
+                    });
+                }
+                else
+                {
+                    return new ArrayType(of, arrayType.Length);
+                }
+            }
 
             case StructType structType:
             {
                 if (structType.Struct.Definition.Template is not null)
                 {
-                    GeneralType[] structTypeParameterValues = new GeneralType[structType.Struct.Definition.Template.Parameters.Length];
+                    CompiledTemplateArgument[] structTypeParameterValues = new CompiledTemplateArgument[structType.Struct.Definition.Template.Parameters.Length];
 
-                    foreach (KeyValuePair<string, GeneralType> item in typeArguments)
+                    foreach (KeyValuePair<string, CompiledTemplateArgument> item in typeArguments)
                     {
                         if (structType.Struct.Definition.Template.TryGetTypeArgumentIndex(item.Key, out int i))
                         { structTypeParameterValues[i] = item.Value; }
@@ -228,7 +272,7 @@ public abstract class GeneralType :
 
                     for (int i = 0; i < structTypeParameterValues.Length; i++)
                     {
-                        if (structTypeParameterValues[i] is null or GenericType)
+                        if (structTypeParameterValues[i] is null) // TODO or GenericType
                         { return type; }
                     }
 
@@ -250,6 +294,9 @@ public abstract class GeneralType :
             case FunctionType functionType:
                 return new FunctionType(InsertTypeParameters(functionType.ReturnType, typeArguments), InsertTypeParameters(functionType.Parameters, typeArguments), functionType.HasClosure);
 
+            case TupleType tupleType:
+                return new TupleType(InsertTypeParameters(tupleType.Items, typeArguments));
+
             default:
                 throw new NotImplementedException();
         }
@@ -264,7 +311,7 @@ public abstract class GeneralType :
         {
             case (ArrayType a, ArrayType b):
             {
-                if (!a.Length.HasValue && b.Length.HasValue) return new ArrayType(a.Of, b.Length.Value);
+                if (a.Length is null && b.Length is not null) return new ArrayType(a.Of, b.Length);
                 break;
             }
             case (PointerType a, PointerType b):
@@ -285,7 +332,7 @@ public abstract class GeneralType :
         return null;
     }
 
-    public static ImmutableArray<GeneralType> InsertTypeParameters(ImmutableArray<GeneralType> types, IReadOnlyDictionary<string, GeneralType> typeArguments)
+    public static ImmutableArray<GeneralType> InsertTypeParameters(ImmutableArray<GeneralType> types, IReadOnlyDictionary<string, CompiledTemplateArgument> typeArguments)
     {
         ImmutableArray<GeneralType>.Builder result = ImmutableArray.CreateBuilder<GeneralType>(types.Length);
         foreach (GeneralType type in types)

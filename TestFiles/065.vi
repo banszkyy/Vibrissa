@@ -5,6 +5,6 @@ temp i32[]* arr = new i32[10]*;
 resize(arr, 5 * sizeof(i32));
 
 int f = free_memory();
-temp any* big = alloc(f);
+temp any* big = alloc(f * 2 / 3);
 
 resize(big, f / 2);

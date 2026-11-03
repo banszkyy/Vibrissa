@@ -102,6 +102,7 @@ public static class StatementKeywords
     public const string Crash = "crash";
     public const string Delete = "delete";
     public const string New = "new";
+    public const string Pack = "pack";
     public const string Type = "type";
     public const string This = "this";
     public const string As = "as";
@@ -119,6 +120,7 @@ public static class StatementKeywords
         Crash,
         Delete,
         New,
+        Pack,
         Type,
         This,
         As,

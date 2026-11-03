@@ -5,7 +5,7 @@ public readonly ref struct ReadOnlyProcessorState
     public const int StackDirection = -1;
 
     public bool IsDone => Registers.CodePointer == Code.Length;
-    public int StackStart => ProcessorState.StackDirection > 0 ? Settings.HeapSize : Settings.HeapSize + Settings.StackSize - 1;
+    public int StackStart => ProcessorState.StackDirection > 0 ? throw new NotImplementedException() : Settings.MemorySize - 1;
 
     readonly BytecodeInterpreterSettings Settings;
 

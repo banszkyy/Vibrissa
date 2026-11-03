@@ -26,7 +26,6 @@ public struct MainGeneratorSettings
     public bool CheckNullPointers;
     public int PointerSize;
     public readonly BitWidth PointerBitWidth => (BitWidth)PointerSize;
-    public int StackSize;
     public bool CleanupGlobalVaraibles;
     public ILGeneratorSettings? ILGeneratorSettings;
     public bool IsExpression;
@@ -38,7 +37,6 @@ public struct MainGeneratorSettings
         Optimizations = other.Optimizations;
         CheckNullPointers = other.CheckNullPointers;
         PointerSize = other.PointerSize;
-        StackSize = other.StackSize;
         CleanupGlobalVaraibles = other.CleanupGlobalVaraibles;
         ILGeneratorSettings = other.ILGeneratorSettings;
         IsExpression = other.IsExpression;
@@ -51,7 +49,6 @@ public struct MainGeneratorSettings
         Optimizations = GeneratorOptimizationSettings.All,
         CheckNullPointers = true,
         PointerSize = 4,
-        StackSize = BytecodeInterpreterSettings.Default.StackSize,
         CleanupGlobalVaraibles = true,
         ILGeneratorSettings = null,
         CancellationToken = CancellationToken.None,

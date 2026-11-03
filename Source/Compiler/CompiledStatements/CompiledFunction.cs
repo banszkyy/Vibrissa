@@ -15,9 +15,9 @@ public class CompiledFunction : IReadable
     public CompiledBlock Body;
     public FunctionFlags Flags;
     public ImmutableArray<CapturedLocal> CapturedLocals;
-    public ImmutableDictionary<string, GeneralType>? TypeArguments;
+    public ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments;
 
-    public CompiledFunction(ICompiledFunctionDefinition function, CompiledBlock body, ImmutableArray<CapturedLocal> capturedLocals, ImmutableDictionary<string, GeneralType>? typeArguments)
+    public CompiledFunction(ICompiledFunctionDefinition function, CompiledBlock body, ImmutableArray<CapturedLocal> capturedLocals, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
     {
         Function = function;
         Body = body;

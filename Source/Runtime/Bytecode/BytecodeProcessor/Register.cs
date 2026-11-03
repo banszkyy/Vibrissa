@@ -39,4 +39,6 @@ public enum Register
     DX = _D | _2,
     DH = _D | _H,
     DL = _D | _L,
+
+    MEow = 0b_1000_0000,
 }

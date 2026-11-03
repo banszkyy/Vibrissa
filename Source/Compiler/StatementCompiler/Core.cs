@@ -7,8 +7,8 @@ public partial class StatementCompiler
     public static readonly ImmutableDictionary<string, (Register Register, BuiltinType Type)> RegisterKeywords = new Dictionary<string, (Register Register, BuiltinType Type)>()
     {
         { "IP", (Register.CodePointer, BuiltinType.I32) },
-        { "SP", (Register.CodePointer, BuiltinType.I32) },
-        { "BP", (Register.CodePointer, BuiltinType.I32) },
+        { "SP", (Register.StackPointer, BuiltinType.I32) },
+        { "BP", (Register.BasePointer, BuiltinType.I32) },
 
         { "EAX", (Register.EAX, BuiltinType.I32) },
         { "EBX", (Register.EBX, BuiltinType.I32) },
@@ -29,6 +29,8 @@ public partial class StatementCompiler
         { "BL", (Register.BL, BuiltinType.I8) },
         { "CL", (Register.CL, BuiltinType.I8) },
         { "DL", (Register.DL, BuiltinType.I8) },
+
+        { "MEow", (Register.MEow, BuiltinType.I32) },
     }.ToImmutableDictionary();
 
     public StatementCompiler(CompilerSettings settings, DiagnosticsCollection diagnostics, ITraceLogger? logger)
@@ -49,7 +51,7 @@ public partial class StatementCompiler
 
         InternalConstants = new Dictionary<string, GeneralType>()
         {
-            { "heap_start", BuiltinType.I32 }
+            //{ "heap_start", BuiltinType.I32 }
         }.ToImmutableDictionary();
 
         Logger = logger;

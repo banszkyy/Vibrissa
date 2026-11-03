@@ -62,7 +62,7 @@ public static partial class Stringifier
             {
                 throw new UnreachableException();
             }
-            if (!type.Struct.Definition.Template.OrderTypeArguments(type.TypeArguments, out ImmutableArray<CompiledTypeExpression> typeArguments))
+            if (!type.Struct.Definition.Template.OrderTypeArguments(type.TypeArguments, out ImmutableArray<CompiledTemplateArgumentExpression> typeArguments))
             {
                 throw new UnreachableException();
             }
@@ -94,6 +94,24 @@ public static partial class Stringifier
             case CompiledReferenceTypeExpression v: Stringify(v, builder, context); break;
             case CompiledStructTypeExpression v: Stringify(v, builder, context); break;
             default: throw new UnreachableException(type.GetType().Name);
+        }
+    }
+    public static void Stringify(CompiledTemplateArgument expression, BuilderBase builder, StringifyContext context = default)
+    {
+        switch (expression)
+        {
+            case CompiledTemplateArgumentType v: builder.Append(v.Value.ToString()); break;
+            case CompiledTemplateArgumentValue v: builder.Append(v.Value.ToString()); break;
+            default: throw new UnreachableException(expression.GetType().Name);
+        }
+    }
+    public static void Stringify(CompiledTemplateArgumentExpression expression, BuilderBase builder, StringifyContext context = default)
+    {
+        switch (expression)
+        {
+            case CompiledTemplateArgumentTypeExpression v: Stringify(v.Value, builder); break;
+            case CompiledTemplateArgumentValueExpression v: Stringify(v.Value, builder); break;
+            default: throw new UnreachableException(expression.GetType().Name);
         }
     }
 }

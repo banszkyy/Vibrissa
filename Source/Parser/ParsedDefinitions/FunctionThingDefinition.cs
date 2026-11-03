@@ -66,5 +66,5 @@ public abstract class FunctionThingDefinition :
     }
 
     string IReadable.ToReadable() => ToReadable();
-    public abstract string ToReadable(IReadOnlyDictionary<string, GeneralType>? typeArguments = null);
+    public abstract string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments = null);
 }

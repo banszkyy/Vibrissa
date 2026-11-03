@@ -3,6 +3,7 @@ namespace LanguageCore.Compiler;
 public class CompiledStackAllocation : CompiledExpression
 {
     public required CompiledTypeExpression TypeExpression { get; init; }
+    public required ImmutableArray<CompiledInitializationItem> Initialization { get; init; }
 
-    public override string ToString() => $"new {Type}";
+    public override string ToString() => $"new {Type}{(Initialization.IsDefault ? null : $"{{{string.Join(", ", Initialization.Select(v => v.ToString()))}}}")}";
 }

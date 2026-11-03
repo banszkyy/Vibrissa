@@ -121,35 +121,58 @@ public sealed partial class Parser
                 if (type is not TypeInstanceSimple)
                 { throw new NotImplementedException(); }
 
-                List<TypeInstance> genericTypes = new();
+                List<TemplateArgumentExpression> genericTypes = new();
                 Token? angleBracketEnd;
 
                 while (true)
                 {
-                    if (!ExpectType(AllowedType.FunctionPointer, out TypeInstance? typeParameter))
+                    if (ExpectType(AllowedType.FunctionPointer, out TypeInstance? typeParameter))
+                    {
+                        genericTypes.Add(new TemplateArgumentExpressionType(typeParameter, File));
+
+                        if (ExpectOperator(">", out angleBracketEnd))
+                        { break; }
+
+                        if (ExpectOperator(">>", out Token? doubleEnd))
+                        {
+                            (Token? newA, Token? newB) = doubleEnd.Slice(1);
+                            if (newA is null || newB is null)
+                            { throw new UnreachableException($"I failed at token splitting :("); }
+                            CurrentTokenIndex--;
+                            angleBracketEnd = newA;
+                            Tokens[CurrentTokenIndex] = newB;
+                            break;
+                        }
+
+                        if (ExpectOperator(","))
+                        { continue; }
+                    }
+                    else if (ExpectAnyExpression(out Expression? expressionParameter))
+                    {
+                        genericTypes.Add(new TemplateArgumentExpressionValue(expressionParameter, File));
+
+                        if (ExpectOperator(">", out angleBracketEnd))
+                        { break; }
+
+                        if (ExpectOperator(">>", out Token? doubleEnd))
+                        {
+                            (Token? newA, Token? newB) = doubleEnd.Slice(1);
+                            if (newA is null || newB is null)
+                            { throw new UnreachableException($"I failed at token splitting :("); }
+                            CurrentTokenIndex--;
+                            angleBracketEnd = newA;
+                            Tokens[CurrentTokenIndex] = newB;
+                            break;
+                        }
+
+                        if (ExpectOperator(","))
+                        { continue; }
+                    }
+                    else
                     {
                         CurrentTokenIndex = afterIdentifier;
                         goto end;
                     }
-
-                    genericTypes.Add(typeParameter);
-
-                    if (ExpectOperator(">", out angleBracketEnd))
-                    { break; }
-
-                    if (ExpectOperator(">>", out Token? doubleEnd))
-                    {
-                        (Token? newA, Token? newB) = doubleEnd.Slice(1);
-                        if (newA is null || newB is null)
-                        { throw new UnreachableException($"I failed at token splitting :("); }
-                        CurrentTokenIndex--;
-                        angleBracketEnd = newA;
-                        Tokens[CurrentTokenIndex] = newB;
-                        break;
-                    }
-
-                    if (ExpectOperator(","))
-                    { continue; }
                 }
 
                 type = new TypeInstanceSimple(possibleType, File, genericTypes.ToImmutableArray(), new TokenPair(angleBracketStart, angleBracketEnd));

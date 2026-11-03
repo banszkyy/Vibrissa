@@ -10,6 +10,14 @@ export void clear()
     print("\e[H");
 }
 
+export void printf(char[] format)
+{
+    for (int i = 0; format[i]; i++)
+    {
+        print(format[i]);
+    }
+}
+
 export void printf(char[] format, any[] args)
 {
     int l = (&format).length();
@@ -23,6 +31,11 @@ export void printf(char[] format, any[] args)
             {
                 print(*(offset as int*));
                 offset += sizeof(int);
+            }
+            else if (format[i] == 'u')
+            {
+                print(*(offset as u32*));
+                offset += sizeof(u32);
             }
             else if (format[i] == 'f')
             {

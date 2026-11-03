@@ -203,6 +203,7 @@ public readonly struct InstructionOperand
             Register.DX => "DX",
             Register.DH => "DH",
             Register.DL => "DL",
+            Register.MEow => "MEow",
             _ => throw new UnreachableException(),
         },
         InstructionOperandType.PointerBP8 => $"BYTE [BP{PointerOffsetString(Value)}]",

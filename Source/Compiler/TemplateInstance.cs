@@ -3,9 +3,9 @@ namespace LanguageCore.Compiler;
 public class TemplateInstance<T> where T : notnull
 {
     public readonly T Template;
-    public readonly ImmutableDictionary<string, GeneralType>? TypeArguments;
+    public readonly ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments;
 
-    public TemplateInstance(T template, ImmutableDictionary<string, GeneralType>? typeArguments)
+    public TemplateInstance(T template, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
     {
         Template = template;
         TypeArguments = typeArguments;
@@ -20,7 +20,7 @@ public class TemplateInstance<T> where T : notnull
 public static class TemplateInstance
 {
     [return: NotNullIfNotNull(nameof(template))]
-    public static TemplateInstance<T>? New<T>(T? template, ImmutableDictionary<string, GeneralType>? typeArguments)
+    public static TemplateInstance<T>? New<T>(T? template, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
         where T : notnull
         => template is null ? null : new TemplateInstance<T>(template, typeArguments);
 

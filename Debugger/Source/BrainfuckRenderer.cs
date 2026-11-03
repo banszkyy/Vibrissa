@@ -96,6 +96,16 @@ public class BrainfuckRenderer
         }
     }
 
+    static void WriteType(ref BufferWriter t, CompiledTemplateArgument type)
+    {
+        switch (type)
+        {
+            case CompiledTemplateArgumentType v: WriteType(ref t, v.Value); break;
+            case CompiledTemplateArgumentValue v: t.Write(v.Value.ToStringValue()); break;
+            default: throw new UnreachableException();
+        }
+    }
+
     static void WriteType(ref BufferWriter t, GeneralType type)
     {
         switch (type)
@@ -109,7 +119,7 @@ public class BrainfuckRenderer
             case ArrayType v:
                 WriteType(ref t, v.Of);
                 t.Write('[');
-                if (v.Length.HasValue) t.Write(v.Length.Value.ToString());
+                if (v.Length is not null) t.Write(v.Length.ToString());
                 t.Write(']');
                 break;
             case BuiltinType v:
@@ -158,6 +168,16 @@ public class BrainfuckRenderer
                 break;
             case GenericType v:
                 t.Write(v.Identifier, AnsiColor.Yellow);
+                break;
+            case TupleType v:
+                t.Write("tuple");
+                t.Write('(');
+                for (int i = 0; i < v.Items.Length; i++)
+                {
+                    if (i > 0) t.Write(", ");
+                    WriteType(ref t, v.Items[i]);
+                }
+                t.Write(')');
                 break;
             default:
                 throw new UnreachableException();

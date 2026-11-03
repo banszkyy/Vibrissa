@@ -204,15 +204,29 @@ public partial class StatementCompiler
 
     public static bool AllowDeallocate(GeneralType type) => type.Is<PointerType>() || (type.Is(out FunctionType? functionType) && functionType.HasClosure);
 
-    public static bool TypeArgumentsEquals(ImmutableDictionary<string, GeneralType>? a, ImmutableDictionary<string, GeneralType>? b)
+    public static bool TypeArgumentsEquals(ImmutableDictionary<string, CompiledTemplateArgument>? a, ImmutableDictionary<string, CompiledTemplateArgument>? b)
     {
         if (a is null && b is null) return true;
         if (a is null || b is null) return false;
         if (a.Count != b.Count) return false;
-        foreach ((string? key, GeneralType? v) in a)
+        foreach ((string? key, CompiledTemplateArgument? v) in a)
         {
-            if (!b.TryGetValue(key, out GeneralType? w)) return false;
-            if (!v.Equals(w)) return false;
+            if (!b.TryGetValue(key, out CompiledTemplateArgument? w)) return false;
+            switch (v, w)
+            {
+                case (CompiledTemplateArgumentType x, CompiledTemplateArgumentType y):
+                {
+                    if (!x.Value.Equals(y.Value)) return false;
+                    break;
+                }
+                case (CompiledTemplateArgumentValue x, CompiledTemplateArgumentValue y):
+                {
+                    if (!x.Value.Equals(y.Value)) return false;
+                    break;
+                }
+                default:
+                    return false;
+            }
         }
         return true;
     }
@@ -512,7 +526,7 @@ public partial class StatementCompiler
     bool GetFunction(
         string identifier,
         ImmutableArray<CompiledExpression> arguments,
-        ImmutableArray<GeneralType>? typeArguments,
+        ImmutableArray<CompiledTemplateArgument>? typeArguments,
         Uri file,
 
         [NotNullWhen(true)] out FunctionQueryResult<CompiledFunctionDefinition>? result,
@@ -1315,11 +1329,11 @@ public partial class StatementCompiler
                 if (dstPointer.To.Is(out ArrayType? dstArray) &&
                     srcPointer.To.Is(out ArrayType? srcArray))
                 {
-                    if (dstArray.Length.HasValue &&
-                        srcArray.Length.HasValue &&
-                        dstArray.Length.Value != srcArray.Length.Value)
+                    if (dstArray.Length is not null &&
+                        srcArray.Length is not null &&
+                        !dstArray.Length.SameAs(srcArray.Length))
                     {
-                        error = new($"Can't cast an array pointer with length of {dstArray.Length.Value} to an array pointer with length of {srcArray.Length.Value}");
+                        error = new($"Can't cast an array pointer with length of `{dstArray.Length}` to an array pointer with length of `{srcArray.Length}`");
                         return false;
                     }
 
@@ -1356,7 +1370,7 @@ public partial class StatementCompiler
             if (destination.Is(out ArrayType? destArrayType)
                 && source.Is(out ArrayType? srcArrayType))
             {
-                if (srcArrayType.Length.HasValue && !destArrayType.Length.HasValue)
+                if (srcArrayType.Length is not null && destArrayType.Length is null)
                 {
                     castLevel = CastLevel.Assignable;
                     return true;
@@ -1465,15 +1479,15 @@ public partial class StatementCompiler
                 {
                     if (arrayType.Length is not null)
                     {
-                        if (!arrayType.Length.HasValue)
+                        if (arrayType.Length is null)
                         {
-                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {stringInstance.Value.Length}) to array `{destination}` (with a non-constant length)", stringInstance);
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of `{stringInstance.Value.Length}`) to array `{destination}` (with a non-constant length)", stringInstance);
                             return false;
                         }
 
-                        if (stringInstance.Value.Length != arrayType.Length.Value)
+                        if (!arrayType.Length.SameAs(stringInstance.Value.Length))
                         {
-                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {stringInstance.Value.Length}) to array `{destination}` (length of {arrayType.Length.Value})", stringInstance);
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of `{stringInstance.Value.Length}`) to array `{destination}` (length of `{arrayType.Length}`)", stringInstance);
                             return false;
                         }
                     }
@@ -1500,15 +1514,15 @@ public partial class StatementCompiler
 
                     if (arrayType.Length is not null)
                     {
-                        if (!arrayType.Length.HasValue)
+                        if (arrayType.Length is null)
                         {
-                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {byteCount}) to array `{destination}` (with a non-constant length)", stringInstance);
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of `{byteCount}`) to array `{destination}` (with a non-constant length)", stringInstance);
                             return false;
                         }
 
-                        if (byteCount != arrayType.Length.Value)
+                        if (!arrayType.Length.SameAs(byteCount))
                         {
-                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {byteCount}) to array `{destination}` (length of {arrayType.Length.Value})", stringInstance);
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of `{byteCount}`) to array `{destination}` (length of `{arrayType.Length}`)", stringInstance);
                             return false;
                         }
                     }
@@ -1535,7 +1549,13 @@ public partial class StatementCompiler
                     {
                         IsUTF8 = arrayType2.Of.SameAs(BasicType.U8),
                         Value = stringInstance.Value,
-                        Type = new ArrayType(arrayType2.Of, stringInstance.Value.Length + 1),
+                        Type = new ArrayType(arrayType2.Of, new CompiledConstantValue()
+                        {
+                            Value = stringInstance.Value.Length + 1,
+                            Location = stringInstance.Location,
+                            SaveValue = true,
+                            Type = BuiltinType.I32,
+                        }),
                         Location = value.Location,
                         SaveValue = value.SaveValue,
                         IsNullTerminated = true,
@@ -1553,19 +1573,19 @@ public partial class StatementCompiler
                 {
                     if (destArrayType.Length is null)
                     {
-                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {stackStringInstance.Value.Length}) to stack array `{destination}` (without length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of `{stackStringInstance.Value.Length}`) to stack array `{destination}` (without length)", stackStringInstance);
                         return false;
                     }
 
-                    if (!destArrayType.Length.HasValue)
+                    if (destArrayType.Length is null)
                     {
-                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {stackStringInstance.Value.Length}) to stack array `{destination}` (with a non-constant length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of `{stackStringInstance.Value.Length}`) to stack array `{destination}` (with a non-constant length)", stackStringInstance);
                         return false;
                     }
 
-                    if (stackStringInstance.Value.Length != destArrayType.Length.Value)
+                    if (!destArrayType.Length.SameAs(stackStringInstance.Value.Length))
                     {
-                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {stackStringInstance.Value.Length}) to stack array `{destination}` (length of {destArrayType.Length.Value})", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of `{stackStringInstance.Value.Length}`) to stack array `{destination}` (length of `{destArrayType.Length}`)", stackStringInstance);
                         return false;
                     }
 
@@ -1588,19 +1608,19 @@ public partial class StatementCompiler
 
                     if (destArrayType2.Length is null)
                     {
-                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {bytes.Length}) to stack array `{destination}` (without length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of `{bytes.Length}`) to stack array `{destination}` (without length)", stackStringInstance);
                         return false;
                     }
 
-                    if (!destArrayType2.Length.HasValue)
+                    if (destArrayType2.Length is null)
                     {
-                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {bytes.Length}) to stack array `{destination}` (with a non-constant length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of `{bytes.Length}`) to stack array `{destination}` (with a non-constant length)", stackStringInstance);
                         return false;
                     }
 
-                    if (bytes.Length != destArrayType2.Length.Value)
+                    if (!destArrayType2.Length.SameAs(bytes.Length))
                     {
-                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {bytes.Length}) to stack array `{destination}` (length of {destArrayType2.Length.Value})", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of `{bytes.Length}`) to stack array `{destination}` (length of `{destArrayType2.Length}`)", stackStringInstance);
                         return false;
                     }
 
@@ -1678,6 +1698,33 @@ public partial class StatementCompiler
                     return true;
                 }
                 break;
+
+            case CompiledPack pack:
+                if (!FindSize(destination, out int destSize, out error, Settings.RuntimeInfo))
+                {
+                    return false;
+                }
+
+                if (!FindSize(pack.Type, out int packSize, out error, Settings.RuntimeInfo))
+                {
+                    return false;
+                }
+
+                if (packSize != destSize)
+                {
+                    error = new($"Can't cast pack of size {packSize} bytes to type `{destination}` of size {destSize} bytes implicitly", value);
+                    return false;
+                }
+
+                assignedValue = new CompiledReinterpretation()
+                {
+                    Value = pack,
+                    TypeExpression = CompiledTypeExpression.CreateAnonymous(destination, value),
+                    Location = pack.Location,
+                    SaveValue = pack.SaveValue,
+                    Type = destination,
+                };
+                return true;
         }
 
         error = new($"Can't cast `{value.Type}` to `{destination}` implicitly", value);
@@ -1708,6 +1755,7 @@ public partial class StatementCompiler
             case StructType:
             case FunctionType:
             case ArrayType:
+            case TupleType:
                 value = default;
                 return false;
             case BuiltinType builtinType:
@@ -2081,11 +2129,12 @@ public partial class StatementCompiler
                 inlined = new CompiledReferenceTypeExpression(toInlined2, v.Location);
                 break;
             case CompiledStructTypeExpression v:
-                Dictionary<string, CompiledTypeExpression> typeArguments = new(v.TypeArguments.Count);
-                foreach (KeyValuePair<string, CompiledTypeExpression> i in v.TypeArguments)
+                Dictionary<string, CompiledTemplateArgumentExpression> typeArguments = new(v.TypeArguments.Count);
+                foreach (KeyValuePair<string, CompiledTemplateArgumentExpression> i in v.TypeArguments)
                 {
-                    if (!Inline(i.Value, context, out CompiledTypeExpression? iInlined, out error)) return false;
-                    typeArguments[i.Key] = iInlined;
+                    throw new NotImplementedException();
+                    //if (!Inline(i.Value, context, out CompiledTypeExpression? iInlined, out error)) return false;
+                    //typeArguments[i.Key] = iInlined;
                 }
                 inlined = new CompiledStructTypeExpression(v.Struct, v.File, typeArguments.ToImmutableDictionary(), v.Location);
                 break;
@@ -2281,14 +2330,54 @@ public partial class StatementCompiler
         };
         return true;
     }
+    static bool Inline(CompiledPack statement, InlineContext context, out CompiledExpression inlined, [NotNullWhen(false)] out DiagnosticAt? error)
+    {
+        inlined = statement;
+        ImmutableArray<CompiledExpression>.Builder result = ImmutableArray.CreateBuilder<CompiledExpression>(statement.Values.Length);
+        foreach (CompiledExpression item in statement.Values)
+        {
+            if (!Inline(item, context, out CompiledExpression? inlinedItem, out error)) return false;
+            result.Add(inlinedItem);
+        }
+        inlined = new CompiledPack()
+        {
+            Values = result.MoveToImmutable(),
+            Type = statement.Type,
+            Location = statement.Location,
+            SaveValue = statement.SaveValue,
+        };
+        error = null;
+        return true;
+    }
+    static bool Inline(CompiledInitializationItem statement, InlineContext context, out CompiledInitializationItem inlined, [NotNullWhen(false)] out DiagnosticAt? error)
+    {
+        inlined = statement;
+        throw new NotImplementedException();
+    }
+    static bool Inline(ImmutableArray<CompiledInitializationItem> statement, InlineContext context, out ImmutableArray<CompiledInitializationItem> inlined, [NotNullWhen(false)] out DiagnosticAt? error)
+    {
+        inlined = statement;
+        ImmutableArray<CompiledInitializationItem>.Builder result = ImmutableArray.CreateBuilder<CompiledInitializationItem>(statement.Length);
+        foreach (CompiledInitializationItem item in statement)
+        {
+            if (!Inline(item, context, out CompiledInitializationItem? inlinedItem, out error)) return false;
+            result.Add(inlinedItem);
+        }
+        inlined = result.MoveToImmutable();
+        error = null;
+        return true;
+    }
     static bool Inline(CompiledStackAllocation statement, InlineContext context, out CompiledExpression inlined, [NotNullWhen(false)] out DiagnosticAt? error)
     {
         inlined = statement;
         if (!Inline(statement.TypeExpression, context, out CompiledTypeExpression? inlinedType, out error)) return false;
+        if (!Inline(statement.Initialization, context, out ImmutableArray<CompiledInitializationItem> inlniedInitialization, out error)) return false;
+
         inlined = new CompiledStackAllocation()
         {
             TypeExpression = inlinedType,
             Type = statement.Type,
+            Initialization = inlniedInitialization,
             Location = statement.Location,
             SaveValue = statement.SaveValue,
         };
@@ -2299,11 +2388,13 @@ public partial class StatementCompiler
         inlined = statement;
         if (!Inline(statement.Object, context, out CompiledExpression? inlinedObject, out error)) return false;
         if (!Inline(statement.Arguments, context, out ImmutableArray<CompiledArgument> inlinedArguments, out error)) return false;
+        if (!Inline(statement.Initialization, context, out ImmutableArray<CompiledInitializationItem> inlniedInitialization, out error)) return false;
 
         inlined = new CompiledConstructorCall()
         {
             Object = inlinedObject,
             Arguments = inlinedArguments,
+            Initialization = inlniedInitialization,
             Function = statement.Function,
             Type = statement.Type,
             Location = statement.Location,
@@ -2714,6 +2805,7 @@ public partial class StatementCompiler
             CompiledString v => Inline(v, context, out inlined, out error),
             CompiledStackString v => Inline(v, context, out inlined, out error),
             CompiledCompilerVariableAccess v => Inline(v, context, out inlined, out error),
+            CompiledPack v => Inline(v, context, out inlined, out error),
 
             _ => throw new NotImplementedException(statement.GetType().ToString()),
         };
@@ -3417,6 +3509,47 @@ public partial class StatementCompiler
         error = new PossibleDiagnostic($"Cannot compute runtime-only references", functionAddressGetter);
         return false;
     }
+    bool TryCompute(CompiledTemplateParameterAccess expression, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        if (context.Frames.Count == 0)
+        {
+            value = CompiledValue.Null;
+            error = new PossibleDiagnostic($"no", expression);
+            return false;
+        }
+
+        if (context.Frames.Last.Function.TypeArguments is null)
+        {
+            value = CompiledValue.Null;
+            error = new PossibleDiagnostic($"no", expression);
+            return false;
+        }
+
+        if (!context.Frames.Last.Function.TypeArguments.TryGetValue(expression.Parameter.Content, out CompiledTemplateArgument? compiledTemplateArgument))
+        {
+            value = CompiledValue.Null;
+            error = new PossibleDiagnostic($"no", expression);
+            return false;
+        }
+
+        if (!Utils.ReferenceEquals(compiledTemplateArgument.Definition, expression.Parameter))
+        {
+            value = CompiledValue.Null;
+            error = new PossibleDiagnostic($"no", expression);
+            return false;
+        }
+
+        if (compiledTemplateArgument is not CompiledTemplateArgumentValue w)
+        {
+            value = CompiledValue.Null;
+            error = new PossibleDiagnostic($"Template argument `{compiledTemplateArgument.Definition}` is not a value", expression);
+            return false;
+        }
+
+        value = w.Value;
+        error = null;
+        return true;
+    }
 
     bool TryCompute([NotNullWhen(true)] CompiledExpression? statement, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
         => TryCompute(statement, EvaluationContext.Empty, out value, out error);
@@ -3472,6 +3605,7 @@ public partial class StatementCompiler
             CompiledArgument v => TryCompute(v.Value, context, out value, out error),
             CompiledFunctionReference v => TryCompute(v, context, out value, out error),
             CompiledEnumMemberAccess v => TryCompute(v.EnumMember.Value, context, out value, out error),
+            CompiledTemplateParameterAccess v => TryCompute(v, context, out value, out error),
             CompiledLambda => false, // todo
 
             CompiledString => false,
@@ -3483,6 +3617,7 @@ public partial class StatementCompiler
             CompiledConstructorCall => false,
             CompiledGetReference => false,
             CompiledList => false,
+            CompiledPack => false,
             CompiledDummyExpression => false,
             CompiledRegisterAccess => false,
             CompiledLabelReference => false,
@@ -3901,6 +4036,7 @@ public partial class StatementCompiler
         BuiltinType v => FindSize(v, out size, out error, runtime),
         AliasType v => FindSize(v, out size, out error, runtime),
         EnumType v => FindSize(v, out size, out error, runtime),
+        TupleType v => FindSize(v, out size, out error, runtime),
         _ => throw new NotImplementedException(),
     };
     static bool FindSize(PointerType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
@@ -3933,7 +4069,13 @@ public partial class StatementCompiler
 
         if (!FindSize(type.Of, out int elementSize, out error, runtime)) return false;
 
-        size = elementSize * type.Length.Value;
+        if (!type.TryGetLength(out int length))
+        {
+            error = new PossibleDiagnostic($"Couldn't get the length of the array");
+            return false;
+        }
+
+        size = elementSize * length;
         error = null;
         return true;
     }
@@ -3985,6 +4127,19 @@ public partial class StatementCompiler
     static bool FindSize(EnumType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         return FindSize(type.Definition.Type, out size, out error, runtime);
+    }
+    static bool FindSize(TupleType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
+    {
+        size = 0;
+
+        foreach (GeneralType item in type.Items)
+        {
+            if (!FindSize(item, out int itemSize, out error, runtime)) return false;
+            size += itemSize;
+        }
+
+        error = null;
+        return true;
     }
 
     public static bool FindSize(CompiledTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime) => type switch
@@ -4093,7 +4248,7 @@ public partial class StatementCompiler
     #region IsObservable
 
     [Flags]
-    enum StatementComplexity
+    public enum StatementComplexity
     {
         None = 0,
         Volatile = 1,
@@ -4101,14 +4256,28 @@ public partial class StatementCompiler
         Bruh = 4,
     }
 
-    StatementComplexity GetStatementComplexity(IEnumerable<CompiledExpression> statements)
+    public static StatementComplexity GetStatementComplexity(IEnumerable<CompiledExpression> statements)
     {
         StatementComplexity res = StatementComplexity.None;
         foreach (CompiledExpression statement in statements) res |= GetStatementComplexity(statement);
         return res;
     }
 
-    StatementComplexity GetStatementComplexity(CompiledTypeExpression statement) => statement.FinalValue switch
+    public static StatementComplexity GetStatementComplexity(IEnumerable<CompiledTemplateArgumentExpression> statements)
+    {
+        StatementComplexity res = StatementComplexity.None;
+        foreach (CompiledTemplateArgumentExpression statement in statements) res |= GetStatementComplexity(statement);
+        return res;
+    }
+
+    public static StatementComplexity GetStatementComplexity(CompiledTemplateArgumentExpression statement) => statement switch
+    {
+        CompiledTemplateArgumentTypeExpression v => GetStatementComplexity(v.Value),
+        CompiledTemplateArgumentValueExpression v => GetStatementComplexity(v.Value),
+        _ => throw new NotImplementedException(statement.GetType().ToString()),
+    };
+
+    public static StatementComplexity GetStatementComplexity(CompiledTypeExpression statement) => statement.FinalValue switch
     {
         CompiledArrayTypeExpression v => (v.Length is null || v.ComputedLength.HasValue) ? StatementComplexity.None : GetStatementComplexity(v.Length),
         CompiledBuiltinTypeExpression => StatementComplexity.None,
@@ -4120,7 +4289,7 @@ public partial class StatementCompiler
         _ => throw new NotImplementedException(statement.GetType().ToString()),
     };
 
-    StatementComplexity GetStatementComplexity(CompiledExpression statement) => statement switch
+    public static StatementComplexity GetStatementComplexity(CompiledExpression statement) => statement switch
     {
         CompiledSizeof v => GetStatementComplexity(v.Of),
         CompiledArgument v => GetStatementComplexity(v.Value) | ((v.Cleanup.Deinitializer is not null || v.Cleanup.Deallocator is not null) ? StatementComplexity.Complex | StatementComplexity.Volatile : StatementComplexity.None),
@@ -4137,22 +4306,40 @@ public partial class StatementCompiler
         CompiledElementAccess v => GetStatementComplexity(v.Base) | GetStatementComplexity(v.Index),
         CompiledGetReference v => GetStatementComplexity(v.Of),
         CompiledDereference v => GetStatementComplexity(v.Address),
-        CompiledStackAllocation => StatementComplexity.Bruh,
-        CompiledConstructorCall v => GetStatementComplexity(v.Arguments) | StatementComplexity.Complex | StatementComplexity.Volatile,
-        CompiledCast v => GetStatementComplexity(v.Value) | StatementComplexity.Complex,
-        CompiledReinterpretation v => GetStatementComplexity(v.Value),
+        CompiledStackAllocation v => GetStatementComplexity(v.TypeExpression) | GetStatementComplexity(v.Initialization.Select(v => v.Value)),
+        CompiledConstructorCall v => GetStatementComplexity(v.Object) | GetStatementComplexity(v.Arguments) | GetStatementComplexity(v.Initialization.Select(v => v.Value)) | StatementComplexity.Complex | StatementComplexity.Volatile,
+        CompiledCast v => GetStatementComplexity(v.TypeExpression) | GetStatementComplexity(v.Value) | StatementComplexity.Complex,
+        CompiledReinterpretation v => GetStatementComplexity(v.TypeExpression) | GetStatementComplexity(v.Value),
         CompiledRuntimeCall v => GetStatementComplexity(v.Arguments) | StatementComplexity.Complex | StatementComplexity.Volatile,
         CompiledFunctionCall v => GetStatementComplexity(v.Arguments) | StatementComplexity.Complex | StatementComplexity.Volatile,
         CompiledExternalFunctionCall v => GetStatementComplexity(v.Arguments) | StatementComplexity.Volatile,
         CompiledDummyExpression => StatementComplexity.Bruh,
         CompiledString => StatementComplexity.Complex | StatementComplexity.Volatile,
-        CompiledStackString => StatementComplexity.Bruh,
+        CompiledStackString => StatementComplexity.None,
+        CompiledPack v => GetStatementComplexity(v.Values),
+        CompiledEnumMemberAccess v => GetStatementComplexity(v.EnumMember.Value),
+        CompiledList v => GetStatementComplexity(v.Values) | StatementComplexity.None,
         _ => throw new NotImplementedException(statement.GetType().ToString()),
     };
 
     #endregion
 
     #region Visit
+
+    static IEnumerable<CompiledStatement> Visit(IEnumerable<CompiledTemplateArgumentExpression> expression)
+    {
+        foreach (CompiledTemplateArgumentExpression v in expression)
+        {
+            foreach (CompiledStatement v2 in Visit(v)) yield return v2;
+        }
+    }
+
+    static IEnumerable<CompiledStatement> Visit(CompiledTemplateArgumentExpression? type) => type switch
+    {
+        CompiledTemplateArgumentTypeExpression v => Visit(v.Value),
+        CompiledTemplateArgumentValueExpression v => Visit(v.Value),
+        _ => throw new UnreachableException(),
+    };
 
     static IEnumerable<CompiledStatement> Visit(IEnumerable<CompiledTypeExpression> type)
     {
@@ -4320,11 +4507,17 @@ public partial class StatementCompiler
             case CompiledStackAllocation v:
                 yield return v;
                 foreach (CompiledStatement v2 in Visit(v.TypeExpression)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.Initialization)) yield return v2;
                 break;
             case CompiledConstructorCall v:
                 yield return v;
                 foreach (CompiledStatement v2 in Visit(v.Object)) yield return v2;
                 foreach (CompiledStatement v2 in Visit(v.Arguments)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.Initialization)) yield return v2;
+                break;
+            case CompiledInitializationItem v:
+                yield return v;
+                foreach (CompiledStatement v2 in Visit(v.Value)) yield return v2;
                 break;
             case CompiledCast v:
                 yield return v;
@@ -4383,6 +4576,10 @@ public partial class StatementCompiler
                 yield return v;
                 foreach (CompiledStatement v1 in Visit(v.Values)) yield return v1;
                 break;
+            case CompiledPack v:
+                yield return v;
+                foreach (CompiledStatement v2 in Visit(v.Values)) yield return v2;
+                break;
             case CompiledMeowExpression v:
                 yield return v;
                 break;
@@ -4390,6 +4587,9 @@ public partial class StatementCompiler
                 yield return v;
                 break;
             case CompiledLambda v:
+                yield return v;
+                break;
+            case CompiledTemplateParameterAccess v:
                 yield return v;
                 break;
             case null:
@@ -4432,6 +4632,11 @@ public partial class StatementCompiler
             return ImmutableArray.Create(statement);
         }
 
+        if (statement is CompiledPack compiledPack)
+        {
+            return ReduceStatements(compiledPack.Values, diagnostics, didNotify);
+        }
+
         if (statement is not CompiledExpression statementWithValue)
         {
             return ImmutableArray.Create(statement);
@@ -4463,7 +4668,8 @@ public partial class StatementCompiler
             or CompiledStackAllocation
             or CompiledString
             or CompiledList
-            or CompiledStackString)
+            or CompiledStackString
+            or CompiledEnumMemberAccess)
         {
             if (!didNotify)
             {
@@ -4531,16 +4737,23 @@ public partial class StatementCompiler
                 if (!CompileType(v.Of, out GeneralType? ofType, out error, ignoreValues)) return false;
                 if (v.Length is not null)
                 {
-                    static bool IsValidArrayLength(CompiledExpression expression, out int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+                    static bool IsValidArrayLength(CompiledExpression expression, out CompiledConstantAccess? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
                     {
-                        result = default;
+                        result = null;
                         error = null;
+
+                        if (expression is CompiledTemplateParameterAccess w)
+                        {
+                            result = w;
+                            return true;
+                        }
 
                         if (expression is not CompiledConstantValue constantLength)
                         {
                             error = new PossibleDiagnostic($"Stack array type's length must be constant", expression);
                             return false;
                         }
+
                         if (constantLength.Value.Type == RuntimeType.F32)
                         {
                             error = new PossibleDiagnostic($"Stack array type's length cannot be a float", expression);
@@ -4567,11 +4780,11 @@ public partial class StatementCompiler
                             return false;
                         }
 
-                        result = (int)constantLength.Value;
+                        result = constantLength;
                         return true;
                     }
 
-                    if (IsValidArrayLength(v.Length, out int length, out PossibleDiagnostic? lengthError))
+                    if (IsValidArrayLength(v.Length, out CompiledConstantAccess? length, out PossibleDiagnostic? lengthError))
                     {
                         type = new ArrayType(ofType, length);
                     }
@@ -4612,7 +4825,7 @@ public partial class StatementCompiler
             }
             case CompiledGenericTypeExpression v:
             {
-                type = v.Definition is null ? new GenericType(v.Identifier, v.File) : new GenericType(v.Definition, v.File);
+                type = v.Definition is null ? new GenericType(v.Definition ?? Token.CreateAnonymous(v.Identifier), v.File) : new GenericType(v.Definition, v.File);
                 return true;
             }
             case CompiledPointerTypeExpression v:
@@ -4629,11 +4842,27 @@ public partial class StatementCompiler
             }
             case CompiledStructTypeExpression v:
             {
-                Dictionary<string, GeneralType> typeArguments = new(v.TypeArguments.Count);
-                foreach (KeyValuePair<string, CompiledTypeExpression> item in v.TypeArguments)
+                Dictionary<string, CompiledTemplateArgument> typeArguments = new(v.TypeArguments.Count);
+                foreach (KeyValuePair<string, CompiledTemplateArgumentExpression> item in v.TypeArguments)
                 {
-                    if (!CompileType(item.Value, out GeneralType? itemV, out error, ignoreValues)) return false;
-                    typeArguments.Add(item.Key, itemV);
+                    switch (item.Value)
+                    {
+                        case CompiledTemplateArgumentTypeExpression w:
+                        {
+                            if (!CompileType(w.Value, out GeneralType? itemV, out error, ignoreValues)) return false;
+                            typeArguments.Add(item.Key, new CompiledTemplateArgumentType()
+                            {
+                                Definition = (v.Struct.Definition.Template ?? throw new UnreachableException()).TryGetTypeArgumentIndex(item.Key, out int i) ? v.Struct.Definition.Template.Parameters[i] : throw new UnreachableException(),
+                                Value = itemV,
+                            });
+                            break;
+                        }
+                        case CompiledTemplateArgumentValueExpression w:
+                        {
+                            throw new NotImplementedException();
+                        }
+                        default: throw new UnreachableException();
+                    }
                 }
                 type = new StructType(v.Struct, v.File, typeArguments.ToImmutableDictionary());
                 return true;

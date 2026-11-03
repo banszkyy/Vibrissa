@@ -30,6 +30,7 @@ public struct Registers
     [FieldOffset(27)] public byte DL;
 
     [FieldOffset(28)] public Flags Flags;
+    [FieldOffset(32)] public int MEow;
 
     public readonly int Get(Register register) => register switch
     {
@@ -56,6 +57,7 @@ public struct Registers
         Register.RBX => throw new NotImplementedException(),
         Register.RCX => throw new NotImplementedException(),
         Register.RDX => throw new NotImplementedException(),
+        Register.MEow => MEow,
         _ => throw new UnreachableException(),
     };
 }

@@ -25,13 +25,12 @@ static class InterpreterRunner
 
     public static MainGeneratorSettings MainGeneratorSettings => new(MainGeneratorSettings.Default)
     {
-        StackSize = MainGeneratorSettings.Default.StackSize,
+
     };
 
     public static BytecodeInterpreterSettings BytecodeInterpreterSettings => new()
     {
-        HeapSize = 2048,
-        StackSize = BytecodeInterpreterSettings.Default.StackSize,
+        MemorySize = BytecodeInterpreterSettings.Default.MemorySize,
     };
 
     public readonly struct ExposedFunctionTest
@@ -62,6 +61,9 @@ static class InterpreterRunner
             Optimizations = OptimizationSettings.All,
             PreprocessorVariables = PreprocessorVariables.Normal,
             CompileEverything = true,
+            ExternalConstants = ImmutableArray.Create(
+                new ExternalConstant("memory_size", BytecodeInterpreterSettings.MemorySize)
+            ),
         }, diagnostics);
         diagnostics.Throw();
 
@@ -74,6 +76,9 @@ static class InterpreterRunner
             Optimizations = OptimizationSettings.None,
             PreprocessorVariables = PreprocessorVariables.Normal,
             CompileEverything = true,
+            ExternalConstants = ImmutableArray.Create(
+                new ExternalConstant("memory_size", BytecodeInterpreterSettings.MemorySize)
+            ),
         }, diagnostics);
         diagnostics.Throw();
         BytecodeGeneratorResult generatedUnoptimized = CodeGeneratorForMain.Generate(compiled, new MainGeneratorSettings(MainGeneratorSettings)

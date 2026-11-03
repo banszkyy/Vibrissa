@@ -8,7 +8,7 @@ public struct FunctionInformation
     public bool IsValid;
     public bool IsTopLevelStub;
     public ICompiledFunctionDefinition? Function;
-    public ImmutableDictionary<string, GeneralType>? TypeArguments;
+    public ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments;
     public MutableRange<int> FrameInstructions;
     public MutableRange<int> Instructions;
 

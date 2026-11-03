@@ -3,12 +3,15 @@ using System;
 List<int> list = new List<int>;
 list.add(66);
 list.add(67);
-printline(&list);
+print(&list);
+printline();
 
 list.remove(0);
-printline(&list);
+print(&list);
+printline();
 
 list.clear();
-printline(&list);
+print(&list);
+printline();
 
 delete list;

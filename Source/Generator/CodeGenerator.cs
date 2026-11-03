@@ -31,7 +31,7 @@ public abstract class CodeGenerator
     protected readonly Stack<CompiledLabelDeclaration> CompiledInstructionLabels;
 
     protected bool InFunction;
-    protected readonly Dictionary<string, GeneralType> TypeArguments;
+    protected readonly Dictionary<string, CompiledTemplateArgument> TypeArguments;
     protected DebugInformation? DebugInfo;
     protected abstract RuntimeInfo RuntimeInfo { get; }
 
@@ -53,27 +53,27 @@ public abstract class CodeGenerator
         CompiledInstructionLabels = new Stack<CompiledLabelDeclaration>();
 
         InFunction = false;
-        TypeArguments = new Dictionary<string, GeneralType>();
+        TypeArguments = new Dictionary<string, CompiledTemplateArgument>();
 
         Diagnostics = diagnostics;
     }
 
     #region SetTypeArguments()
 
-    protected void SetTypeArguments(ImmutableDictionary<string, GeneralType>? arguments)
+    protected void SetTypeArguments(ImmutableDictionary<string, CompiledTemplateArgument>? arguments)
     {
         TypeArguments.Clear();
         if (arguments is not null) TypeArguments.AddRange(arguments);
     }
 
-    protected void SetTypeArguments(ImmutableDictionary<string, GeneralType>? arguments, out Dictionary<string, GeneralType> old)
+    protected void SetTypeArguments(ImmutableDictionary<string, CompiledTemplateArgument>? arguments, out Dictionary<string, CompiledTemplateArgument> old)
     {
-        old = new Dictionary<string, GeneralType>(TypeArguments);
+        old = new Dictionary<string, CompiledTemplateArgument>(TypeArguments);
         TypeArguments.Clear();
         if (arguments is not null) TypeArguments.AddRange(arguments);
     }
 
-    protected TypeArgumentsScope SetTypeArgumentsScope(ImmutableDictionary<string, GeneralType>? arguments)
+    protected TypeArgumentsScope SetTypeArgumentsScope(ImmutableDictionary<string, CompiledTemplateArgument>? arguments)
     {
         TypeArgumentsScope scope = new(this, TypeArguments);
         TypeArguments.Clear();
@@ -84,12 +84,12 @@ public abstract class CodeGenerator
     protected readonly struct TypeArgumentsScope : IDisposable
     {
         readonly CodeGenerator _codeGenerator;
-        readonly ImmutableDictionary<string, GeneralType> _prev;
+        readonly ImmutableDictionary<string, CompiledTemplateArgument> _prev;
 
-        public TypeArgumentsScope(CodeGenerator codeGenerator, IDictionary<string, GeneralType>? prev)
+        public TypeArgumentsScope(CodeGenerator codeGenerator, IDictionary<string, CompiledTemplateArgument>? prev)
         {
             _codeGenerator = codeGenerator;
-            _prev = prev?.ToImmutableDictionary() ?? ImmutableDictionary<string, GeneralType>.Empty;
+            _prev = prev?.ToImmutableDictionary() ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty;
         }
 
         public void Dispose() => _codeGenerator.SetTypeArguments(_prev);
@@ -141,6 +141,7 @@ public abstract class CodeGenerator
         BuiltinType v => FindSize(v, out size, out error),
         AliasType v => FindSize(v, out size, out error),
         EnumType v => FindSize(v, out size, out error),
+        TupleType v => FindSize(v, out size, out error),
         _ => throw new NotImplementedException(),
     };
     protected virtual bool FindSize(ReferenceType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -160,13 +161,13 @@ public abstract class CodeGenerator
         size = default;
         error = null;
 
-        if (type.Length is null)
+        if (!type.TryGetLength(out int l))
         {
             error = new PossibleDiagnostic($"Array type doesn't have a length");
             return false;
         }
 
-        if (type.Length == 0)
+        if (l == 0)
         {
             size = 0;
             return true;
@@ -174,7 +175,7 @@ public abstract class CodeGenerator
 
         if (!FindSize(type.Of, out int elementSize, out error)) return false;
 
-        size = elementSize * type.Length.Value;
+        size = elementSize * l;
         return true;
     }
     protected virtual bool FindSize(FunctionType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -227,6 +228,19 @@ public abstract class CodeGenerator
     }
     protected virtual bool FindSize(AliasType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error) => FindSize(type.Value, out size, out error);
     protected virtual bool FindSize(EnumType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error) => FindSize(type.Definition.Type, out size, out error);
+    protected virtual bool FindSize(TupleType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        size = 0;
+
+        foreach (GeneralType item in type.Items)
+        {
+            if (!FindSize(item, out int itemSize, out error)) return false;
+            size += itemSize;
+        }
+
+        error = null;
+        return true;
+    }
 
     protected bool FindSize(CompiledTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {

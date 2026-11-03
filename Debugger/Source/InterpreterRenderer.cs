@@ -190,6 +190,16 @@ public class InterpreterRenderer
         return (memLoad, memStore, regLoad, regStore);
     }
 
+    static void WriteType<TWriter>(ref TWriter t, CompiledTemplateArgument type) where TWriter : IBufferWriter<TWriter>
+    {
+        switch (type)
+        {
+            case CompiledTemplateArgumentType v: WriteType(ref t, v.Value); break;
+            case CompiledTemplateArgumentValue v: t.Write(v.Value.ToStringValue()); break;
+            default: throw new UnreachableException();
+        }
+    }
+
     public static void WriteType<TWriter>(ref TWriter t, GeneralType type) where TWriter : IBufferWriter<TWriter>
     {
         switch (type)
@@ -203,7 +213,7 @@ public class InterpreterRenderer
             case ArrayType v:
                 WriteType(ref t, v.Of);
                 t.Write('[');
-                if (v.Length.HasValue) t.Write(v.Length.Value.ToString());
+                if (v.Length is not null) t.Write(v.Length.ToString());
                 t.Write(']');
                 break;
             case BuiltinType v:
@@ -253,12 +263,22 @@ public class InterpreterRenderer
             case GenericType v:
                 t.Write(v.Identifier, AnsiColor.Yellow);
                 break;
+            case TupleType v:
+                t.Write("tuple");
+                t.Write('(');
+                for (int i = 0; i < v.Items.Length; i++)
+                {
+                    if (i > 0) t.Write(", ");
+                    WriteType(ref t, v.Items[i]);
+                }
+                t.Write(')');
+                break;
             default:
                 throw new UnreachableException();
         }
     }
 
-    public static void WriteFunction<TWriter>(ref TWriter t, ICompiledFunctionDefinition? function, ImmutableDictionary<string, GeneralType>? typeArguments) where TWriter : IBufferWriter<TWriter>
+    public static void WriteFunction<TWriter>(ref TWriter t, ICompiledFunctionDefinition? function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) where TWriter : IBufferWriter<TWriter>
     {
         if (function is not null)
         {

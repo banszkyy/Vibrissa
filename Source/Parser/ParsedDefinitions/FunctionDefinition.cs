@@ -80,7 +80,7 @@ public class FunctionDefinition : FunctionThingDefinition,
         return result.ToString();
     }
 
-    public override string ToReadable(IReadOnlyDictionary<string, GeneralType>? typeArguments = null)
+    public override string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments = null)
     {
         StringBuilder result = new();
         result.Append(Type.ToString(typeArguments));

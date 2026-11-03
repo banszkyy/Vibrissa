@@ -10,7 +10,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, GeneralType> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<GeneralType>? arguments = null,
-            ImmutableArray<GeneralType>? typeArguments = null,
+            ImmutableArray<CompiledTemplateArgument>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null)
@@ -31,7 +31,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, CompiledExpression> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<CompiledExpression> arguments,
-            ImmutableArray<GeneralType>? typeArguments = null,
+            ImmutableArray<CompiledTemplateArgument>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null)
@@ -52,7 +52,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, GeneralType> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<GeneralType> arguments,
-            ImmutableArray<GeneralType>? typeArguments = null,
+            ImmutableArray<CompiledTemplateArgument>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null,
@@ -75,7 +75,7 @@ public partial class StatementCompiler
         public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, CompiledExpression> Create<TFunction, TIdentifier, TDefinedIdentifier>(
             TIdentifier? identifier,
             ImmutableArray<CompiledExpression> arguments,
-            ImmutableArray<GeneralType>? typeArguments = null,
+            ImmutableArray<CompiledTemplateArgument>? typeArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null,
@@ -102,7 +102,7 @@ public partial class StatementCompiler
         public Uri? RelevantFile { get; init; }
         public TArgument? Object { get; init; }
         public ImmutableArray<TArgument>? Arguments { get; init; }
-        public ImmutableArray<GeneralType>? TypeArguments { get; init; }
+        public ImmutableArray<CompiledTemplateArgument>? TypeArguments { get; init; }
         public int? ArgumentCount { get; init; }
         public GeneralType? ReturnType { get; init; }
         public Action<TemplateInstance<TFunction>>? AddCompilable { get; init; }
@@ -114,7 +114,7 @@ public partial class StatementCompiler
     {
         public required TFunction Function { get; init; }
         public required ImmutableArray<CompiledExpression?> Arguments { get; init; }
-        public ImmutableDictionary<string, GeneralType>? TypeArguments { get; init; }
+        public ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments { get; init; }
         public bool Success { get; init; }
         public bool DidReplaceArguments => !Arguments.IsDefault && Arguments.Any(v => v is not null);
 
@@ -131,7 +131,7 @@ public partial class StatementCompiler
 
         public void Deconstruct(
             out TFunction function,
-            out ImmutableDictionary<string, GeneralType>? typeArguments)
+            out ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
         {
             function = Function;
             typeArguments = TypeArguments;
@@ -235,7 +235,7 @@ public partial class StatementCompiler
         public int UsedUpDefaultParameterValues { get; set; }
         public CastLevel? ParameterTypeMatch { get; set; }
 
-        public ImmutableDictionary<string, GeneralType>? TypeArguments { get; set; }
+        public ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments { get; set; }
         public CompiledExpression? Object { get; set; }
         public ImmutableArray<CompiledExpression?> Arguments { get; set; }
 
@@ -460,7 +460,7 @@ public partial class StatementCompiler
         else
         {
             result = default;
-            error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ignoreOnPartialSource: true);
+            error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ignoreOnPartialSource: true, isTellingNothing: true);
             return false;
         }
     }
@@ -530,7 +530,7 @@ public partial class StatementCompiler
             }
             else
             {
-                result.Errors.Add(new($"No function found with name `{query.Identifier}`", ignoreOnPartialSource: true));
+                result.Errors.Add(new($"No function found with name `{query.Identifier}`", ignoreOnPartialSource: true, isTellingNothing: true));
             }
             return result;
         }
@@ -620,7 +620,7 @@ public partial class StatementCompiler
             }
         }
 
-        Dictionary<string, GeneralType>? _typeArguments = function.Definition.IsTemplate ? new() : null;
+        Dictionary<string, CompiledTemplateArgument>? _typeArguments = function.Definition.IsTemplate ? new() : null;
 
         if (query.TypeArguments is not null)
         {
@@ -633,7 +633,7 @@ public partial class StatementCompiler
             int checkCount = Math.Min(query.TypeArguments.Value.Length, function.Definition.Template?.Parameters.Length ?? 0);
             for (int i = 0; i < checkCount; i++)
             {
-                GeneralType passed = query.TypeArguments.Value[i];
+                CompiledTemplateArgument passed = query.TypeArguments.Value[i];
                 _typeArguments![function.Definition.Template!.Parameters[i].Content] = passed;
             }
         }
@@ -656,9 +656,13 @@ public partial class StatementCompiler
 
                 if (result.ParameterTypeMatch > CastLevel.None && _typeArguments is not null)
                 {
-                    if (GeneralType.TryGetTypeParameters(defined, query.Converter(passed), _typeArguments))
+                    if (ResolveTemplateParameters(defined, query.Converter(passed), out PossibleDiagnostic? templateResolveError, _typeArguments))
                     {
                         defined = GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, _typeArguments);
+                    }
+                    else
+                    {
+                        result.Errors.Add(templateResolveError);
                     }
                 }
 
@@ -667,7 +671,10 @@ public partial class StatementCompiler
 
                 if (result.ParameterTypeMatch > CastLevel.None && _typeArguments is not null)
                 {
-                    GeneralType.TryGetTypeParameters(defined, arguments[i]?.Type ?? query.Converter(passed), _typeArguments);
+                    if (!ResolveTemplateParameters(defined, arguments[i]?.Type ?? query.Converter(passed), out PossibleDiagnostic? templateResolveError, _typeArguments))
+                    {
+                        result.Errors.Add(templateResolveError);
+                    }
                 }
             }
             result.Arguments = arguments.AsImmutableUnsafe();
@@ -685,5 +692,151 @@ public partial class StatementCompiler
         }
 
         return result;
+    }
+
+    public static bool ResolveTemplateParameters(GeneralType defined, GeneralType passed, [NotNullWhen(false)] out PossibleDiagnostic? error, Dictionary<string, CompiledTemplateArgument> typeParameters)
+    {
+        error = null;
+
+        switch (defined.FinalValue, passed.FinalValue)
+        {
+            case (_, GenericType):
+            {
+                error = new PossibleDiagnostic($"This should be non-generic");
+                return false;
+            }
+            case (GenericType v, _):
+            {
+                if (typeParameters.TryGetValue(v.Identifier, out CompiledTemplateArgument? addedTypeParameter))
+                {
+                    if (addedTypeParameter is not CompiledTemplateArgumentType w)
+                    {
+                        error = new PossibleDiagnostic($"Template parameter `{addedTypeParameter.Definition}` is not a type");
+                        return false;
+                    }
+
+                    if (!w.Value.SameAs(passed))
+                    {
+                        error = new PossibleDiagnostic($"Type `{passed}` is not the same as `{w.Value}`");
+                        return false;
+                    }
+                }
+                else
+                {
+                    typeParameters.Add(v.Identifier, new CompiledTemplateArgumentType()
+                    {
+                        Value = passed,
+                        Definition = v.Definition,
+                    });
+                }
+
+                return true;
+            }
+            case (IReferenceType v, IReferenceType w):
+            {
+                return ResolveTemplateParameters(v.To, w.To, out error, typeParameters);
+            }
+            case (FunctionType v, FunctionType w):
+            {
+                if (v.Parameters.Length != w.Parameters.Length)
+                {
+                    error = new PossibleDiagnostic($"Type `{passed}` is not the same as `{defined}`");
+                    return false;
+                }
+
+                for (int i = 0; i < v.Parameters.Length; i++)
+                {
+                    if (!ResolveTemplateParameters(v.Parameters[i], w.Parameters[i], out error, typeParameters)) return false;
+                }
+
+                if (!ResolveTemplateParameters(v.ReturnType, w.ReturnType, out error, typeParameters)) return false;
+                else return true;
+            }
+            case (StructType v, StructType w):
+            {
+                if (!Utils.ReferenceEquals(v.Struct.Definition, w.Struct.Definition))
+                {
+                    error = new PossibleDiagnostic($"Type `{passed}` is not the same as `{defined}`");
+                    return false;
+                }
+                if (v.Struct.Definition.Template is null) return true;
+                if (w.Struct.Definition.Template is null) return true;
+                if (v.Struct.Definition.Template.Parameters.Length != w.TypeArguments.Count) return true;
+
+                for (int i = 0; i < v.Struct.Definition.Template.Parameters.Length; i++)
+                {
+                    string typeParamName = v.Struct.Definition.Template.Parameters[i].Content;
+                    CompiledTemplateArgument typeParamValue = w.TypeArguments[typeParamName];
+
+                    if (typeParameters.TryGetValue(typeParamName, out CompiledTemplateArgument? addedTypeParameter))
+                    {
+                        if (!addedTypeParameter.SameAs(typeParamValue))
+                        {
+                            error = new PossibleDiagnostic($"Type `{typeParamValue}` is not the same as `{addedTypeParameter}`");
+                            return false;
+                        }
+                    }
+                    else
+                    { typeParameters.Add(typeParamName, typeParamValue); }
+                }
+
+                return true;
+            }
+            case (ArrayType v, ArrayType w):
+            {
+                if (!ResolveTemplateParameters(v.Of, w.Of, out error, typeParameters)) return true;
+                if (v.Length is not CompiledTemplateParameterAccess templateParameterAccess) return true;
+
+                if (w.Length is CompiledTemplateParameterAccess)
+                {
+                    error = new PossibleDiagnostic($"Type `{passed}` is not the same as `{defined}`");
+
+                    if (typeParameters.ContainsKey(templateParameterAccess.Parameter.Content))
+                    { return false; }
+                    throw new NotImplementedException($"This should be non-generic");
+                }
+
+                if (w.Length is not CompiledConstantValue constantValue) return true;
+
+                string typeParamName = templateParameterAccess.Parameter.Content;
+                CompiledTemplateArgument typeParamValue = new CompiledTemplateArgumentValue()
+                {
+                    Definition = templateParameterAccess.Parameter,
+                    Value = constantValue.Value,
+                };
+
+                if (typeParameters.TryGetValue(typeParamName, out CompiledTemplateArgument? addedTypeParameter))
+                {
+                    if (!addedTypeParameter.SameAs(typeParamValue))
+                    {
+                        error = new PossibleDiagnostic($"Type `{typeParamValue}` is not the same as `{addedTypeParameter}`");
+                        return false;
+                    }
+                }
+                else
+                {
+                    typeParameters.Add(typeParamName, typeParamValue);
+                    return true;
+                }
+                return true;
+            }
+            case (TupleType v, TupleType w):
+            {
+                if (v.Items.Length != w.Items.Length)
+                {
+                    error = new PossibleDiagnostic($"Type `{passed}` is not the same as `{defined}`");
+                    return false;
+                }
+
+                for (int i = 0; i < v.Items.Length; i++)
+                {
+                    if (!ResolveTemplateParameters(v.Items[i], w.Items[i], out error, typeParameters)) return false;
+                }
+
+                return true;
+            }
+            default:
+                return true;
+        }
     }
 }

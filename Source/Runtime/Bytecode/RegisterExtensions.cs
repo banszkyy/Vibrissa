@@ -117,6 +117,7 @@ public static class RegisterExtensions
         Register.DX => Runtime.BitWidth._16,
         Register.DH => Runtime.BitWidth._8,
         Register.DL => Runtime.BitWidth._8,
+        Register.MEow => Runtime.BitWidth._32,
         _ => throw new UnreachableException(),
     };
 

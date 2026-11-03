@@ -150,6 +150,9 @@ public static partial class StatementWalker
             case ListExpression v:
                 foreach (ISmallNode w in EnumerateNodes(v.Values, predicate)) yield return w;
                 break;
+            case PackExpression v:
+                foreach (ISmallNode w in EnumerateNodes(v.Values, predicate)) yield return w;
+                break;
             case LiteralExpression v:
                 break;
             case ManagedTypeCastExpression v:
@@ -217,6 +220,12 @@ public static partial class StatementWalker
                 break;
             case MissingExpression:
             case MissingStatement:
+                break;
+            case TemplateArgumentExpressionType v:
+                foreach (ISmallNode w in EnumerateNodes(v.Value, predicate)) yield return w;
+                break;
+            case TemplateArgumentExpressionValue v:
+                foreach (ISmallNode w in EnumerateNodes(v.Value, predicate)) yield return w;
                 break;
             default: throw new NotImplementedException(statement.GetType().Name);
         }

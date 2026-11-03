@@ -24,7 +24,7 @@ public static class Strings
         string scriptPath = GetScriptPath();
         string standardLibraryPath = GetStandardLibraryPath();
 
-        byte[] memory = new byte[BytecodeInterpreterSettings.Default.HeapSize + BytecodeInterpreterSettings.Default.StackSize];
+        byte[] memory = new byte[BytecodeInterpreterSettings.Default.MemorySize];
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(StandardIO.Instance);
 

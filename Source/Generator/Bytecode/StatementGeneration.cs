@@ -125,6 +125,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         BuiltinType v => GenerateSize(v, result, out error),
         AliasType v => GenerateSize(v, result, out error),
         EnumType v => GenerateSize(v, result, out error),
+        TupleType v => GenerateSize(v, result, out error),
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(ReferenceType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -149,7 +150,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return true;
         }
 
-        if (type.Length is null)
+        if (!type.TryGetLength(out int length))
         {
             error = new PossibleDiagnostic($"Array type doesn't have a size");
             return false;
@@ -160,7 +161,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return false;
         }
 
-        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(type.Length.Value * elementSize, result.BitWidth()));
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(length * elementSize, result.BitWidth()));
         return true;
     }
     bool GenerateSize(FunctionType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -186,6 +187,15 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     bool GenerateSize(AliasType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Value, result, out error);
     bool GenerateSize(EnumType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Definition.Type, result, out error);
+    bool GenerateSize(TupleType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        error = null;
+        foreach (GeneralType item in type.Items)
+        {
+            if (!GenerateSize(item, result, out error)) return false;
+        }
+        return true;
+    }
 
     bool GenerateSize(CompiledTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
@@ -1505,7 +1515,109 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         AddComment($"new `{newInstance.Type}` {{");
 
+        if (newInstance.Initialization.IsEmpty)
+        {
+            StackAlloc(FindSize(newInstance.Type, newInstance), true);
+            AddComment("}");
+            return;
+        }
+
+        GeneralType objectType = newInstance.Type;
+        bool dereference = false;
+        if (objectType.Is(out IReferenceType? referenceType))
+        {
+            objectType = referenceType.To;
+            dereference = true;
+        }
+
+        if (!objectType.Is(out StructType? structType))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Nooo", newInstance));
+            return;
+        }
+
+        StatementCompiler.StatementComplexity initComplexity = StatementCompiler.StatementComplexity.None;
+        Dictionary<string, CompiledExpression> initialized = new();
+
+        foreach (CompiledInitializationItem item in newInstance.Initialization)
+        {
+            initComplexity |= StatementCompiler.GetStatementComplexity(item.Value);
+            initialized[item.Field.Identifier] = item.Value;
+        }
+
+        bool allInitialized = true;
+        foreach (CompiledField item in structType.Struct.Fields)
+        {
+            if (!initialized.ContainsKey(item.Identifier))
+            {
+                allInitialized = false;
+                break;
+            }
+        }
+
+        if (!dereference && allInitialized && initComplexity == StatementCompiler.StatementComplexity.None)
+        {
+            foreach (CompiledField? item in structType.Struct.Fields.Reverse())
+            {
+                CompiledExpression value = initialized[item.Identifier];
+                GenerateCodeForStatement(value);
+            }
+
+            AddComment("}");
+            return;
+        }
+
         StackAlloc(FindSize(newInstance.Type, newInstance), true);
+
+        if (dereference)
+        {
+            CheckPointerNull();
+        }
+
+        foreach (CompiledInitializationItem item in newInstance.Initialization)
+        {
+            if (!GetFieldOffset(structType, item.Field.Identifier, out _, out int fieldOffset, out PossibleDiagnostic? error1))
+            {
+                Diagnostics.Add(error1.ToError(item));
+                return;
+            }
+
+            GenerateCodeForStatement(item.Value);
+            int itemSize = FindSize(item.Value.Type, item);
+            if (dereference)
+            {
+                throw new NotImplementedException();
+            }
+            else
+            {
+                int currentOffset = 0;
+                int popped = 0;
+                while (currentOffset < itemSize)
+                {
+                    foreach (BitWidth checkBitWidth in
+#if NET_STANDARD
+                            CompatibilityUtils.GetEnumValues<BitWidth>().Reverse()
+#else
+                        Enum.GetValues<BitWidth>().Reverse()
+#endif
+                    )
+                    {
+                        if (Settings.PointerBitWidth == BitWidth._64 &&
+                            checkBitWidth == BitWidth._32)
+                        { continue; }
+
+                        int checkSize = (int)checkBitWidth;
+                        if (itemSize - currentOffset < checkSize) continue;
+                        if (Settings.PointerSize < checkSize) continue;
+
+                        popped += checkSize;
+                        PopTo(Register.StackPointer.ToPtr(itemSize - popped + currentOffset + fieldOffset, checkBitWidth), checkBitWidth);
+                        currentOffset += checkSize;
+                        break;
+                    }
+                }
+            }
+        }
 
         AddComment("}");
     }
@@ -1578,6 +1690,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GenerateCodeForParameterCleanup(parameterCleanup);
 
         AddComment("}");
+
+        if (!constructorCall.Initialization.IsEmpty) throw new NotImplementedException();
     }
     void GenerateCodeForStatement(CompiledFieldAccess field)
     {
@@ -1675,7 +1789,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             if (Settings.Optimizations.HasFlag(GeneratorOptimizationSettings.IndexerFetchSkip)
                 && index.Index is CompiledConstantValue evaluatedIndex)
             {
-                if (arrayType.Length.HasValue && (evaluatedIndex.Value < 0 || evaluatedIndex.Value >= arrayType.Length.Value))
+                if (evaluatedIndex.Value < 0 || (arrayType.TryGetLength(out int l) && evaluatedIndex.Value >= l))
                 {
                     Diagnostics.Add(DiagnosticAt.Warning($"Index out of range", index.Index));
                 }
@@ -2085,6 +2199,18 @@ public partial class CodeGeneratorForMain : CodeGenerator
             });
         }
     }
+    void GenerateCodeForStatement(CompiledPack pack)
+    {
+        AddComment("pack {");
+
+        for (int i = pack.Values.Length - 1; i >= 0; i--)
+        {
+            CompiledExpression item = pack.Values[i];
+            GenerateCodeForStatement(item);
+        }
+
+        AddComment("}");
+    }
     void GenerateCodeForStatement(CompiledExpression statement)
     {
         Settings.CancellationToken.ThrowIfCancellationRequested();
@@ -2122,6 +2248,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledCompilerVariableAccess v: GenerateCodeForStatement(v); break;
             case CompiledList v: GenerateCodeForStatement(v); break;
             case CompiledMeowExpression v: GenerateCodeForStatement(v); break;
+            case CompiledPack v: GenerateCodeForStatement(v); break;
             default: throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
         }
 
@@ -2139,6 +2266,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 or CompiledReinterpretation
                 or CompiledStackAllocation
                 or CompiledStackString
+                or CompiledPack
                 or CompiledGetReference;
 
             bool isSubtle = IsSubtle(statement);
@@ -2681,8 +2809,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
         else if (newVariable.Type.Is(out ArrayType? arrayType1) &&
             arrayType1.Of.SameAs(BasicType.U16) &&
             newVariable.InitialValue is CompiledString literalStatement1 &&
-            arrayType1.Length.HasValue &&
-            literalStatement1.Value.Length == arrayType1.Length.Value)
+            arrayType1.TryGetLength(out int l) &&
+            literalStatement1.Value.Length == l)
         {
             size = FindSize(arrayType1, newVariable);
 
@@ -2694,8 +2822,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
         else if (newVariable.Type.Is(out ArrayType? arrayType2) &&
             arrayType2.Of.SameAs(BasicType.U8) &&
             newVariable.InitialValue is CompiledString literalStatement2 &&
-            arrayType2.Length.HasValue &&
-            Encoding.UTF8.GetByteCount(literalStatement2.Value) == arrayType2.Length.Value)
+            arrayType2.TryGetLength(out l) &&
+            Encoding.UTF8.GetByteCount(literalStatement2.Value) == l)
         {
             size = FindSize(arrayType2, newVariable);
             byte[] bytes = Encoding.UTF8.GetBytes(literalStatement2.Value);
@@ -2753,7 +2881,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
     }
 
-    void GenerateCodeForFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledBlock body)
+    void GenerateCodeForFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, CompiledBlock body)
     {
         if (GeneratedFunctions.Any(v => Utils.ReferenceEquals(v.Template, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments))) return;
         GeneratedFunctions.Add(TemplateInstance.New(function, typeArguments));
@@ -3257,6 +3385,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
     failed:
 
+        /*
         List<PreparationInstruction> stringInitializationInstructions = new();
 
         foreach (GeneratedString _string in Strings)
@@ -3270,11 +3399,16 @@ public partial class CodeGeneratorForMain : CodeGenerator
         Code.Insert(0, stringInitializationInstructions);
         topLevelScope.Location.Instructions.End += stringInitializationInstructions.Count;
 
-        DebugInfo?.ScopeInformation.Add(topLevelScope);
-
         ImmutableArray<Instruction> code = Code.Compile(new Dictionary<string, int>()
         {
             { "heap_start", Strings.Sum(v => v.Value.Length) }
+        });
+        */
+
+        DebugInfo?.ScopeInformation.Add(topLevelScope);
+        ImmutableArray<Instruction> code = Code.Compile(new Dictionary<string, int>()
+        {
+            //{ "heap_start", Strings.Sum(v => v.Value.Length) }
         });
 
         Dictionary<string, ExposedFunction> exposedFunctions = new();

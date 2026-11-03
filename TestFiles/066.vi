@@ -1,0 +1,17 @@
+using System;
+
+void meow(byte[3]* e)
+{
+    printf("%d\n", [(int)e[0]]);
+    printf("%d\n", [(int)e[1]]);
+    printf("%d\n", [(int)e[2]]);
+}
+
+temp byte[]* a = new byte[3]*;
+*a = pack { (byte)1, (byte)2, (byte)3 };
+meow(a);
+
+byte[3] b = pack { (byte)1, (byte)2, (byte)3 };
+meow(&b);
+
+return 0;

@@ -216,7 +216,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     readonly Stack<int> ScopeSizes = new();
 
-    readonly List<GeneratedString> Strings = new();
+    //readonly List<GeneratedString> Strings = new();
 
     #endregion
 

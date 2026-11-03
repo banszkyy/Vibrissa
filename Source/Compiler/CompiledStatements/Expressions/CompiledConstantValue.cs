@@ -1,6 +1,6 @@
 namespace LanguageCore.Compiler;
 
-public class CompiledConstantValue : CompiledExpression
+public class CompiledConstantValue : CompiledConstantAccess
 {
     public required CompiledValue Value { get; init; }
 
@@ -28,4 +28,6 @@ public class CompiledConstantValue : CompiledExpression
         SaveValue = statement.SaveValue,
         Type = statement.Type,
     };
+
+    public override bool SameAs(CompiledConstantAccess other) => other is CompiledConstantValue v && Value.Equals(v.Value);
 }

@@ -43,7 +43,7 @@ public static class StatementConverters
         return false;
     }
 
-    public static NewInstanceExpression ToInstantiation(this ConstructorCallExpression constructorCall) => new(constructorCall.Keyword, constructorCall.Type, constructorCall.File)
+    public static NewInstanceExpression ToInstantiation(this ConstructorCallExpression constructorCall) => new(constructorCall.Keyword, constructorCall.Type, null, constructorCall.File)
     {
         CompiledType = constructorCall.CompiledType,
         SaveValue = true,

@@ -11,7 +11,7 @@ public class BytecodeProcessor
         }
     }
     public bool IsDone => Registers.CodePointer == Code.Length;
-    public int StackStart => ProcessorState.StackDirection > 0 ? Settings.HeapSize : Settings.HeapSize + Settings.StackSize - 1;
+    public int StackStart => ProcessorState.StackDirection > 0 ? throw new NotImplementedException() : Settings.MemorySize - 1;
 
     public readonly CompiledDebugInformation DebugInformation;
     public readonly BytecodeInterpreterSettings Settings;
@@ -42,7 +42,7 @@ public class BytecodeProcessor
         Settings = settings;
         ExternalFunctions = externalFunctions.Select(v => new KeyValuePair<int, IExternalFunction>(v.Id, v)).ToFrozenDictionary();
         Code = program;
-        Memory = memory ?? new byte[settings.HeapSize + settings.StackSize];
+        Memory = memory ?? new byte[settings.MemorySize];
         Registers.StackPointer = StackStart - ProcessorState.StackDirection;
         ScopedExternalFunctions = !scopedExternalFunctions.IsDefaultOrEmpty ? scopedExternalFunctions : ImmutableArray<ExternalFunctionScopedSync>.Empty;
     }
@@ -55,7 +55,7 @@ public class BytecodeProcessor
         Settings = other.Settings;
         ExternalFunctions = other.ExternalFunctions;
         Code = other.Code;
-        Memory = memory ?? new byte[other.Settings.HeapSize + other.Settings.StackSize];
+        Memory = memory ?? new byte[other.Settings.MemorySize];
         Registers.StackPointer = StackStart - ProcessorState.StackDirection;
         ScopedExternalFunctions = other.ScopedExternalFunctions;
     }

@@ -100,14 +100,15 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 {
                     if (arrayType.Length is not null)
                     {
-                        if (!arrayType.Length.HasValue)
+                        if (arrayType.Length is null)
                         {
-                            Diagnostics.Add(DiagnosticAt.Error($"Literal length {literal.Value.Length} must be equal to the stack array length <runtime value>", literal));
+                            Diagnostics.Add(DiagnosticAt.Error($"Literal length `{literal.Value.Length}` must be equal to the stack array length", literal));
                             return default;
                         }
-                        if (literal.Value.Length != arrayType.Length.Value)
+
+                        if (!arrayType.Length.SameAs(literal.Value.Length))
                         {
-                            Diagnostics.Add(DiagnosticAt.Error($"Literal length {literal.Value.Length} must be equal to the stack array length {arrayType.Length.Value}", literal));
+                            Diagnostics.Add(DiagnosticAt.Error($"Literal length `{literal.Value.Length}` must be equal to the stack array length `{arrayType.Length}`", literal));
                             return default;
                         }
                     }
@@ -139,13 +140,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 }
                 else
                 {
-                    if (!arrayType.Length.HasValue)
+                    if (!arrayType.TryGetLength(out int arraySize))
                     {
                         Diagnostics.Add(DiagnosticAt.Error($"This aint supported", variableDeclaration));
                         return default;
                     }
-
-                    int arraySize = arrayType.Length.Value;
 
                     int size = Snippets.ARRAY_SIZE(arraySize);
 
@@ -193,13 +192,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         {
             if (type.Is(out ArrayType? arrayType))
             {
-                if (!arrayType.Length.HasValue)
+                if (!arrayType.TryGetLength(out int arraySize))
                 {
                     Diagnostics.Add(DiagnosticAt.Error($"This aint supported", variableDeclaration));
                     return default;
                 }
-
-                int arraySize = arrayType.Length.Value;
 
                 int size = Snippets.ARRAY_SIZE(arraySize);
 
@@ -236,14 +233,14 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     protected override bool FindSize(ArrayType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         size = default;
-        if (type.Length is null)
+        if (!type.TryGetLength(out int arraySize))
         {
             error = new PossibleDiagnostic($"Array type doesn't have a size");
             return false;
         }
 
         error = null;
-        size = Snippets.ARRAY_SIZE(type.Length.Value);
+        size = Snippets.ARRAY_SIZE(arraySize);
         return true;
     }
 
@@ -261,6 +258,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         BuiltinType v => GenerateSize(v, result, out error),
         AliasType v => GenerateSize(v, result, out error),
         EnumType v => GenerateSize(v, result, out error),
+        TupleType v => GenerateSize(v, result, out error),
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(PointerType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -277,7 +275,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             return true;
         }
 
-        if (type.Length is null)
+        if (!type.TryGetLength(out int l))
         {
             error = new PossibleDiagnostic($"Array type doesn't have a size");
             return false;
@@ -294,7 +292,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             return false;
         }
 
-        Code.AddValue(result, (2 * type.Length.Value) + 3);
+        Code.AddValue(result, (2 * l) + 3);
 
         return true;
     }
@@ -302,6 +300,15 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     {
         error = null;
         Code.AddValue(result, 1);
+        return true;
+    }
+    bool GenerateSize(TupleType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        error = null;
+        foreach (GeneralType item in type.Items)
+        {
+            if (!GenerateSize(item, result, out error)) return false;
+        }
         return true;
     }
     bool GenerateSize(StructType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -698,13 +705,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     }
                 }
                 else if (value is CompiledList literalList &&
-                         arrayType.Length.HasValue &&
-                         arrayType.Length.Value == literalList.Values.Length)
+                         arrayType.TryGetLength(out int arraySize) &&
+                         arraySize == literalList.Values.Length)
                 {
                     if (FindSize(arrayType.Of, value) != 1)
                     { throw new NotSupportedException($"I'm not smart enough to handle arrays with element sizes other than one (at least in brainfuck)", value); }
-
-                    int arraySize = arrayType.Length.Value;
 
                     int size = Snippets.ARRAY_SIZE(arraySize);
 
@@ -1111,6 +1116,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             case CompiledEmptyStatement: break;
             case CompiledGoto v: GenerateCodeForStatement(v); break;
             case CompiledCompilerVariableAccess v: GenerateCodeForStatement(v); break;
+            case CompiledPack v: GenerateCodeForStatement(v); break;
             case CompiledMeowExpression: break;
             default: throw new UnreachableException(statement.GetType().Name);
         }
@@ -1636,6 +1642,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     {
         using DebugInfoBlock debugBlock = DebugBlock(constructorCall);
         GenerateCodeForConstructor(constructorCall.Function.Template, constructorCall.Arguments, constructorCall.Function.TypeArguments, constructorCall);
+        if (!constructorCall.Initialization.IsEmpty) throw new NotImplementedException();
     }
     void GenerateCodeForStatement(CompiledString statement, GeneralType? expectedType = null)
     {
@@ -1691,10 +1698,10 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
         switch (statement.Identifier)
         {
-            case "heap_start":
-                Diagnostics.Add(DiagnosticAt.Warning($"This is not suppored by Brainfuck, defaulting to 0", statement));
-                Stack.Push(0);
-                break;
+            //case "heap_start":
+            //    Diagnostics.Add(DiagnosticAt.Warning($"This is not suppored by Brainfuck, defaulting to 0", statement));
+            //    Stack.Push(0);
+            //    break;
             default:
                 Diagnostics.Add(DiagnosticAt.Error($"Unknown compiler variable `{statement.Identifier}`", statement));
                 break;
@@ -2347,6 +2354,8 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             int offsettedAddress = address + offset;
             Code.SetValue(offsettedAddress, 0);
         }
+
+        if (!newInstance.Initialization.IsEmpty) throw new NotImplementedException();
     }
     void GenerateCodeForStatement(CompiledFieldAccess field)
     {
@@ -2450,6 +2459,15 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         }
 
         GenerateCodeForStatement(typeCast.Value);
+    }
+    void GenerateCodeForStatement(CompiledPack pack)
+    {
+        using DebugInfoBlock debugBlock = DebugBlock(pack);
+
+        foreach (CompiledExpression item in pack.Values)
+        {
+            GenerateCodeForStatement(item);
+        }
     }
     #endregion
 
@@ -2688,7 +2706,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         return true;
     }
 
-    void GenerateCodeForFunction(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated caller)
+    void GenerateCodeForFunction(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated caller)
     {
         if (!AllowFunctionInlining ||
             !IsFunctionInlineable(function.Definition, parameters))
@@ -2700,7 +2718,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         GenerateCodeForFunction_(function, parameters, typeArguments, caller);
     }
 
-    void GenerateCodeForParameterPassing(ICompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, Stack<BrainfuckVariable> compiledParameters, ImmutableDictionary<string, GeneralType>? typeArguments)
+    void GenerateCodeForParameterPassing(ICompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, Stack<BrainfuckVariable> compiledParameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
     {
         for (int i = 0; i < parameters.Length; i++)
         {
@@ -2869,7 +2887,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         }
     }
 
-    void GenerateCodeForFunction_(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
+    void GenerateCodeForFunction_(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated callerPosition)
     {
         CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
         if (f is null)
@@ -3056,7 +3074,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForFunction(CompiledOperatorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
+    void GenerateCodeForFunction(CompiledOperatorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated callerPosition)
     {
         CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
         if (f is null)
@@ -3243,7 +3261,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForFunction(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
+    void GenerateCodeForFunction(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated callerPosition)
     {
         CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
         if (f is null)
@@ -3347,7 +3365,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForConstructor(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledConstructorCall caller)
+    void GenerateCodeForConstructor(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, CompiledConstructorCall caller)
     {
         CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
         if (f is null)

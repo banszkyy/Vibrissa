@@ -33,6 +33,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
             PointerType v => CompiledPointerTypeExpression.CreateAnonymous(v, location),
             ReferenceType v => CompiledReferenceTypeExpression.CreateAnonymous(v, location),
             StructType v => CompiledStructTypeExpression.CreateAnonymous(v, location),
+            TupleType => throw new NotImplementedException(),
             _ => throw new UnreachableException(),
         };
     }
@@ -92,7 +93,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
         _ => false,
     };
 
-    public static bool TryGetTypeParameters(CompiledTypeExpression defined, CompiledTypeExpression passed, Dictionary<string, CompiledTypeExpression> typeParameters)
+    public static bool TryGetTypeParameters(CompiledTypeExpression defined, CompiledTypeExpression passed, Dictionary<string, CompiledTemplateArgumentExpression> typeParameters)
     {
         if (passed.Is(out CompiledGenericTypeExpression? passedGenericType))
         {
@@ -103,13 +104,17 @@ public abstract class CompiledTypeExpression : CompiledStatement,
 
         if (defined.Is(out CompiledGenericTypeExpression? definedGenericType))
         {
-            if (typeParameters.TryGetValue(definedGenericType.Identifier, out CompiledTypeExpression? addedTypeParameter))
+            if (typeParameters.TryGetValue(definedGenericType.Identifier, out CompiledTemplateArgumentExpression? addedTypeParameter))
             {
-                if (!addedTypeParameter.SameAs(passed)) return false;
+                if (addedTypeParameter is not CompiledTemplateArgumentTypeExpression w) return false;
+                if (!w.Value.SameAs(passed)) return false;
             }
             else
             {
-                typeParameters.Add(definedGenericType.Identifier, passed);
+                typeParameters.Add(definedGenericType.Identifier, new CompiledTemplateArgumentTypeExpression()
+                {
+                    Value = passed,
+                });
             }
 
             return true;
@@ -158,9 +163,9 @@ public abstract class CompiledTypeExpression : CompiledStatement,
                 for (int i = 0; i < definedStructType.Struct.Definition.Template.Parameters.Length; i++)
                 {
                     string typeParamName = definedStructType.Struct.Definition.Template.Parameters[i].Content;
-                    CompiledTypeExpression typeParamValue = passedStructType.TypeArguments[typeParamName];
+                    CompiledTemplateArgumentExpression typeParamValue = passedStructType.TypeArguments[typeParamName];
 
-                    if (typeParameters.TryGetValue(typeParamName, out CompiledTypeExpression? addedTypeParameter))
+                    if (typeParameters.TryGetValue(typeParamName, out CompiledTemplateArgumentExpression? addedTypeParameter))
                     { if (!addedTypeParameter.SameAs(typeParamValue)) return false; }
                     else
                     { typeParameters.Add(typeParamName, typeParamValue); }
@@ -206,7 +211,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
     }
 
     [return: NotNullIfNotNull(nameof(typeArguments))]
-    public static CompiledTypeExpression? InsertTypeParameters(CompiledTypeExpression type, IReadOnlyDictionary<string, CompiledTypeExpression>? typeArguments)
+    public static CompiledTypeExpression? InsertTypeParameters(CompiledTypeExpression type, IReadOnlyDictionary<string, CompiledTemplateArgumentExpression>? typeArguments)
     {
         if (typeArguments is null) return null;
 
@@ -214,9 +219,10 @@ public abstract class CompiledTypeExpression : CompiledStatement,
         {
             case CompiledGenericTypeExpression genericType:
             {
-                if (!typeArguments.TryGetValue(genericType.Identifier, out CompiledTypeExpression? passedTypeArgument))
+                if (!typeArguments.TryGetValue(genericType.Identifier, out CompiledTemplateArgumentExpression? passedTypeArgument))
                 { throw new InternalExceptionWithoutContext(); }
-                return passedTypeArgument;
+                if (passedTypeArgument is not CompiledTemplateArgumentTypeExpression w) throw new NotImplementedException();
+                return w.Value;
             }
 
             case CompiledPointerTypeExpression pointerType:
@@ -241,10 +247,10 @@ public abstract class CompiledTypeExpression : CompiledStatement,
             {
                 if (structType.Struct.Definition.Template is not null)
                 {
-                    ImmutableDictionary<string, CompiledTypeExpression>.Builder structTypeArguments = ImmutableDictionary.CreateBuilder<string, CompiledTypeExpression>();
+                    ImmutableDictionary<string, CompiledTemplateArgumentExpression>.Builder structTypeArguments = ImmutableDictionary.CreateBuilder<string, CompiledTemplateArgumentExpression>();
                     foreach (Token typeParameter in structType.Struct.Definition.Template.Parameters)
                     {
-                        if (!typeArguments.TryGetValue(typeParameter.Content, out CompiledTypeExpression? v))
+                        if (!typeArguments.TryGetValue(typeParameter.Content, out CompiledTemplateArgumentExpression? v))
                         {
                             return type;
                         }
@@ -278,7 +284,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
         }
     }
 
-    public static ImmutableArray<CompiledTypeExpression> InsertTypeParameters(ImmutableArray<CompiledTypeExpression> types, IReadOnlyDictionary<string, CompiledTypeExpression> typeArguments)
+    public static ImmutableArray<CompiledTypeExpression> InsertTypeParameters(ImmutableArray<CompiledTypeExpression> types, IReadOnlyDictionary<string, CompiledTemplateArgumentExpression> typeArguments)
     {
         ImmutableArray<CompiledTypeExpression>.Builder result = ImmutableArray.CreateBuilder<CompiledTypeExpression>(types.Length);
         foreach (CompiledTypeExpression type in types)

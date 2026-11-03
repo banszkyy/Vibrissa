@@ -772,7 +772,7 @@ public partial class StatementCompiler
         //UserDefinedAttributes
         //PreprocessorVariables
 
-        Diagnostics.Clear();
+        //Diagnostics.Clear();
         GenericParameters.Clear();
         CompilingDefinitionStack.Clear();
         Frames.Clear();

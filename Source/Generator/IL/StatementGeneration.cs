@@ -133,6 +133,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case FunctionType:
                 il.Emit(OpCodes.Ldnull);
                 return;
+            case TupleType v:
+                throw new NotImplementedException();
             default:
                 throw new UnreachableException(statement.Type.FinalValue.GetType().Name);
         }
@@ -1610,6 +1612,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 il.Emit(OpCodes.Pop);
             }
         }
+
+        if (!statement.Initialization.IsEmpty) throw new NotImplementedException();
     }
     void EmitStatement(CompiledStackAllocation statement, ILProxy il, ref bool successful, LocalBuilder? destination = null)
     {
@@ -1628,14 +1632,46 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 {
                     il.Emit(OpCodes.Ldloca_S, destination.LocalIndex);
                     il.Emit(OpCodes.Initobj, type);
+
+                    foreach (CompiledInitializationItem item in statement.Initialization)
+                    {
+                        il.Emit(OpCodes.Ldloca_S, destination.LocalIndex);
+                        EmitStatement(item.Value, il, ref successful);
+
+                        FieldInfo? field = type.GetField(item.Field.Identifier);
+                        if (field is null)
+                        {
+                            Diagnostics.Add(DiagnosticAt.Error($"Field `{item.Field.Identifier}` not found in type `{type}`", item));
+                            successful = false;
+                            return;
+                        }
+                        il.Emit(OpCodes.Stfld, field);
+                    }
                 }
                 else
                 {
                     LocalBuilder local = il.DeclareLocal(type);
                     il.Emit(OpCodes.Ldloca_S, local.LocalIndex);
                     il.Emit(OpCodes.Initobj, type);
+
+                    foreach (CompiledInitializationItem item in statement.Initialization)
+                    {
+                        il.Emit(OpCodes.Ldloca_S, local.LocalIndex);
+                        EmitStatement(item.Value, il, ref successful);
+
+                        FieldInfo? field = type.GetField(item.Field.Identifier);
+                        if (field is null)
+                        {
+                            Diagnostics.Add(DiagnosticAt.Error($"Field `{item.Field.Identifier}` not found in type `{type}`", item));
+                            successful = false;
+                            return;
+                        }
+                        il.Emit(OpCodes.Stfld, field);
+                    }
+
                     LoadLocal(il, local.LocalIndex);
                 }
+
                 break;
             }
             default:
@@ -1870,6 +1906,11 @@ public partial class CodeGeneratorForIL : CodeGenerator
     {
         EmitStatement(statement.EnumMember.Value, il, ref successful);
     }
+    void EmitStatement(CompiledPack statement, ILProxy il, ref bool successful)
+    {
+        successful = false;
+        Diagnostics.Add(DiagnosticAt.Error($"bleh", statement, false));
+    }
     void EmitStatement(CompiledStatement statement, ILProxy il, ref bool successful)
     {
         switch (statement)
@@ -1915,6 +1956,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case CompiledCompilerVariableAccess v: EmitStatement(v, il, ref successful); break;
             case CompiledEnumMemberAccess v: EmitStatement(v, il, ref successful); break;
             case CompiledMeowExpression: break;
+            case CompiledPack v: EmitStatement(v, il, ref successful); break;
             default: throw new NotImplementedException(statement.GetType().Name);
         }
     }
@@ -1999,6 +2041,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         ReferenceType v => ToType(v, out result, out error),
         ArrayType v => ToType(v, out result, out error),
         FunctionType v => ToType(v, out result, out error),
+        TupleType v => ToType(v, out result, out error),
         _ => throw new UnreachableException(),
     };
 
@@ -2057,6 +2100,13 @@ public partial class CodeGeneratorForIL : CodeGenerator
         return true;
     }
 
+    static bool ToType(TupleType type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        error = null;
+        result = null;
+        throw new NotImplementedException();
+    }
+
     static bool IsUnmanaged([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] Type t)
     {
         if (t.IsPrimitive || t.IsPointer || t.IsEnum) return true;
@@ -2081,6 +2131,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         PointerType => MakeUnique("ptr"),
         ReferenceType => MakeUnique("ref"),
         StructType v => MakeUnique(v.Struct.Identifier),
+        TupleType => MakeUnique("tpl"),
         _ => throw new UnreachableException(),
     };
 
@@ -2170,14 +2221,14 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     bool ToType(ArrayType type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)][NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!type.Length.HasValue)
+        if (!type.TryGetLength(out int l))
         {
             error = new PossibleDiagnostic($"The array's length must be a constant", false);
             result = null;
             return false;
         }
 
-        if (type.Length.Value <= 0)
+        if (l <= 0)
         {
             error = new PossibleDiagnostic($"Invalid array length");
             result = null;
@@ -2196,7 +2247,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             return false;
         }
 
-        TypeBuilder builder = Module.DefineType(id, TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.AnsiClass | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit, typeof(ValueType), PackingSize.Size1, elementSize * type.Length.Value);
+        TypeBuilder builder = Module.DefineType(id, TypeAttributes.Public | TypeAttributes.SequentialLayout | TypeAttributes.AnsiClass | TypeAttributes.Sealed | TypeAttributes.BeforeFieldInit, typeof(ValueType), PackingSize.Size1, elementSize * l);
 
         ConstructorBuilder constructor = builder.DefineConstructor(
             MethodAttributes.Public |
@@ -2285,7 +2336,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
 
     readonly Stack<ICompiledFunctionDefinition> EmittingFunctionsStack = new();
-    bool EmitFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
+    bool EmitFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
     {
         dynamicMethod = null;
 
@@ -2359,7 +2410,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         return true;
     }
 
-    bool EmitFunctionSignature(ICompiledFunctionDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
+    bool EmitFunctionSignature(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
     {
         dynamicMethod = null;
         if (!ToType(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), out Type? returnType, out PossibleDiagnostic? returnTypeError))
@@ -2420,6 +2471,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             ArrayType v => ScanForPointer(v.Of),
             FunctionType => true,
             GenericType => true,
+            TupleType v => v.Items.Any(v => ScanForPointer(v)),
             _ => throw new UnreachableException(),
         };
     }
@@ -2434,13 +2486,13 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (type is GenericType)
         {
-            error = new PossibleDiagnostic($"Can't marshal a generic type (like wtf bro what is this fr)");
+            error = new PossibleDiagnostic($"Can't marshal a generic type (like wtf bro what is this)");
             return false;
         }
 
         if (type is FunctionType)
         {
-            error = new PossibleDiagnostic($"Can't marshal a function pointer fr");
+            error = new PossibleDiagnostic($"Can't marshal a function pointer");
             return false;
         }
 
@@ -2453,6 +2505,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             EnumType v => ScanForPointer(v.Definition.Type),
             StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTypeParameters(field.Type, v.TypeArguments))),
             ArrayType v => ScanForPointer(v.Of),
+            TupleType v => v.Items.Any(v => ScanForPointer(v)),
             _ => throw new UnreachableException(),
         })
         {

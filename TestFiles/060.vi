@@ -1,0 +1,29 @@
+using System;
+
+struct meow
+{
+    ehh b;
+    int a;
+}
+
+struct ehh
+{
+    int y;
+    int x;
+}
+
+meow m = new meow
+{
+    b = new ehh
+    {
+        x = 2,
+        y = 3,
+    },
+    a = 1,
+};
+
+printf("%d\n", [m.a]);
+printf("%d\n", [m.b.x]);
+printf("%d\n", [m.b.y]);
+
+return 0;

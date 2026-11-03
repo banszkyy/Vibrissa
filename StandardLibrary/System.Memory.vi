@@ -10,25 +10,18 @@ const BlockHeader StatusFlag = 0x80000000 as BlockHeader;
 const BlockHeader SizeMask = 0x7fffffff as BlockHeader;
 #endif
 
-#if BRAINFUCK
-[External("heap_size")]
-export const int HeapSize = 127;
-#else
-[External("heap_size")]
-export const int HeapSize = 512;
-#endif
-
 const int HeaderSize = sizeof(BlockHeader);
 
-[Internal("heap_start")]
-const any* HeapStart = 0;
+[External("memory_start")]
+const any* MemoryStart = 0;
 
 [Builtin("init_heap")]
 export inline void init_heap()
 {
     if ((!#BRAINFUCK) && (!#IL))
     {
-        *(HeapStart as int*) = HeapSize;
+        *(MemoryStart as BlockHeader*) = (BlockHeader)SP;
+        MEow = MemoryStart + sizeof(BlockHeader);
     }
 }
 
@@ -49,23 +42,26 @@ void get_header(BlockHeader* headerPtr, int* size, bool* allocated)
 }
 
 [MSILIncompatible]
-inline void set_header_used(BlockHeader* headerPtr, int size)
+void set_header_used(BlockHeader* headerPtr, int size)
 {
     *headerPtr = (BlockHeader)size + StatusFlag;
+    if (headerPtr + size + HeaderSize > MEow) MEow = headerPtr + size + HeaderSize;
 }
 
 [MSILIncompatible]
-inline void set_header_free(BlockHeader* headerPtr, int size)
+void set_header_free(BlockHeader* headerPtr, int size)
 {
     *headerPtr = (BlockHeader)size;
+    if (MEow <= headerPtr + size + HeaderSize + HeaderSize) MEow = headerPtr + HeaderSize + HeaderSize;
+    if (headerPtr + HeaderSize > MEow) MEow = headerPtr + HeaderSize;
 }
 
 [MSILIncompatible]
 bool join_free_blocks()
 {
-    BlockHeader* headerPointer = HeapStart as BlockHeader*;
+    BlockHeader* headerPointer = MemoryStart as BlockHeader*;
     int prevBlockSize = 0;
-    while (headerPointer < HeapSize)
+    while (headerPointer < SP)
     {
         int blockSize;
         bool blockUsed;
@@ -101,9 +97,9 @@ export int free_memory()
 #if IL
     crash "The function `alloc` is not compatible with MSIL";
 #else
-    BlockHeader* headerPointer = HeapStart as BlockHeader*;
+    BlockHeader* headerPointer = MemoryStart as BlockHeader*;
     int res = 0;
-    while (headerPointer < HeapSize)
+    while (headerPointer < SP)
     {
         int blockSize;
         bool blockUsed;
@@ -131,11 +127,9 @@ export any* alloc(int sizeNeed)
 #else
     if (sizeNeed <= 0) { crash "Invalid size"; }
 
-    BlockHeader* headerPointer = HeapStart as BlockHeader*;
-    while (true)
+    BlockHeader* headerPointer = MemoryStart as BlockHeader*;
+    while (headerPointer < SP)
     {
-        if (headerPointer >= HeapSize) { crash "Out of memory"; }
-
         int blockSize;
         bool blockUsed;
         get_header(headerPointer, &blockSize, &blockUsed);
@@ -161,7 +155,8 @@ export any* alloc(int sizeNeed)
 
         headerPointer += blockSize + HeaderSize;
     }
-    return 0 as any*;
+
+    crash "Out of memory";
 #endif
 }
 
@@ -186,7 +181,7 @@ export bool resize(any* ptr, int size)
     if (size > blockSize)
     {
         BlockHeader* nextHeader = (headerPointer + blockSize + HeaderSize) as BlockHeader*;
-        if (headerPointer >= HeapSize) { return false; }
+        if (headerPointer + size >= SP) { return false; }
 
         int blockSizeNext;
         bool blockUsedNext;
@@ -256,8 +251,8 @@ i32 memprof_block_count()
 #else
     i32 result = 0;
 
-    BlockHeader* headerPointer = HeapStart as BlockHeader*;
-    while (headerPointer < HeapSize)
+    BlockHeader* headerPointer = MemoryStart as BlockHeader*;
+    while (headerPointer < SP)
     {
         int blockSize;
         bool blockUsed;
@@ -284,8 +279,8 @@ memprof_block_get_result memprof_block_get(i32 index)
 #else
     i32 i = 0;
 
-    BlockHeader* headerPointer = HeapStart as BlockHeader*;
-    while (headerPointer < HeapSize)
+    BlockHeader* headerPointer = MemoryStart as BlockHeader*;
+    while (headerPointer < SP)
     {
         int blockSize;
         bool blockUsed;

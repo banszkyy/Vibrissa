@@ -129,4 +129,17 @@ public class BuiltinType : GeneralType,
         BasicType.F32 => TypeKeywords.F32,
         _ => throw new UnreachableException(),
     };
+
+    public static BuiltinType Create(RuntimeType type) => type switch
+    {
+        RuntimeType.Null => throw new UnreachableException(),
+        RuntimeType.U8 => U8,
+        RuntimeType.I8 => I8,
+        RuntimeType.U16 => Char,
+        RuntimeType.I16 => I16,
+        RuntimeType.U32 => U32,
+        RuntimeType.I32 => I32,
+        RuntimeType.F32 => F32,
+        _ => throw new UnreachableException(),
+    };
 }

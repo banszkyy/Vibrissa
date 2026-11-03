@@ -10,6 +10,12 @@ public static partial class Stringifier
         builder.AppendJoin(expression.Values, Stringify);
         builder.Append(']');
     }
+    public static void Stringify(PackExpression expression, BuilderBase builder, StringifyContext context = default)
+    {
+        builder.Append('[');
+        builder.AppendJoin(expression.Values, Stringify);
+        builder.Append(']');
+    }
     public static void Stringify(BinaryOperatorCallExpression expression, BuilderBase builder, StringifyContext context = default)
     {
         if (context.IsNaked) builder.Append('(');
@@ -113,6 +119,7 @@ public static partial class Stringifier
         switch (statement)
         {
             case ListExpression v: Stringify(v, builder, context); break;
+            case PackExpression v: Stringify(v, builder, context); break;
             case BinaryOperatorCallExpression v: Stringify(v, builder, context); break;
             case UnaryOperatorCallExpression v: Stringify(v, builder, context); break;
             case LiteralExpression v: Stringify(v, builder, context); break;

@@ -139,9 +139,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
         readonly CodeHelper Code;
         readonly DebugInformation? DebugInfo;
         readonly ICompiledFunctionDefinition Function;
-        readonly ImmutableDictionary<string, GeneralType>? TypeArguments;
+        readonly ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments;
 
-        public DebugFunctionBlock(CodeHelper code, DebugInformation? debugInfo, ICompiledFunctionDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments)
+        public DebugFunctionBlock(CodeHelper code, DebugInformation? debugInfo, ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
         {
             Code = code;
             DebugInfo = debugInfo;
@@ -250,7 +250,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
     readonly struct GeneratorStackFrame
     {
-        public ImmutableDictionary<string, GeneralType>? SavedTypeArguments { get; init; }
+        public ImmutableDictionary<string, CompiledTemplateArgument>? SavedTypeArguments { get; init; }
         public ImmutableArray<ControlFlowBlock> SavedBreaks { get; init; }
         public ImmutableArray<BrainfuckVariable> SavedVariables { get; init; }
     }
@@ -316,9 +316,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
     CodeSnapshot SnapshotCode() => new(this);
     void RestoreCode(CodeSnapshot snapshot) => snapshot.Restore(this);
 
-    GeneratorStackFrame PushStackFrame(ImmutableDictionary<string, GeneralType>? typeArguments)
+    GeneratorStackFrame PushStackFrame(ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
     {
-        Dictionary<string, GeneralType>? savedTypeArguments = null;
+        Dictionary<string, CompiledTemplateArgument>? savedTypeArguments = null;
 
         if (typeArguments is not null)
         { SetTypeArguments(typeArguments, out savedTypeArguments); }
@@ -359,19 +359,19 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
     DebugInfoBlock DebugBlock(ILocated location) => new(Code, DebugInfo, location.Location.Position, location.Location.File);
     DebugInfoBlock DebugBlock(IPositioned position, Uri file) => new(Code, DebugInfo, position, file);
 
-    DebugFunctionBlock FunctionBlock(CompiledFunctionDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments) => new(
+    DebugFunctionBlock FunctionBlock(CompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) => new(
         Code,
         DebugInfo,
         function,
         typeArguments);
 
-    DebugFunctionBlock FunctionBlock(CompiledOperatorDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments) => new(
+    DebugFunctionBlock FunctionBlock(CompiledOperatorDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) => new(
         Code,
         DebugInfo,
         function,
         typeArguments);
 
-    DebugFunctionBlock FunctionBlock(CompiledGeneralFunctionDefinition function, ImmutableDictionary<string, GeneralType>? typeArguments) => new(
+    DebugFunctionBlock FunctionBlock(CompiledGeneralFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) => new(
         Code,
         DebugInfo,
         function,

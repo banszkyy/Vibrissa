@@ -147,6 +147,7 @@ public static class HeapUtils
     {
         public readonly List<HeapBlock> Blocks;
         public string? Error;
+        public bool IsDone => Error != null || (BlockCount >= 0 && BlockCount == Blocks.Count);
 
         readonly BytecodeProcessor BytecodeProcessor;
         readonly ExposedFunction GetBlockCount;

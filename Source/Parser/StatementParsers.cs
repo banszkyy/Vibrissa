@@ -134,6 +134,7 @@ public sealed partial class Parser
         GetReferenceExpression or
         LambdaExpression or
         ListExpression or
+        PackExpression or
         ManagedTypeCastExpression or
         ReinterpretExpression
     );

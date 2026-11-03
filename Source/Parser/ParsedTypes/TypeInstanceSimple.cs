@@ -16,7 +16,7 @@ public class TypeInstanceSimple : TypeInstance,
 
     public Token Identifier { get; }
     TokenPair? TypeArgumentsBrackets { get; }
-    public ImmutableArray<TypeInstance>? TypeArguments { get; }
+    public ImmutableArray<TemplateArgumentExpression>? TypeArguments { get; }
     public object? Reference { get; set; }
 
     public override Position Position => TypeArguments is null
@@ -30,7 +30,7 @@ public class TypeInstanceSimple : TypeInstance,
         TypeArgumentsBrackets = null;
     }
 
-    public TypeInstanceSimple(Token identifier, Uri file, ImmutableArray<TypeInstance> typeArguments, TokenPair typeArgumentsBrackets) : base(file)
+    public TypeInstanceSimple(Token identifier, Uri file, ImmutableArray<TemplateArgumentExpression> typeArguments, TokenPair typeArgumentsBrackets) : base(file)
     {
         Identifier = identifier;
         TypeArguments = typeArguments;
@@ -69,10 +69,10 @@ public class TypeInstanceSimple : TypeInstance,
         }
         else
         {
-            TypeInstance[] genericTypesConverted = new TypeInstance[typeArguments.Value.Length];
+            TemplateArgumentExpression[] genericTypesConverted = new TemplateArgumentExpression[typeArguments.Value.Length];
             for (int i = 0; i < typeArguments.Value.Length; i++)
             {
-                genericTypesConverted[i] = CreateAnonymous(typeArguments.Value[i].Content, file);
+                genericTypesConverted[i] = new TemplateArgumentExpressionType(CreateAnonymous(typeArguments.Value[i].Content, file), file);
             }
             return new TypeInstanceSimple(Token.CreateAnonymous(name), file, genericTypesConverted.ToImmutableArray(), TokenPair.CreateAnonymous("<", ">"));
         }
@@ -81,12 +81,12 @@ public class TypeInstanceSimple : TypeInstance,
     public override string ToString()
     {
         if (TypeArguments is null) return Identifier.Content;
-        return $"{Identifier.Content}<{string.Join<TypeInstance>(", ", TypeArguments)}>";
+        return $"{Identifier.Content}<{string.Join(", ", TypeArguments)}>";
     }
-    public override string ToString(IReadOnlyDictionary<string, GeneralType>? typeArguments)
+    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments)
     {
         string identifier = Identifier.Content;
-        if (typeArguments is not null && typeArguments.TryGetValue(Identifier.Content, out GeneralType? replaced))
+        if (typeArguments is not null && typeArguments.TryGetValue(Identifier.Content, out CompiledTemplateArgument? replaced))
         { identifier = replaced.ToString(); }
 
         if (!TypeArguments.HasValue)
@@ -97,7 +97,12 @@ public class TypeInstanceSimple : TypeInstance,
         for (int i = 0; i < TypeArguments.Value.Length; i++)
         {
             if (i > 0) result.Append(", ");
-            result.Append(TypeArguments.Value[i].ToString(typeArguments));
+            result.Append(TypeArguments.Value[i] switch
+            {
+                TemplateArgumentExpressionType v => v.Value.ToString(typeArguments),
+                TemplateArgumentExpressionValue v => v.Value.ToString(),
+                _ => throw new UnreachableException(),
+            });
         }
         result.Append('>');
         return result.ToString();

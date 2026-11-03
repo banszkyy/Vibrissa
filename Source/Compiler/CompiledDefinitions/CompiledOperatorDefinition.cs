@@ -47,7 +47,7 @@ public class CompiledOperatorDefinition :
         References = new List<Reference<Expression>>(other.References);
     }
 
-    public string ToReadable(IReadOnlyDictionary<string, GeneralType>? typeArguments = null)
+    public string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments = null)
     {
         StringBuilder result = new();
         result.Append(GeneralType.TryInsertTypeParameters(Type, typeArguments).ToString());

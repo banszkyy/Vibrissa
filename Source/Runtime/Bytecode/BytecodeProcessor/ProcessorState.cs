@@ -47,7 +47,7 @@ public ref partial struct ProcessorState
         {
             StackPointer = settings.StackStart - StackDirection
         },
-        memory ?? new byte[settings.HeapSize + settings.StackSize],
+        memory ?? new byte[settings.MemorySize],
         code.AsSpan(),
 #if !UNITY_BURST
         externalFunctions.Values.AsSpan(),
@@ -83,6 +83,7 @@ public ref partial struct ProcessorState
     public void Setup()
     {
         Registers.StackPointer = Settings.StackStart - StackDirection;
+        Registers.MEow = 0;
     }
 
     public readonly RuntimeContext GetContext() => new(
@@ -483,6 +484,7 @@ public ref partial struct ProcessorState
             Register.DX => Registers.DX.I32(),
             Register.DH => Registers.DH.I32(),
             Register.DL => Registers.DL.I32(),
+            Register.MEow => Registers.MEow.I32(),
             _ => throw new UnreachableException(),
         },
         _ => throw new UnreachableException(),
@@ -605,6 +607,9 @@ public ref partial struct ProcessorState
                     case Register.DL:
                         Registers.DL = value.U8();
                         break;
+                    case Register.MEow:
+                        Registers.MEow = value.I32();
+                        break;
                     default: throw new UnreachableException();
                 }
                 break;
@@ -616,8 +621,8 @@ public ref partial struct ProcessorState
     {
         Registers.StackPointer += (int)size * StackDirection;
 
-        if (Registers.StackPointer + 1 >= Memory.Length ||
-            Registers.StackPointer < 0)
+        if (Registers.StackPointer + (int)size > Memory.Length ||
+            Registers.StackPointer < Registers.MEow)
         {
             Signal = Signal.StackOverflow;
             return;
@@ -628,8 +633,8 @@ public ref partial struct ProcessorState
 
     public int Pop(BitWidth size)
     {
-        if (Registers.StackPointer + 1 >= Memory.Length ||
-            Registers.StackPointer < 0)
+        if (Registers.StackPointer + (int)size > Memory.Length ||
+            Registers.StackPointer < Registers.MEow)
         {
             Signal = Signal.StackOverflow;
             return default;
@@ -644,8 +649,8 @@ public ref partial struct ProcessorState
     {
         Registers.StackPointer += data.Length * StackDirection;
 
-        if (Registers.StackPointer + 1 >= Memory.Length ||
-            Registers.StackPointer < Settings.HeapSize)
+        if (Registers.StackPointer + data.Length > Memory.Length ||
+            Registers.StackPointer < Registers.MEow)
         {
             Signal = Signal.StackOverflow;
             return;
@@ -669,8 +674,8 @@ public ref partial struct ProcessorState
 
     public Span<byte> Pop(int size)
     {
-        if (Registers.StackPointer + 1 >= Memory.Length ||
-            Registers.StackPointer < Settings.HeapSize)
+        if (Registers.StackPointer + size > Memory.Length ||
+            Registers.StackPointer < Registers.MEow)
         {
             Signal = Signal.StackOverflow;
             return Span<byte>.Empty;

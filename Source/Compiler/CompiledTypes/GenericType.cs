@@ -8,20 +8,13 @@ public class GenericType : GeneralType,
     IReferenceableTo<Token>
 {
     public string Identifier { get; }
-    public Token? Definition { get; }
+    public Token Definition { get; }
     public Uri File { get; }
 
     Token? IReferenceableTo<Token>.Reference
     {
         get => Definition;
         set => throw new InvalidOperationException();
-    }
-
-    public GenericType(string identifier, Uri originalFile)
-    {
-        Identifier = identifier;
-        Definition = null;
-        File = originalFile;
     }
 
     public GenericType(Token definition, Uri originalFile)

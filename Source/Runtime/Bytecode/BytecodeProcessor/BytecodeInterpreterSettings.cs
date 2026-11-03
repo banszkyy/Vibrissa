@@ -2,20 +2,17 @@
 
 public struct BytecodeInterpreterSettings
 {
-    public int StackSize;
-    public int HeapSize;
+    public int MemorySize;
 
-    public readonly int StackStart => ProcessorState.StackDirection > 0 ? HeapSize : HeapSize + StackSize - 1;
+    public readonly int StackStart => ProcessorState.StackDirection > 0 ? throw new NotImplementedException() : MemorySize - 1;
 
     public static BytecodeInterpreterSettings Default => new()
     {
-        StackSize = 2048,
-        HeapSize = 2048,
+        MemorySize = 4096,
     };
 
     public BytecodeInterpreterSettings(BytecodeInterpreterSettings other)
     {
-        StackSize = other.StackSize;
-        HeapSize = other.HeapSize;
+        MemorySize = other.MemorySize;
     }
 }

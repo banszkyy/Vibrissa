@@ -50,7 +50,7 @@ public sealed partial class Parser
         return true;
     }
 
-    bool ExpectListValue([NotNullWhen(true)] out ListExpression? listValue)
+    bool ExpectListExpression([NotNullWhen(true)] out ListExpression? listValue)
     {
         ParseRestorePoint savepoint = SavePoint();
         listValue = null;
@@ -101,6 +101,63 @@ public sealed partial class Parser
         }
 
         listValue = new ListExpression(values.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
+        return true;
+    }
+
+    bool ExpectPackExpression([NotNullWhen(true)] out Expression? packExpression)
+    {
+        ParseRestorePoint savepoint = SavePoint();
+        packExpression = null;
+
+        if (!ExpectIdentifier(StatementKeywords.Pack, out var keyword))
+        {
+            savepoint.Restore();
+            return false;
+        }
+
+        if (!ExpectOperator("{", out Token? bracketStart))
+        {
+            bracketStart = new MissingToken(TokenType.Operator, keyword.Position.After(), "{");
+            Diagnostics.Add(DiagnosticAt.Error($"Expected `{{` after `{keyword}`", bracketStart, File));
+        }
+
+        ImmutableArray<Expression>.Builder values = ImmutableArray.CreateBuilder<Expression>();
+        ImmutableArray<Token>.Builder commas = ImmutableArray.CreateBuilder<Token>();
+        EndlessCheck endlessSafe = new();
+        Position lastPosition = bracketStart.Position;
+        Token? bracketEnd;
+
+        while (true)
+        {
+            if (ExpectOperator("}", out bracketEnd))
+            { break; }
+
+            if (!ExpectAnyExpression(out Expression? value))
+            {
+                value = new MissingExpression(lastPosition.After(), File);
+                Diagnostics.Add(DiagnosticAt.Error("Expected expression or `)`", value, false));
+            }
+
+            values.Add(value);
+            lastPosition = value.Position;
+
+            if (!ExpectOperator(",", out Token? comma))
+            {
+                if (!ExpectOperator("}", out bracketEnd))
+                {
+                    bracketEnd = new MissingToken(TokenType.Operator, lastPosition.After(), "}");
+                    Diagnostics.Add(DiagnosticAt.Error("Expected `,` or `}`", bracketEnd, File, false));
+                }
+                break;
+            }
+
+            lastPosition = comma.Position;
+            commas.Add(comma);
+
+            endlessSafe.Step();
+        }
+
+        packExpression = new PackExpression(values.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
         return true;
     }
 
@@ -319,14 +376,84 @@ public sealed partial class Parser
 
         if (ExpectArguments(out ArgumentListExpression? argumentList))
         {
-            newExpression = new ConstructorCallExpression(keywordNew, instanceTypeName, argumentList, File);
+            ExceptInitializationExpression(out InitializationExpression? initializationExpression);
+            newExpression = new ConstructorCallExpression(keywordNew, instanceTypeName, argumentList, initializationExpression, File);
             return true;
         }
         else
         {
-            newExpression = new NewInstanceExpression(keywordNew, instanceTypeName, File);
+            ExceptInitializationExpression(out InitializationExpression? initializationExpression);
+            newExpression = new NewInstanceExpression(keywordNew, instanceTypeName, initializationExpression, File);
             return true;
         }
+    }
+
+    bool ExceptInitializationExpression([NotNullWhen(true)] out InitializationExpression? initializationExpression)
+    {
+        ParseRestorePoint savepoint = SavePoint();
+        initializationExpression = null;
+
+        if (!ExpectOperator("{", out Token? bracketStart))
+        {
+            savepoint.Restore();
+            return false;
+        }
+
+        if (ExpectOperator("}", out Token? bracketEnd))
+        {
+            initializationExpression = new InitializationExpression(ImmutableArray<InitializationExpressionItem>.Empty, ImmutableArray<Token>.Empty, new TokenPair(bracketStart, bracketEnd), File);
+            return true;
+        }
+
+        ImmutableArray<InitializationExpressionItem>.Builder values = ImmutableArray.CreateBuilder<InitializationExpressionItem>();
+        ImmutableArray<Token>.Builder commas = ImmutableArray.CreateBuilder<Token>();
+        EndlessCheck endlessSafe = new();
+        Position lastPosition = bracketStart.Position;
+
+        while (true)
+        {
+            if (ExpectOperator("}", out bracketEnd))
+            { break; }
+
+            if (!ExpectIdentifier(out Token? memberIdentifier))
+            {
+                memberIdentifier = new MissingToken(TokenType.Identifier, lastPosition.After());
+                Diagnostics.Add(DiagnosticAt.Error("Expected identifier or `}`", memberIdentifier, File, false));
+            }
+
+            if (!ExpectOperator("=", out Token? @operator) && !ExpectOperator(CompoundAssignmentOperators, out @operator))
+            {
+                @operator = new MissingToken(TokenType.Operator, lastPosition.After(), "=");
+                Diagnostics.Add(DiagnosticAt.Error("Expected operator or `}`", @operator, File, false));
+            }
+
+            if (!ExpectAnyExpression(out Expression? value))
+            {
+                value = new MissingExpression(lastPosition.After(), File);
+                Diagnostics.Add(DiagnosticAt.Error("Expected expression or `}`", value, false));
+            }
+
+            values.Add(new InitializationExpressionItem(@operator, memberIdentifier, value, File));
+            lastPosition = value.Position;
+
+            if (!ExpectOperator(",", out Token? comma))
+            {
+                if (!ExpectOperator("}", out bracketEnd))
+                {
+                    bracketEnd = new MissingToken(TokenType.Operator, lastPosition.After(), "}");
+                    Diagnostics.Add(DiagnosticAt.Error("Expected `,` or `}`", bracketEnd, File, false));
+                }
+                break;
+            }
+
+            lastPosition = comma.Position;
+            commas.Add(comma);
+
+            endlessSafe.Step();
+        }
+
+        initializationExpression = new InitializationExpression(values.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
+        return true;
     }
 
     bool ExpectFieldAccessor(Expression prevStatement, [NotNullWhen(true)] out FieldExpression? fieldAccessor)
@@ -443,9 +570,13 @@ public sealed partial class Parser
         {
             statementWithValue = lambdaStatement;
         }
-        else if (ExpectListValue(out ListExpression? listValue))
+        else if (ExpectListExpression(out ListExpression? listExpression))
         {
-            statementWithValue = listValue;
+            statementWithValue = listExpression;
+        }
+        else if (ExpectPackExpression(out Expression? packExpression))
+        {
+            statementWithValue = packExpression;
         }
         else if (ExpectLiteral(out LiteralExpression? literal))
         {
@@ -795,6 +926,7 @@ public sealed partial class Parser
                     savepoint.Restore();
                     return false;
                 }
+
                 argument = new MissingTypeInstance(lastPosition.After(), File);
                 Diagnostics.Add(DiagnosticAt.Error($"Expected type as an argument", argument, false));
             }

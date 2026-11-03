@@ -90,6 +90,32 @@ public static partial class StatementWalker
             foreach (CompiledStatement w in EnumerateNodes(item, predicate, options)) yield return w;
         }
     }
+    public static IEnumerable<CompiledStatement> EnumerateNodes(IEnumerable<CompiledTemplateArgumentExpression>? statement, Predicate<CompiledStatement> predicate, StatementWalkerOptions options = StatementWalkerOptions.None)
+    {
+        if (statement is null) yield break;
+        foreach (CompiledTemplateArgumentExpression item in statement)
+        {
+            foreach (CompiledStatement w in EnumerateNodes(item, predicate, options)) yield return w;
+        }
+    }
+    public static IEnumerable<CompiledStatement> EnumerateNodes(CompiledTemplateArgumentExpression? statement, Predicate<CompiledStatement> predicate, StatementWalkerOptions options = StatementWalkerOptions.None)
+    {
+        if (statement is null) yield break;
+
+        switch (statement)
+        {
+            case CompiledTemplateArgumentTypeExpression v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledTemplateArgumentValueExpression v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+        }
+    }
     public static IEnumerable<CompiledStatement> EnumerateNodes(CompiledStatement? statement, Predicate<CompiledStatement> predicate, StatementWalkerOptions options = StatementWalkerOptions.None)
     {
         if (statement is null) yield break;
@@ -168,6 +194,7 @@ public static partial class StatementWalker
             case CompiledStackAllocation v:
             {
                 foreach (CompiledStatement w in EnumerateNodes(v.TypeExpression, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Initialization, predicate, options)) yield return w;
                 break;
             }
             case CompiledHeapAllocation v:
@@ -179,6 +206,7 @@ public static partial class StatementWalker
             {
                 foreach (CompiledStatement w in EnumerateNodes(v.Object, predicate, options)) yield return w;
                 foreach (CompiledStatement w in EnumerateNodes(v.Arguments, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.Initialization, predicate, options)) yield return w;
                 break;
             }
             case CompiledDesctructorCall v:
@@ -310,6 +338,17 @@ public static partial class StatementWalker
                 break;
             }
             case CompiledCleanup: break;
+            case CompiledPack v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Values, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledInitializationItem v:
+            {
+                foreach (CompiledStatement w in EnumerateNodes(v.Value, predicate, options)) yield return w;
+                break;
+            }
+            case CompiledTemplateParameterAccess: break;
             default: throw new NotImplementedException(statement.GetType().Name);
         }
     }

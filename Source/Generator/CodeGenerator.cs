@@ -31,7 +31,7 @@ public abstract class CodeGenerator
     protected readonly Stack<CompiledLabelDeclaration> CompiledInstructionLabels;
 
     protected bool InFunction;
-    protected readonly Dictionary<string, CompiledTemplateArgument> TypeArguments;
+    protected readonly Dictionary<string, CompiledTemplateArgument> TemplateArguments;
     protected DebugInformation? DebugInfo;
     protected abstract RuntimeInfo RuntimeInfo { get; }
 
@@ -53,46 +53,46 @@ public abstract class CodeGenerator
         CompiledInstructionLabels = new Stack<CompiledLabelDeclaration>();
 
         InFunction = false;
-        TypeArguments = new Dictionary<string, CompiledTemplateArgument>();
+        TemplateArguments = new Dictionary<string, CompiledTemplateArgument>();
 
         Diagnostics = diagnostics;
     }
 
-    #region SetTypeArguments()
+    #region SetTemplateArguments()
 
-    protected void SetTypeArguments(ImmutableDictionary<string, CompiledTemplateArgument>? arguments)
+    protected void SetTemplateArguments(ImmutableDictionary<string, CompiledTemplateArgument>? arguments)
     {
-        TypeArguments.Clear();
-        if (arguments is not null) TypeArguments.AddRange(arguments);
+        TemplateArguments.Clear();
+        if (arguments is not null) TemplateArguments.AddRange(arguments);
     }
 
-    protected void SetTypeArguments(ImmutableDictionary<string, CompiledTemplateArgument>? arguments, out Dictionary<string, CompiledTemplateArgument> old)
+    protected void SetTemplateArguments(ImmutableDictionary<string, CompiledTemplateArgument>? arguments, out Dictionary<string, CompiledTemplateArgument> old)
     {
-        old = new Dictionary<string, CompiledTemplateArgument>(TypeArguments);
-        TypeArguments.Clear();
-        if (arguments is not null) TypeArguments.AddRange(arguments);
+        old = new Dictionary<string, CompiledTemplateArgument>(TemplateArguments);
+        TemplateArguments.Clear();
+        if (arguments is not null) TemplateArguments.AddRange(arguments);
     }
 
-    protected TypeArgumentsScope SetTypeArgumentsScope(ImmutableDictionary<string, CompiledTemplateArgument>? arguments)
+    protected TemplateArgumentsScope SetTemplateArgumentsScope(ImmutableDictionary<string, CompiledTemplateArgument>? arguments)
     {
-        TypeArgumentsScope scope = new(this, TypeArguments);
-        TypeArguments.Clear();
-        if (arguments is not null) TypeArguments.AddRange(arguments);
+        TemplateArgumentsScope scope = new(this, TemplateArguments);
+        TemplateArguments.Clear();
+        if (arguments is not null) TemplateArguments.AddRange(arguments);
         return scope;
     }
 
-    protected readonly struct TypeArgumentsScope : IDisposable
+    protected readonly struct TemplateArgumentsScope : IDisposable
     {
         readonly CodeGenerator _codeGenerator;
         readonly ImmutableDictionary<string, CompiledTemplateArgument> _prev;
 
-        public TypeArgumentsScope(CodeGenerator codeGenerator, IDictionary<string, CompiledTemplateArgument>? prev)
+        public TemplateArgumentsScope(CodeGenerator codeGenerator, IDictionary<string, CompiledTemplateArgument>? prev)
         {
             _codeGenerator = codeGenerator;
             _prev = prev?.ToImmutableDictionary() ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty;
         }
 
-        public void Dispose() => _codeGenerator.SetTypeArguments(_prev);
+        public void Dispose() => _codeGenerator.SetTemplateArguments(_prev);
     }
 
     #endregion
@@ -137,7 +137,7 @@ public abstract class CodeGenerator
         ArrayType v => FindSize(v, out size, out error),
         FunctionType v => FindSize(v, out size, out error),
         StructType v => FindSize(v, out size, out error),
-        GenericType v => FindSize(v, out size, out error),
+        UnresolvedTemplateType v => FindSize(v, out size, out error),
         BuiltinType v => FindSize(v, out size, out error),
         AliasType v => FindSize(v, out size, out error),
         EnumType v => FindSize(v, out size, out error),
@@ -199,7 +199,7 @@ public abstract class CodeGenerator
         error = null;
         return true;
     }
-    protected virtual bool FindSize(GenericType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    protected virtual bool FindSize(UnresolvedTemplateType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = new PossibleDiagnostic($"Generic type doesn't have a size");
         size = default;

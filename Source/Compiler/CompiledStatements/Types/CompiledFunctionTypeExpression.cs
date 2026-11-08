@@ -56,13 +56,10 @@ public class CompiledFunctionTypeExpression : CompiledTypeExpression,
         return result.ToString();
     }
 
-    public static CompiledFunctionTypeExpression CreateAnonymous(FunctionType type, ILocated location)
-    {
-        return new(
-            CreateAnonymous(type.ReturnType, location),
-            type.Parameters.ToImmutableArray(v => CreateAnonymous(v, location)),
-            type.HasClosure,
-            location.Location
-        );
-    }
+    public static CompiledFunctionTypeExpression CreateAnonymous(FunctionType type, ILocated location) => new(
+        CreateAnonymous(type.ReturnType, location),
+        type.Parameters.ToImmutableArray(v => CreateAnonymous(v, location)),
+        type.HasClosure,
+        location.Location
+    );
 }

@@ -401,12 +401,11 @@ public sealed partial class Parser
 
         if (ExpectOperator("}", out Token? bracketEnd))
         {
-            initializationExpression = new InitializationExpression(ImmutableArray<InitializationExpressionItem>.Empty, ImmutableArray<Token>.Empty, new TokenPair(bracketStart, bracketEnd), File);
+            initializationExpression = new InitializationExpression(ImmutableArray<InitializationExpressionItem>.Empty, new TokenPair(bracketStart, bracketEnd), File);
             return true;
         }
 
         ImmutableArray<InitializationExpressionItem>.Builder values = ImmutableArray.CreateBuilder<InitializationExpressionItem>();
-        ImmutableArray<Token>.Builder commas = ImmutableArray.CreateBuilder<Token>();
         EndlessCheck endlessSafe = new();
         Position lastPosition = bracketStart.Position;
 
@@ -433,11 +432,11 @@ public sealed partial class Parser
                 Diagnostics.Add(DiagnosticAt.Error("Expected expression or `}`", value, false));
             }
 
-            values.Add(new InitializationExpressionItem(@operator, memberIdentifier, value, File));
-            lastPosition = value.Position;
-
             if (!ExpectOperator(",", out Token? comma))
             {
+                values.Add(new InitializationExpressionItem(@operator, memberIdentifier, value, null, File));
+                lastPosition = value.Position;
+
                 if (!ExpectOperator("}", out bracketEnd))
                 {
                     bracketEnd = new MissingToken(TokenType.Operator, lastPosition.After(), "}");
@@ -446,13 +445,13 @@ public sealed partial class Parser
                 break;
             }
 
+            values.Add(new InitializationExpressionItem(@operator, memberIdentifier, value, comma, File));
             lastPosition = comma.Position;
-            commas.Add(comma);
 
             endlessSafe.Step();
         }
 
-        initializationExpression = new InitializationExpression(values.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
+        initializationExpression = new InitializationExpression(values.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
         return true;
     }
 
@@ -882,7 +881,7 @@ public sealed partial class Parser
         ParseRestorePoint savepoint = SavePoint();
         anyCall = null;
 
-        ExpectTypeArguments(out TypeArgumentListExpression? typeArgumentList);
+        ExpectTemplateArguments(out TemplateArgumentListExpression? templateArgumentList);
 
         if (!ExpectArguments(out ArgumentListExpression? argumentList))
         {
@@ -890,11 +889,11 @@ public sealed partial class Parser
             return false;
         }
 
-        anyCall = new AnyCallExpression(prevStatement, typeArgumentList, argumentList, File);
+        anyCall = new AnyCallExpression(prevStatement, templateArgumentList, argumentList, File);
         return true;
     }
 
-    bool ExpectTypeArguments([NotNullWhen(true)] out TypeArgumentListExpression? argumentList)
+    bool ExpectTemplateArguments([NotNullWhen(true)] out TemplateArgumentListExpression? argumentList)
     {
         ParseRestorePoint savepoint = SavePoint();
         argumentList = null;
@@ -907,7 +906,7 @@ public sealed partial class Parser
 
         if (ExpectOperator(">", out Token? bracketEnd))
         {
-            argumentList = new TypeArgumentListExpression(ImmutableArray<TypeInstance>.Empty, ImmutableArray<Token>.Empty, new TokenPair(bracketStart, bracketEnd), File);
+            argumentList = new TemplateArgumentListExpression(ImmutableArray<TypeInstance>.Empty, ImmutableArray<Token>.Empty, new TokenPair(bracketStart, bracketEnd), File);
             return true;
         }
 
@@ -966,7 +965,7 @@ public sealed partial class Parser
             endlessSafe.Step();
         }
 
-        argumentList = new TypeArgumentListExpression(arguments.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
+        argumentList = new TemplateArgumentListExpression(arguments.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
         return true;
     }
 

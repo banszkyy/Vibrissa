@@ -255,12 +255,12 @@ public class InterpreterRenderer
                     for (int i = 0; i < v.Struct.Definition.Template.Parameters.Length; i++)
                     {
                         if (i > 0) t.Write(", ");
-                        WriteType(ref t, v.TypeArguments[v.Struct.Definition.Template.Parameters[i].Content]);
+                        WriteType(ref t, v.TemplateArguments[v.Struct.Definition.Template.Parameters[i].Content]);
                     }
                     t.Write('>');
                 }
                 break;
-            case GenericType v:
+            case UnresolvedTemplateType v:
                 t.Write(v.Identifier, AnsiColor.Yellow);
                 break;
             case TupleType v:
@@ -278,7 +278,7 @@ public class InterpreterRenderer
         }
     }
 
-    public static void WriteFunction<TWriter>(ref TWriter t, ICompiledFunctionDefinition? function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) where TWriter : IBufferWriter<TWriter>
+    public static void WriteFunction<TWriter>(ref TWriter t, ICompiledFunctionDefinition? function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments) where TWriter : IBufferWriter<TWriter>
     {
         if (function is not null)
         {
@@ -307,7 +307,7 @@ public class InterpreterRenderer
                     t.Write(function.Parameters[j].Definition.Modifiers[k].Content, AnsiColor.Blue);
                     t.Write(' ');
                 }
-                WriteType(ref t, GeneralType.TryInsertTypeParameters(function.Parameters[j].Type, typeArguments));
+                WriteType(ref t, GeneralType.TryInsertTemplateParameters(function.Parameters[j].Type, templateArguments));
                 t.Write(' ');
                 t.Write(function.Parameters[j].Identifier);
             }
@@ -350,7 +350,7 @@ public class InterpreterRenderer
                         Tokenizing.TokenAnalyzedType.ParameterName => AnsiColor.White,
                         Tokenizing.TokenAnalyzedType.Statement => AnsiColor.BrightMagenta,
                         Tokenizing.TokenAnalyzedType.BuiltinType => AnsiColor.BrightGreen,
-                        Tokenizing.TokenAnalyzedType.TypeParameter => AnsiColor.BrightGreen,
+                        Tokenizing.TokenAnalyzedType.TemplateParameterType => AnsiColor.BrightGreen,
                         Tokenizing.TokenAnalyzedType.ConstantName => AnsiColor.White,
                         _ => tokens[i].TokenType switch
                         {
@@ -1018,7 +1018,7 @@ public class InterpreterRenderer
                 continue;
             }
 
-            WriteFunction(ref t, function.Function, function.TypeArguments);
+            WriteFunction(ref t, function.Function, function.TemplateArguments);
         }
     }, ElementSize.Auto());
 

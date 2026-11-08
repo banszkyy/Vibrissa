@@ -81,7 +81,7 @@ public static partial class StatementWalker
                 foreach (ISmallNode w in EnumerateNodes(v.To, predicate)) yield return w;
                 break;
             case TypeInstanceSimple v:
-                foreach (ISmallNode w in EnumerateNodes(v.TypeArguments, predicate)) yield return w;
+                foreach (ISmallNode w in EnumerateNodes(v.TemplateArguments, predicate)) yield return w;
                 break;
             case TypeInstanceStackArray v:
                 foreach (ISmallNode w in EnumerateNodes(v.StackArrayOf, predicate)) yield return w;
@@ -104,7 +104,7 @@ public static partial class StatementWalker
         {
             case AnyCallExpression v:
                 foreach (ISmallNode w in EnumerateNodes(v.Expression, predicate)) yield return w;
-                foreach (ISmallNode w in EnumerateNodes(v.TypeArguments, predicate)) yield return w;
+                foreach (ISmallNode w in EnumerateNodes(v.TemplateArguments, predicate)) yield return w;
                 foreach (ISmallNode w in EnumerateNodes(v.Arguments, predicate)) yield return w;
                 break;
             case MissingArgumentExpression v:
@@ -120,6 +120,7 @@ public static partial class StatementWalker
             case ConstructorCallExpression v:
                 foreach (ISmallNode w in EnumerateNodes(v.Type, predicate)) yield return w;
                 foreach (ISmallNode w in EnumerateNodes(v.Arguments, predicate)) yield return w;
+                foreach (ISmallNode w in EnumerateNodes(v.Initialization, predicate)) yield return w;
                 break;
             case DereferenceExpression v:
                 foreach (ISmallNode w in EnumerateNodes(v.Expression, predicate)) yield return w;
@@ -161,6 +162,7 @@ public static partial class StatementWalker
                 break;
             case NewInstanceExpression v:
                 foreach (ISmallNode w in EnumerateNodes(v.Type, predicate)) yield return w;
+                foreach (ISmallNode w in EnumerateNodes(v.Initialization, predicate)) yield return w;
                 break;
             case ReinterpretExpression v:
                 foreach (ISmallNode w in EnumerateNodes(v.PrevStatement, predicate)) yield return w;
@@ -212,7 +214,7 @@ public static partial class StatementWalker
                 break;
             case EmptyStatement:
                 break;
-            case TypeArgumentListExpression v:
+            case TemplateArgumentListExpression v:
                 foreach (ISmallNode w in EnumerateNodes(v.Arguments, predicate)) yield return w;
                 break;
             case ArgumentListExpression v:
@@ -225,6 +227,12 @@ public static partial class StatementWalker
                 foreach (ISmallNode w in EnumerateNodes(v.Value, predicate)) yield return w;
                 break;
             case TemplateArgumentExpressionValue v:
+                foreach (ISmallNode w in EnumerateNodes(v.Value, predicate)) yield return w;
+                break;
+            case InitializationExpression v:
+                foreach (ISmallNode w in EnumerateNodes(v.Values, predicate)) yield return w;
+                break;
+            case InitializationExpressionItem v:
                 foreach (ISmallNode w in EnumerateNodes(v.Value, predicate)) yield return w;
                 break;
             default: throw new NotImplementedException(statement.GetType().Name);

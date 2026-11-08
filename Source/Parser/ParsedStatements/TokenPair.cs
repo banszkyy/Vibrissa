@@ -17,12 +17,12 @@ public readonly struct TokenPair :
     }
 
     public static TokenPair CreateAnonymous(Position surround, string start, string end) => new(
-        Token.CreateAnonymous(start, TokenType.Operator, surround.Before()),
-        Token.CreateAnonymous(end, TokenType.Operator, surround.Before())
+        new PhantomToken(start, TokenType.Operator, surround.Before()),
+        new PhantomToken(end, TokenType.Operator, surround.Before())
     );
 
     public static TokenPair CreateAnonymous(string start, string end) => new(
-        Token.CreateAnonymous(start, TokenType.Operator),
-        Token.CreateAnonymous(end, TokenType.Operator)
+        new PhantomToken(start, TokenType.Operator),
+        new PhantomToken(end, TokenType.Operator)
     );
 }

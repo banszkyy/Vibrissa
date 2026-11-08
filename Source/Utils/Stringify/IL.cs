@@ -116,16 +116,16 @@ public static partial class Stringifier
 
         if (type.IsConstructedGenericType)
         {
-            Type[] genericParameters = type.GetGenericArguments();
+            Type[] templateParameters = type.GetGenericArguments();
             builder.Append('[');
-            for (int i = 0; i < genericParameters.Length; i++)
+            for (int i = 0; i < templateParameters.Length; i++)
             {
                 if (i > 0)
                 {
                     builder.Append(',');
                     builder.Append(' ');
                 }
-                Stringify(genericParameters[i], builder);
+                Stringify(templateParameters[i], builder);
             }
             builder.Append(']');
         }
@@ -153,16 +153,16 @@ public static partial class Stringifier
 
         if (method.IsConstructedGenericMethod)
         {
-            Type[] genericParameters = method.GetGenericArguments();
+            Type[] templateParameters = method.GetGenericArguments();
             builder.Append('[');
-            for (int i = 0; i < genericParameters.Length; i++)
+            for (int i = 0; i < templateParameters.Length; i++)
             {
                 if (i > 0)
                 {
                     builder.Append(',');
                     builder.Append(' ');
                 }
-                Stringify(genericParameters[i], builder);
+                Stringify(templateParameters[i], builder);
             }
             builder.Append(']');
         }

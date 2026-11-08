@@ -8,7 +8,7 @@ public struct FunctionInformation
     public bool IsValid;
     public bool IsTopLevelStub;
     public ICompiledFunctionDefinition? Function;
-    public ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments;
+    public ImmutableDictionary<string, CompiledTemplateArgument>? TemplateArguments;
     public MutableRange<int> FrameInstructions;
     public MutableRange<int> Instructions;
 
@@ -22,7 +22,7 @@ public struct FunctionInformation
         if (Function is CompiledLambda) return "<lambda>";
         string? functionName = null;
 
-        if (Function is CompiledFunctionDefinition f) return f.ToReadable(TypeArguments);
+        if (Function is CompiledFunctionDefinition f) return f.ToReadable(TemplateArguments);
         functionName ??= Function?.ToReadable();
 
         functionName ??= "<unknown function>";

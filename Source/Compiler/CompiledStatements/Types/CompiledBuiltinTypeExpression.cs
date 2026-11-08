@@ -63,8 +63,5 @@ public class CompiledBuiltinTypeExpression : CompiledTypeExpression,
         _ => throw new UnreachableException(),
     };
 
-    public static CompiledBuiltinTypeExpression CreateAnonymous(BuiltinType type, ILocated location)
-    {
-        return new(type.Type, location.Location);
-    }
+    public static CompiledBuiltinTypeExpression CreateAnonymous(BuiltinType type, ILocated location) => new(type.Type, location.Location);
 }

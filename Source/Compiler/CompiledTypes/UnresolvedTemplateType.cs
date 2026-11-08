@@ -3,8 +3,8 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Compiler;
 
-public class GenericType : GeneralType,
-    IEquatable<GenericType>,
+public class UnresolvedTemplateType : GeneralType,
+    IEquatable<UnresolvedTemplateType>,
     IReferenceableTo<Token>
 {
     public string Identifier { get; }
@@ -17,16 +17,16 @@ public class GenericType : GeneralType,
         set => throw new InvalidOperationException();
     }
 
-    public GenericType(Token definition, Uri originalFile)
+    public UnresolvedTemplateType(Token definition, Uri originalFile)
     {
         Identifier = definition.Content;
         Definition = definition;
         File = originalFile;
     }
 
-    public override bool Equals(object? other) => Equals(other as GenericType);
-    public override bool Equals(GeneralType? other) => Equals(other as GenericType);
-    public bool Equals(GenericType? other)
+    public override bool Equals(object? other) => Equals(other as UnresolvedTemplateType);
+    public override bool Equals(GeneralType? other) => Equals(other as UnresolvedTemplateType);
+    public bool Equals(UnresolvedTemplateType? other)
     {
         if (other is null) return false;
         if (!Identifier.Equals(other.Identifier)) return false;

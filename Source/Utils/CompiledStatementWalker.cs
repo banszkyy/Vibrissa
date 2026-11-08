@@ -23,7 +23,7 @@ public static partial class StatementWalker
         IEnumerable<CompiledFunction> TryFunctionCallback(ICompiledFunctionDefinition? function)
         {
             if (function is null) return Enumerable.Empty<CompiledFunction>();
-            CompiledFunction? f = functions.FirstOrDefault(w => Utils.ReferenceEquals(w.Function, function) && StatementCompiler.TypeArgumentsEquals(w.TypeArguments, null));
+            CompiledFunction? f = functions.FirstOrDefault(w => Utils.ReferenceEquals(w.Function, function) && StatementCompiler.TemplateArgumentsEquals(w.TemplateArguments, null));
             if (f is null) return Enumerable.Empty<CompiledFunction>();
             return Enumerable.Repeat(f, 1);
         }
@@ -390,11 +390,11 @@ public static partial class StatementWalker
             }
             case CompiledStructTypeExpression v:
             {
-                foreach (CompiledStatement w in EnumerateNodes(v.TypeArguments.Values, predicate, options)) yield return w;
+                foreach (CompiledStatement w in EnumerateNodes(v.TemplateArguments.Values, predicate, options)) yield return w;
                 break;
             }
             case CompiledBuiltinTypeExpression: break;
-            case CompiledGenericTypeExpression: break;
+            case CompiledUnresolvedTemplateTypeExpression: break;
             default: throw new UnreachableException();
         }
     }

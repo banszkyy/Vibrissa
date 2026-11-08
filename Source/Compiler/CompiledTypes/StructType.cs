@@ -7,7 +7,7 @@ public class StructType : GeneralType,
     IReferenceableTo<CompiledStruct>
 {
     public CompiledStruct Struct { get; }
-    public ImmutableDictionary<string, CompiledTemplateArgument> TypeArguments { get; }
+    public ImmutableDictionary<string, CompiledTemplateArgument> TemplateArguments { get; }
     public Uri File { get; }
 
     CompiledStruct? IReferenceableTo<CompiledStruct>.Reference
@@ -19,7 +19,7 @@ public class StructType : GeneralType,
     public StructType(StructType other)
     {
         Struct = other.Struct;
-        TypeArguments = other.TypeArguments;
+        TemplateArguments = other.TemplateArguments;
         File = other.File;
     }
 
@@ -28,43 +28,43 @@ public class StructType : GeneralType,
         Struct = @struct;
         if (@struct.Definition.Template is not null)
         {
-            TypeArguments = @struct.Definition.Template.Parameters
+            TemplateArguments = @struct.Definition.Template.Parameters
                 .Select(v => new KeyValuePair<string, CompiledTemplateArgument>(v.Content, new CompiledTemplateArgumentType()
                 {
                     Definition = v,
-                    Value = new GenericType(v, originalFile),
+                    Value = new UnresolvedTemplateType(v, originalFile),
                 }))
                 .ToImmutableDictionary();
         }
         else
-        { TypeArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty; }
+        { TemplateArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty; }
         File = originalFile;
     }
 
-    public StructType(CompiledStruct @struct, Uri originalFile, IReadOnlyList<CompiledTemplateArgument> typeArguments)
+    public StructType(CompiledStruct @struct, Uri originalFile, IReadOnlyList<CompiledTemplateArgument> templateArguments)
     {
         Struct = @struct;
         if (@struct.Definition.Template is not null)
         {
             Dictionary<string, CompiledTemplateArgument> result = new(@struct.Definition.Template.Parameters.Length);
 
-            if (@struct.Definition.Template.Parameters.Length != typeArguments.Count)
-            { throw new InternalExceptionWithoutContext("Length of type parameters doesn't matching with length of type arguments"); }
+            if (@struct.Definition.Template.Parameters.Length != templateArguments.Count)
+            { throw new InternalExceptionWithoutContext($"Wrong number of template arguments defined: expected {@struct.Definition.Template.Parameters.Length} passed {templateArguments.Count}"); }
 
             for (int i = 0; i < @struct.Definition.Template.Parameters.Length; i++)
-            { result.Add(@struct.Definition.Template.Parameters[i].Content, typeArguments[i]); }
+            { result.Add(@struct.Definition.Template.Parameters[i].Content, templateArguments[i]); }
 
-            TypeArguments = result.ToImmutableDictionary();
+            TemplateArguments = result.ToImmutableDictionary();
         }
         else
-        { TypeArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty; }
+        { TemplateArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty; }
         File = originalFile;
     }
 
-    public StructType(CompiledStruct @struct, Uri originalFile, ImmutableDictionary<string, CompiledTemplateArgument> typeArguments)
+    public StructType(CompiledStruct @struct, Uri originalFile, ImmutableDictionary<string, CompiledTemplateArgument> templateArguments)
     {
         Struct = @struct;
-        TypeArguments = typeArguments;
+        TemplateArguments = templateArguments;
         File = originalFile;
     }
 
@@ -89,12 +89,12 @@ public class StructType : GeneralType,
     {
         error = null;
 
-        if (!type.Is(out GenericType? genericType))
+        if (!type.Is(out UnresolvedTemplateType? templateType))
         { return type; }
 
-        if (!TypeArguments.TryGetValue(genericType.Identifier, out CompiledTemplateArgument? result))
+        if (!TemplateArguments.TryGetValue(templateType.Identifier, out CompiledTemplateArgument? result))
         {
-            error = new PossibleDiagnostic($"Type argument `{genericType.Identifier}` not found", isTellingNothing: true);
+            error = new PossibleDiagnostic($"Template parameter `{templateType.Identifier}` not found", isTellingNothing: true);
             return type;
         }
 

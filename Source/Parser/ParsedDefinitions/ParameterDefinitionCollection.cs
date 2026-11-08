@@ -1,5 +1,4 @@
-﻿using LanguageCore.Compiler;
-using LanguageCore.Parser.Statements;
+﻿using LanguageCore.Parser.Statements;
 
 namespace LanguageCore.Parser;
 
@@ -34,18 +33,6 @@ public class ParameterDefinitionCollection :
         File = file;
     }
 
-    public bool TypeEquals(ParameterDefinitionCollection? other)
-    {
-        if (other is null) return false;
-        if (Parameters.Length != other.Parameters.Length) return false;
-        for (int i = 0; i < Parameters.Length; i++)
-        { if (!Parameters[i].Type.Equals(other.Parameters[i].Type)) return false; }
-        return true;
-    }
-
-    public static ParameterDefinitionCollection CreateAnonymous(ImmutableArray<ParameterDefinition> parameterDefinitions, Uri file)
-        => new(parameterDefinitions, TokenPair.CreateAnonymous(new Position(parameterDefinitions), "(", ")"), file);
-
     public override string ToString()
     {
         StringBuilder result = new();
@@ -61,28 +48,6 @@ public class ParameterDefinitionCollection :
                 result.Append(' ');
             }
             result.Append(Parameters[i].Type);
-        }
-
-        result.Append(Brackets.End);
-
-        return result.ToString();
-    }
-
-    public string ToString(ImmutableArray<GeneralType> types)
-    {
-        StringBuilder result = new();
-
-        result.Append(Brackets.Start);
-
-        for (int i = 0; i < Parameters.Length; i++)
-        {
-            if (i > 0) result.Append(", ");
-            if (Parameters[i].Modifiers.Length > 0)
-            {
-                result.AppendJoin(' ', Parameters[i].Modifiers);
-                result.Append(' ');
-            }
-            result.Append(types[i].ToString());
         }
 
         result.Append(Brackets.End);

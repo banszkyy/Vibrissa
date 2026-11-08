@@ -278,7 +278,7 @@ public sealed partial class Parser
                 parameter = new MissingToken(TokenType.Identifier, lastPosition.After());
             }
 
-            parameter.AnalyzedType = TokenAnalyzedType.TypeParameter;
+            parameter.AnalyzedType = TokenAnalyzedType.TemplateParameterType;
             parameters.Add(parameter);
 
             if (ExpectOperator(">", out endBracket))

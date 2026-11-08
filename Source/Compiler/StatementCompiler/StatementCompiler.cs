@@ -44,7 +44,7 @@ public partial class StatementCompiler
 
         result.ReplaceArgumentsIfNeeded(ref argumentExpressions);
 
-        if (!CompileArguments(default, argumentExpressions, result.Function, result.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments))
+        if (!CompileArguments(default, argumentExpressions, result.Function, result.TemplateArguments, out ImmutableArray<CompiledArgument> compiledArguments))
         {
             return false;
         }
@@ -77,7 +77,7 @@ public partial class StatementCompiler
 
         compiledStatement = new CompiledFunctionCall()
         {
-            Function = new(allocator, result.TypeArguments),
+            Function = new(allocator, result.TemplateArguments),
             Arguments = compiledArguments,
             Location = type.Location,
             SaveValue = true,
@@ -113,7 +113,7 @@ public partial class StatementCompiler
 
         result.Function.AddReference(sizeLocation);
 
-        if (!CompileArguments(default, argumentExpressions, result.Function, result.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments))
+        if (!CompileArguments(default, argumentExpressions, result.Function, result.TemplateArguments, out ImmutableArray<CompiledArgument> compiledArguments))
         {
             return false;
         }
@@ -144,7 +144,7 @@ public partial class StatementCompiler
 
         compiledStatement = new CompiledFunctionCall()
         {
-            Function = new(allocator, result.TypeArguments),
+            Function = new(allocator, result.TemplateArguments),
             Arguments = compiledArguments,
             Location = sizeLocation,
             SaveValue = true,
@@ -422,7 +422,7 @@ public partial class StatementCompiler
     }
     bool CompileStatement(TypeInstanceSimple type, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics)
     {
-        if (!type.TypeArguments.HasValue && TypeKeywords.BasicTypes.TryGetValue(type.Identifier.Content, out BasicType builtinType))
+        if (!type.TemplateArguments.HasValue && TypeKeywords.BasicTypes.TryGetValue(type.Identifier.Content, out BasicType builtinType))
         {
             result = new CompiledBuiltinTypeExpression(builtinType, type.Location);
             type.Identifier.AnalyzedType = TokenAnalyzedType.BuiltinType;
@@ -433,15 +433,15 @@ public partial class StatementCompiler
         {
             PossibleDiagnostic? aliasError = null;
             PossibleDiagnostic? enumError = null;
-            PossibleDiagnostic? genericTypeError = null;
+            PossibleDiagnostic? templateTypeError = null;
 
-            if (!type.TypeArguments.HasValue)
+            if (!type.TemplateArguments.HasValue)
             {
-                if (Frames.Last.TypeArguments.TryGetValue(type.Identifier.Content, out CompiledTemplateArgument? typeArgument))
+                if (Frames.Last.TemplateArguments.TryGetValue(type.Identifier.Content, out CompiledTemplateArgument? templateArgument))
                 {
-                    if (typeArgument is CompiledTemplateArgumentType w)
+                    if (templateArgument is CompiledTemplateArgumentType w)
                     {
-                        type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
+                        type.Identifier.AnalyzedType = TokenAnalyzedType.TemplateParameterType;
                         result = CompiledTypeExpression.CreateAnonymous(w.Value, type.Location);
                         SetStatementType(type, result);
                         goto ok;
@@ -455,12 +455,12 @@ public partial class StatementCompiler
                 }
 
                 {
-                    int i = Frames.Last.TypeParameters.IndexOf(type.Identifier.Content);
+                    int i = Frames.Last.TemplateParameters.IndexOf(type.Identifier.Content);
                     if (i != -1)
                     {
-                        type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
-                        result = new CompiledGenericTypeExpression(Frames.Last.TypeParameters[i], type.File, type.Location);
-                        SetStatementReference(type, Frames.Last.TypeParameters[i]);
+                        type.Identifier.AnalyzedType = TokenAnalyzedType.TemplateParameterType;
+                        result = new CompiledUnresolvedTemplateTypeExpression(Frames.Last.TemplateParameters[i], type.File, type.Location);
+                        SetStatementReference(type, Frames.Last.TemplateParameters[i]);
                         SetStatementType(type, result);
                         goto ok;
                     }
@@ -472,14 +472,14 @@ public partial class StatementCompiler
                     {
                         if (w.Content != type.Identifier.Content) continue;
 
-                        type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
-                        result = new CompiledGenericTypeExpression(w, type.File, type.Location);
+                        type.Identifier.AnalyzedType = TokenAnalyzedType.TemplateParameterType;
+                        result = new CompiledUnresolvedTemplateTypeExpression(w, type.File, type.Location);
                         SetStatementReference(type, w);
                         SetStatementType(type, result);
                         goto ok;
                     }
                 }
-                genericTypeError = new PossibleDiagnostic($"Generic type `{type.Identifier.Content}` not found", isTellingNothing: true);
+                templateTypeError = new PossibleDiagnostic($"Generic type `{type.Identifier.Content}` not found", isTellingNothing: true);
 
                 if (GetAlias(type.Identifier.Content, type.File, out AliasDefinition? aliasDefinition, out aliasError))
                 {
@@ -489,7 +489,7 @@ public partial class StatementCompiler
                     {
                         CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
                         CompiledStructTypeExpression => TokenAnalyzedType.Struct,
-                        CompiledGenericTypeExpression => TokenAnalyzedType.TypeParameter,
+                        CompiledUnresolvedTemplateTypeExpression => TokenAnalyzedType.TemplateParameterType,
                         CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
                         _ => TokenAnalyzedType.Type,
                     };
@@ -515,7 +515,7 @@ public partial class StatementCompiler
                 }
             }
 
-            if (GetStruct(type.Identifier.Content, type.TypeArguments?.Length, type.File, out StructDefinition? structDefinition, out PossibleDiagnostic? structError))
+            if (GetStruct(type.Identifier.Content, type.TemplateArguments?.Length, type.File, out StructDefinition? structDefinition, out PossibleDiagnostic? structError))
             {
                 CompiledStruct compiled = CompileStruct(structDefinition);
 
@@ -533,7 +533,7 @@ public partial class StatementCompiler
                 aliasError?.ToError(type),
                 structError?.ToError(type),
                 enumError?.ToError(type),
-                genericTypeError?.ToError(type)
+                templateTypeError?.ToError(type)
             )));
             return false;
 
@@ -543,10 +543,10 @@ public partial class StatementCompiler
         if (result.Is(out CompiledStructTypeExpression? resultStructType) &&
             resultStructType.Struct.Definition.Template is not null)
         {
-            if (type.TypeArguments.HasValue)
+            if (type.TemplateArguments.HasValue)
             {
-                if (!CompileStatement(type.TypeArguments.Value, out ImmutableArray<CompiledTemplateArgumentExpression> typeParameters, diagnostics)) return false;
-                result = new CompiledStructTypeExpression(resultStructType.Struct, type.File, typeParameters, type.Location);
+                if (!CompileStatement(type.TemplateArguments.Value, out ImmutableArray<CompiledTemplateArgumentExpression> templateArguments, diagnostics)) return false;
+                result = new CompiledStructTypeExpression(resultStructType.Struct, type.File, templateArguments, type.Location);
             }
             else
             {
@@ -658,7 +658,7 @@ public partial class StatementCompiler
                         type = new ArrayType(arrayType.Of, new CompiledConstantValue()
                         {
                             Value = literalList.Values.Length,
-                            Type = BuiltinType.I32,
+                            Type = ArrayLengthType,
                             Location = newVariable.Type.Location,
                             SaveValue = true,
                         });
@@ -684,7 +684,7 @@ public partial class StatementCompiler
                         CompiledConstantAccess definedLength = new CompiledConstantValue()
                         {
                             Value = realLength + 1,
-                            Type = BuiltinType.I32,
+                            Type = ArrayLengthType,
                             Location = newVariable.Type.Location,
                             SaveValue = true,
                         };
@@ -821,11 +821,6 @@ public partial class StatementCompiler
         {
             type = BuiltinType.Any;
         }
-
-        //if (!type.AllGenericsDefined())
-        //{
-        //    Diagnostics.Add(Diagnostic.Internal($"Failed to qualify all generics in variable `{newVariable.Identifier}` type `{type}` (what edge case is this???)", newVariable.Type, newVariable.File));
-        //}
 
         SetStatementType(newVariable.Type, type);
 
@@ -1357,12 +1352,12 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (Frames.Last.TypeArguments.TryGetValue(target.Content, out CompiledTemplateArgument? typeArgument))
+        if (Frames.Last.TemplateArguments.TryGetValue(target.Content, out CompiledTemplateArgument? templateArgument))
         {
-            SetStatementReference(target, typeArgument);
+            SetStatementReference(target, templateArgument);
             Diagnostics.Add(DiagnosticAt.Error($"Cannot set a template parameter", target));
 
-            if (typeArgument is CompiledTemplateArgumentValue templateArgumentValue)
+            if (templateArgument is CompiledTemplateArgumentValue templateArgumentValue)
             {
                 target.AnalyzedType = TokenAnalyzedType.ConstantName;
                 SetStatementType(target, BuiltinType.Create(templateArgumentValue.Value.Type));
@@ -1529,7 +1524,7 @@ public partial class StatementCompiler
                 return false;
             }
 
-            GeneralType type = GeneralType.InsertTypeParameters(compiledField.Type, structPointerType.TypeArguments);
+            GeneralType type = GeneralType.InsertTemplateParameters(compiledField.Type, structPointerType.TemplateArguments);
             if (!CompileExpression(value, out CompiledExpression? _value, type)) return false;
 
             if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
@@ -1565,7 +1560,7 @@ public partial class StatementCompiler
                 return false;
             }
 
-            GeneralType type = GeneralType.TryInsertTypeParameters(compiledField.Type, structType.TypeArguments);
+            GeneralType type = GeneralType.TryInsertTemplateParameters(compiledField.Type, structType.TemplateArguments);
             if (!CompileExpression(value, out CompiledExpression? _value, type)) return false;
 
             if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
@@ -1782,21 +1777,21 @@ public partial class StatementCompiler
 #if UNITY
     static readonly Unity.Profiling.ProfilerMarker _m2 = new("LanguageCore.Compiler.Function");
 #endif
-    bool CompileFunction<TFunction>(TFunction function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
+    bool CompileFunction<TFunction>(TFunction function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments)
         where TFunction : ICompiledFunctionDefinition, ICompiledDefinition<FunctionThingDefinition>
     {
         foreach (TemplateInstance<FunctionThingDefinition> item in _generatedFunctions)
         {
-            if (Utils.ReferenceEquals(item.Template, function.Definition) && TypeArgumentsEquals(item.TypeArguments, typeArguments))
+            if (Utils.ReferenceEquals(item.Template, function.Definition) && TemplateArgumentsEquals(item.TemplateArguments, templateArguments))
             {
-                if (GeneratedFunctions.Any(v => Utils.ReferenceEquals(v.Function, function) && TypeArgumentsEquals(v.TypeArguments, typeArguments)))
+                if (GeneratedFunctions.Any(v => Utils.ReferenceEquals(v.Function, function) && TemplateArgumentsEquals(v.TemplateArguments, templateArguments)))
                 {
                     // Something went wrong bruh
                 }
                 return false;
             }
         }
-        _generatedFunctions.Add(new TemplateInstance<FunctionThingDefinition>(function.Definition, typeArguments));
+        _generatedFunctions.Add(new TemplateInstance<FunctionThingDefinition>(function.Definition, templateArguments));
 
 #if UNITY
         using var _1 = _m2.Auto();
@@ -1822,7 +1817,7 @@ public partial class StatementCompiler
             goto end;
         }
 
-        GeneralType returnType = GeneralType.TryInsertTypeParameters(function.Type, typeArguments);
+        GeneralType returnType = GeneralType.TryInsertTemplateParameters(function.Type, templateArguments);
         ImmutableArray<CompiledParameter>.Builder compiledParameters = ImmutableArray.CreateBuilder<CompiledParameter>();
 
         for (int i = 0; i < function.Definition.Parameters.Length; i++)
@@ -1843,10 +1838,10 @@ public partial class StatementCompiler
 
         using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
         {
-            TypeArguments = typeArguments ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
-            IsTemplateInstance = typeArguments is not null,
+            TemplateArguments = templateArguments ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
+            IsTemplateInstance = templateArguments is not null,
             IsTemplate = function.Definition.IsTemplate,
-            TypeParameters = function.Definition.Template?.Parameters ?? ImmutableArray<Token>.Empty,
+            TemplateParameters = function.Definition.Template?.Parameters ?? ImmutableArray<Token>.Empty,
             CompiledParameters = compiledParameters.ToImmutable(),
             InstructionLabels = localInstructionLabels.ToImmutable(),
             Scopes = new(),
@@ -1883,7 +1878,7 @@ public partial class StatementCompiler
 
             function.IsMsilCompatible = function.IsMsilCompatible && frame.Value.IsMsilCompatible;
 
-            GeneratedFunctions.Add(new(function, body, closure, typeArguments));
+            GeneratedFunctions.Add(new(function, body, closure, templateArguments));
 
             if (!closure.IsEmpty)
             {
@@ -1929,7 +1924,7 @@ public partial class StatementCompiler
             TemplateInstance<T> function = functions[i];
             i++;
 
-            if (CompileFunction(function.Template, function.TypeArguments))
+            if (CompileFunction(function.Template, function.TemplateArguments))
             { compiledAnything = true; }
         }
         return compiledAnything;
@@ -2016,10 +2011,10 @@ public partial class StatementCompiler
 
         using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
         {
-            TypeArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
+            TemplateArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
             IsTemplateInstance = false,
             IsTemplate = false,
-            TypeParameters = ImmutableArray<Token>.Empty,
+            TemplateParameters = ImmutableArray<Token>.Empty,
             CompiledParameters = ImmutableArray<CompiledParameter>.Empty,
             InstructionLabels = globalInstructionLabels.ToImmutable(),
             Scopes = new(),
@@ -2119,7 +2114,7 @@ public partial class StatementCompiler
             {
                 if (CompileFunctionCall(new FunctionCallExpression(
                     null,
-                    Token.CreateAnonymous(result.Function.Identifier, TokenType.Identifier, firstHeapUsageLocation.Value.Position),
+                    new PhantomToken(result.Function.Identifier, TokenType.Identifier, firstHeapUsageLocation.Value.Position),
                     null,
                     ArgumentListExpression.CreateAnonymous(TokenPair.CreateAnonymous(firstHeapUsageLocation.Value.Position, "(", ")"), entryFile),
                     entryFile
@@ -2176,7 +2171,7 @@ public partial class StatementCompiler
             {
                 if (IsAllocator(v.Function.Template)) flags |= FunctionFlags.AllocatesMemory;
                 if (IsDeallocator(v.Function.Template)) flags |= FunctionFlags.DeallocatesMemory;
-                CompiledFunction? f = GeneratedFunctions.FirstOrDefault(w => Utils.ReferenceEquals(w.Function, v.Function.Template) && TypeArgumentsEquals(w.TypeArguments, v.Function.TypeArguments));
+                CompiledFunction? f = GeneratedFunctions.FirstOrDefault(w => Utils.ReferenceEquals(w.Function, v.Function.Template) && TemplateArgumentsEquals(w.TemplateArguments, v.Function.TemplateArguments));
                 if (f is not null) flags |= f.Flags;
                 break;
             }
@@ -2190,7 +2185,7 @@ public partial class StatementCompiler
             {
                 if (v.Function is ICompiledFunctionDefinition f1 && IsAllocator(f1)) flags |= FunctionFlags.AllocatesMemory;
                 if (v.Function is ICompiledFunctionDefinition f2 && IsDeallocator(f2)) flags |= FunctionFlags.DeallocatesMemory;
-                CompiledFunction? f = GeneratedFunctions.FirstOrDefault(w => Utils.ReferenceEquals(w.Function, v.Function.Template) && TypeArgumentsEquals(w.TypeArguments, v.Function.TypeArguments));
+                CompiledFunction? f = GeneratedFunctions.FirstOrDefault(w => Utils.ReferenceEquals(w.Function, v.Function.Template) && TemplateArgumentsEquals(w.TemplateArguments, v.Function.TemplateArguments));
                 if (f is not null) flags |= f.Flags;
                 break;
             }

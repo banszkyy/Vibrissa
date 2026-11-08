@@ -36,8 +36,8 @@ public partial class StatementCompiler
         if (structDefinition.Template is not null)
         {
             GenericParameters.Push(structDefinition.Template.Parameters);
-            foreach (Token typeParameter in structDefinition.Template.Parameters)
-            { typeParameter.AnalyzedType = TokenAnalyzedType.TypeParameter; }
+            foreach (Token templateParameter in structDefinition.Template.Parameters)
+            { templateParameter.AnalyzedType = TokenAnalyzedType.TemplateParameterType; }
         }
 
         ImmutableArray<CompiledField>.Builder compiledFields = ImmutableArray.CreateBuilder<CompiledField>(structDefinition.Fields.Length);
@@ -107,7 +107,7 @@ public partial class StatementCompiler
         {
             CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
             CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
-            CompiledGenericTypeExpression => TokenAnalyzedType.TypeParameter,
+            CompiledUnresolvedTemplateTypeExpression => TokenAnalyzedType.TemplateParameterType,
             CompiledStructTypeExpression => TokenAnalyzedType.Struct,
             _ => TokenAnalyzedType.Type,
         };
@@ -560,8 +560,8 @@ public partial class StatementCompiler
         if (function.Template is not null)
         {
             GenericParameters.Push(function.Template.Parameters);
-            foreach (Token typeParameter in function.Template.Parameters)
-            { typeParameter.AnalyzedType = TokenAnalyzedType.TypeParameter; }
+            foreach (Token templateParameter in function.Template.Parameters)
+            { templateParameter.AnalyzedType = TokenAnalyzedType.TemplateParameterType; }
         }
 
         bool success = true;
@@ -841,8 +841,8 @@ public partial class StatementCompiler
             if (compiledStruct.Definition.Template is not null)
             {
                 GenericParameters.Push(compiledStruct.Definition.Template.Parameters);
-                foreach (Token typeParameter in compiledStruct.Definition.Template.Parameters)
-                { typeParameter.AnalyzedType = TokenAnalyzedType.TypeParameter; }
+                foreach (Token templateParameter in compiledStruct.Definition.Template.Parameters)
+                { templateParameter.AnalyzedType = TokenAnalyzedType.TemplateParameterType; }
             }
 
             foreach (GeneralFunctionDefinition method in compiledStruct.Definition.GeneralFunctions)
@@ -863,9 +863,9 @@ public partial class StatementCompiler
                     returnType = BuiltinType.Void;
 
                     ImmutableArray<ParameterDefinition> parameters = method.Parameters.Parameters.Insert(0, new ParameterDefinition(
-                        ImmutableArray.Create(Token.CreateAnonymous(ModifierKeywords.This)),
+                        ImmutableArray.Create<Token>(new PhantomToken(ModifierKeywords.This)),
                         TypeInstanceReference.CreateAnonymous(TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, method.File, compiledStruct.Definition.Template?.Parameters), method.File),
-                        Token.CreateAnonymous(StatementKeywords.This),
+                        new PhantomToken(StatementKeywords.This),
                         null,
                         null,
                         method.File
@@ -898,9 +898,9 @@ public partial class StatementCompiler
                 else if (method.Identifier.Content == BuiltinFunctionIdentifiers.Deinitializer)
                 {
                     ImmutableArray<ParameterDefinition> parameters = method.Parameters.Parameters.Insert(0, new ParameterDefinition(
-                        ImmutableArray.Create(Token.CreateAnonymous(ModifierKeywords.This)),
+                        ImmutableArray.Create<Token>(new PhantomToken(ModifierKeywords.This)),
                         TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, method.File, compiledStruct.Definition.Template?.Parameters),
-                        Token.CreateAnonymous(StatementKeywords.This),
+                        new PhantomToken(StatementKeywords.This),
                         null,
                         null,
                         method.File
@@ -924,9 +924,9 @@ public partial class StatementCompiler
                     }
 
                     parameters = method.Parameters.Parameters.Insert(0, new ParameterDefinition(
-                        ImmutableArray.Create(Token.CreateAnonymous(ModifierKeywords.This)),
+                        ImmutableArray.Create<Token>(new PhantomToken(ModifierKeywords.This)),
                         TypeInstancePointer.CreateAnonymous(TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, method.File, compiledStruct.Definition.Template?.Parameters), method.File),
-                        Token.CreateAnonymous(StatementKeywords.This),
+                        new PhantomToken(StatementKeywords.This),
                         null,
                         null,
                         method.File
@@ -988,9 +988,9 @@ public partial class StatementCompiler
                 }
 
                 ImmutableArray<ParameterDefinition> parameters = method.Parameters.Parameters.Insert(0, new ParameterDefinition(
-                    ImmutableArray.Create(Token.CreateAnonymous(ModifierKeywords.This)),
+                    ImmutableArray.Create<Token>(new PhantomToken(ModifierKeywords.This)),
                     TypeInstanceReference.CreateAnonymous(TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, method.File, compiledStruct.Definition.Template?.Parameters), method.File),
-                    Token.CreateAnonymous(StatementKeywords.This),
+                    new PhantomToken(StatementKeywords.This),
                     null,
                     null,
                     method.File

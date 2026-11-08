@@ -3,8 +3,8 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Compiler;
 
-public class CompiledGenericTypeExpression : CompiledTypeExpression,
-    IEquatable<CompiledGenericTypeExpression>,
+public class CompiledUnresolvedTemplateTypeExpression : CompiledTypeExpression,
+    IEquatable<CompiledUnresolvedTemplateTypeExpression>,
     IReferenceableTo<Token>
 {
     public string Identifier { get; }
@@ -18,16 +18,16 @@ public class CompiledGenericTypeExpression : CompiledTypeExpression,
     }
 
     [SetsRequiredMembers]
-    public CompiledGenericTypeExpression(Token definition, Uri originalFile, Location location) : base(location)
+    public CompiledUnresolvedTemplateTypeExpression(Token definition, Uri originalFile, Location location) : base(location)
     {
         Identifier = definition.Content;
         Definition = definition;
         File = originalFile;
     }
 
-    public override bool Equals(object? other) => Equals(other as CompiledGenericTypeExpression);
-    public override bool Equals(CompiledTypeExpression? other) => Equals(other as CompiledGenericTypeExpression);
-    public bool Equals(CompiledGenericTypeExpression? other)
+    public override bool Equals(object? other) => Equals(other as CompiledUnresolvedTemplateTypeExpression);
+    public override bool Equals(CompiledTypeExpression? other) => Equals(other as CompiledUnresolvedTemplateTypeExpression);
+    public bool Equals(CompiledUnresolvedTemplateTypeExpression? other)
     {
         if (other is null) return false;
         if (!Identifier.Equals(other.Identifier)) return false;
@@ -48,12 +48,9 @@ public class CompiledGenericTypeExpression : CompiledTypeExpression,
     public override int GetHashCode() => HashCode.Combine(Identifier);
     public override string ToString() => Identifier;
 
-    public static CompiledGenericTypeExpression CreateAnonymous(GenericType type, ILocated location)
-    {
-        return new(
-            Token.CreateAnonymous(type.Identifier),
-            type.File,
-            location.Location
-        );
-    }
+    public static CompiledUnresolvedTemplateTypeExpression CreateAnonymous(UnresolvedTemplateType type, ILocated location) => new(
+        new PhantomToken(type.Identifier),
+        type.File,
+        location.Location
+    );
 }

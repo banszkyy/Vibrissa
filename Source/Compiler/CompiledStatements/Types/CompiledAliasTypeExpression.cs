@@ -36,8 +36,5 @@ public class CompiledAliasTypeExpression : CompiledTypeExpression,
 
     public override string ToString() => Identifier;
 
-    public static CompiledAliasTypeExpression CreateAnonymous(AliasType type, ILocated location) => new(
-        type.Definition,
-        location.Location
-    );
+    public static CompiledAliasTypeExpression CreateAnonymous(AliasType type, ILocated location) => new(type.Definition, location.Location);
 }

@@ -255,7 +255,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (statement.Function is IRFunctionRef functionRef)
         {
-            CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, functionRef.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, functionRef.Function.TypeArguments));
+            CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, functionRef.Function.Template) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, functionRef.Function.TemplateArguments));
             if (f is null)
             {
                 Diagnostics.Add(DiagnosticAt.Internal($"Function `{functionRef.Function.Template.ToReadable()}` wasn't compiled", loc));
@@ -264,7 +264,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             if (functionRef.Function.Template.ReturnSomething)
             {
-                StackAlloc(FindSize(GeneralType.TryInsertTypeParameters(functionRef.Function.Template.Type, functionRef.Function.TypeArguments), loc), false);
+                StackAlloc(FindSize(GeneralType.TryInsertTemplateParameters(functionRef.Function.Template.Type, functionRef.Function.TemplateArguments), loc), false);
             }
 
             foreach (IRValue item in statement.Arguments)
@@ -293,7 +293,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             else if (functionRef.Function.Template.ReturnSomething)
             {
-                Pop(FindSize(GeneralType.TryInsertTypeParameters(functionRef.Function.Template.Type, functionRef.Function.TypeArguments), loc));
+                Pop(FindSize(GeneralType.TryInsertTemplateParameters(functionRef.Function.Template.Type, functionRef.Function.TemplateArguments), loc));
             }
         }
         else

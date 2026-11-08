@@ -2,7 +2,7 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Parser.Statements;
 
-public class ForLoopStatement : StatementWithBlock
+public class ForLoopStatement : StatementWithAnyBody
 {
     public Token KeywordToken { get; }
     public Statement? Initialization { get; }
@@ -16,7 +16,7 @@ public class ForLoopStatement : StatementWithBlock
         Statement? initialization,
         Expression? condition,
         Statement? step,
-        Block body,
+        Statement body,
         Uri file)
         : base(body, file)
     {

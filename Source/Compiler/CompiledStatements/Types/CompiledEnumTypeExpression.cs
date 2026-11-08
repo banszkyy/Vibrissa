@@ -51,11 +51,5 @@ public class CompiledEnumTypeExpression : CompiledTypeExpression,
     public override int GetHashCode() => Definition.GetHashCode();
     public override string ToString() => Definition.Identifier;
 
-    public static CompiledEnumTypeExpression CreateAnonymous(EnumType type, ILocated location)
-    {
-        return new(
-            type.Definition,
-            location.Location
-        );
-    }
+    public static CompiledEnumTypeExpression CreateAnonymous(EnumType type, ILocated location) => new(type.Definition, location.Location);
 }

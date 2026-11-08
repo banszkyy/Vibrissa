@@ -60,16 +60,6 @@ public class Token :
         _ => Content,
     };
 
-    #region CreateAnonymous
-
-    public static Token CreateAnonymous(string content, TokenType type = TokenType.Identifier)
-        => new(type, content, true, Position.UnknownPosition);
-
-    public static Token CreateAnonymous(string content, TokenType type, Position position)
-        => new(type, content, true, position);
-
-    #endregion
-
     public override bool Equals(object? obj) => obj is Token other && Equals(other);
     public bool Equals(Token? other) =>
         other is not null &&

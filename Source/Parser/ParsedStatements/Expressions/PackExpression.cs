@@ -21,19 +21,5 @@ public class PackExpression : Expression
         Brackets = brackets;
     }
 
-    public static PackExpression CreateAnonymous(TokenPair brackets, Uri file) => new(
-        ImmutableArray<Expression>.Empty,
-        ImmutableArray<Token>.Empty,
-        brackets,
-        file
-    );
-
-    public static PackExpression CreateAnonymous(Uri file) => new(
-        ImmutableArray<Expression>.Empty,
-        ImmutableArray<Token>.Empty,
-        TokenPair.CreateAnonymous("{", "}"),
-        file
-    );
-
     public override string ToString() => $"{{{string.Join(", ", Values)}}}";
 }

@@ -12,18 +12,18 @@ public class TemplateInfo : IPositioned
         new Position(Parameters.As<IPositioned>().DefaultIfEmpty(Brackets))
         .Union(Brackets);
 
-    public TemplateInfo(TokenPair brackets, ImmutableArray<Token> typeParameters)
+    public TemplateInfo(TokenPair brackets, ImmutableArray<Token> parameters)
     {
         Brackets = brackets;
-        Parameters = typeParameters;
+        Parameters = parameters;
     }
 
-    public bool TryGetTypeArgumentIndex(string typeArgumentName, out int index)
+    public bool TryGetTemplateArgumentIndex(string templateArgumentName, out int index)
     {
         index = -1;
         for (int i = 0; i < Parameters.Length; i++)
         {
-            if (Parameters[i].Content == typeArgumentName)
+            if (Parameters[i].Content == templateArgumentName)
             {
                 index = i;
                 return true;
@@ -32,13 +32,13 @@ public class TemplateInfo : IPositioned
         return false;
     }
 
-    public bool OrderTypeArguments<TValue>(ImmutableDictionary<string, TValue> typeArguments, [NotNullWhen(true)] out ImmutableArray<TValue> result)
+    public bool OrderTemplateArguments<TValue>(ImmutableDictionary<string, TValue> templateArguments, [NotNullWhen(true)] out ImmutableArray<TValue> result)
     {
         TValue[] _result = new TValue[Parameters.Length];
 
-        foreach (KeyValuePair<string, TValue> item in typeArguments)
+        foreach (KeyValuePair<string, TValue> item in templateArguments)
         {
-            if (!TryGetTypeArgumentIndex(item.Key, out int i))
+            if (!TryGetTemplateArgumentIndex(item.Key, out int i))
             {
                 result = default;
                 return false;

@@ -13,12 +13,6 @@ public class CharLiteralExpression : LiteralExpression
         Value = value;
     }
 
-    public static CharLiteralExpression CreateAnonymous(char value, Position position, Uri file) => new(
-        value,
-        Token.CreateAnonymous(value.ToString(), TokenType.LiteralCharacter, position),
-        file
-    );
-
     public override string ToString()
     {
         StringBuilder result = new();

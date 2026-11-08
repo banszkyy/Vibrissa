@@ -422,7 +422,7 @@ public static class Entry
                                 if (item.Instructions.Start == i)
                                 {
                                     ConsoleWriter t = default;
-                                    InterpreterRenderer.WriteFunction(ref t, item.Function, item.TypeArguments);
+                                    InterpreterRenderer.WriteFunction(ref t, item.Function, item.TemplateArguments);
                                     Console.WriteLine();
                                     Console.WriteLine('{');
                                     break;

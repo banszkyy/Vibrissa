@@ -25,10 +25,10 @@ public static partial class Stringifier
     public static void Stringify(TypeInstanceSimple type, BuilderBase builder, StringifyContext context = default)
     {
         builder.Append(type.Identifier.Content);
-        if (type.TypeArguments.HasValue)
+        if (type.TemplateArguments.HasValue)
         {
             builder.Append('<');
-            builder.AppendJoin(type.TypeArguments.Value, Stringify);
+            builder.AppendJoin(type.TemplateArguments.Value, Stringify);
             builder.Append('>');
         }
     }

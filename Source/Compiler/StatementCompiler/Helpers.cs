@@ -204,7 +204,7 @@ public partial class StatementCompiler
 
     public static bool AllowDeallocate(GeneralType type) => type.Is<PointerType>() || (type.Is(out FunctionType? functionType) && functionType.HasClosure);
 
-    public static bool TypeArgumentsEquals(ImmutableDictionary<string, CompiledTemplateArgument>? a, ImmutableDictionary<string, CompiledTemplateArgument>? b)
+    public static bool TemplateArgumentsEquals(ImmutableDictionary<string, CompiledTemplateArgument>? a, ImmutableDictionary<string, CompiledTemplateArgument>? b)
     {
         if (a is null && b is null) return true;
         if (a is null || b is null) return false;
@@ -233,7 +233,7 @@ public partial class StatementCompiler
 
     static bool FunctionEquals<TFunction>(TemplateInstance<TFunction> a, FunctionMatch<TFunction> b) where TFunction : class
     {
-        return Utils.ReferenceEquals(a.Template, b.Definition) && TypeArgumentsEquals(a.TypeArguments, b.TypeArguments);
+        return Utils.ReferenceEquals(a.Template, b.Definition) && TemplateArgumentsEquals(a.TemplateArguments, b.TemplateArguments);
     }
 
     #region AddCompilable()
@@ -243,7 +243,7 @@ public partial class StatementCompiler
         foreach (TemplateInstance<CompiledFunctionDefinition> v in CompilableFunctions)
         {
             if (v.Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
+                && TemplateArgumentsEquals(v.TemplateArguments, compilable.TemplateArguments))
             { return; }
         }
         CompilableFunctions.Add(compilable);
@@ -254,7 +254,7 @@ public partial class StatementCompiler
         foreach (TemplateInstance<CompiledOperatorDefinition> v in CompilableOperators)
         {
             if (v.Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
+                && TemplateArgumentsEquals(v.TemplateArguments, compilable.TemplateArguments))
             { return; }
         }
         CompilableOperators.Add(compilable);
@@ -265,7 +265,7 @@ public partial class StatementCompiler
         foreach (TemplateInstance<CompiledGeneralFunctionDefinition> v in CompilableGeneralFunctions)
         {
             if (v.Template.IsSame(compilable.Template)
-                && TypeArgumentsEquals(v.TypeArguments, compilable.TypeArguments))
+                && TemplateArgumentsEquals(v.TemplateArguments, compilable.TemplateArguments))
             { return; }
         }
         CompilableGeneralFunctions.Add(compilable);
@@ -526,7 +526,7 @@ public partial class StatementCompiler
     bool GetFunction(
         string identifier,
         ImmutableArray<CompiledExpression> arguments,
-        ImmutableArray<CompiledTemplateArgument>? typeArguments,
+        ImmutableArray<CompiledTemplateArgument>? templateArguments,
         Uri file,
 
         [NotNullWhen(true)] out FunctionQueryResult<CompiledFunctionDefinition>? result,
@@ -536,7 +536,7 @@ public partial class StatementCompiler
         FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(
             identifier,
             arguments,
-            typeArguments,
+            templateArguments,
             file,
             null,
             addCompilable);
@@ -700,7 +700,7 @@ public partial class StatementCompiler
 
     bool GetStruct(
         string structName,
-        int? genericParameterCount,
+        int? templateParameterCount,
         Uri relevantFile,
 
         [NotNullWhen(true)] out StructDefinition? result,
@@ -709,7 +709,7 @@ public partial class StatementCompiler
             StructDefinitions,
 
             structName,
-            genericParameterCount,
+            templateParameterCount,
             relevantFile,
 
             out result,
@@ -719,7 +719,7 @@ public partial class StatementCompiler
         IEnumerable<StructDefinition> structs,
 
         string structName,
-        int? genericParameterCount,
+        int? templateParameterCount,
         Uri relevantFile,
 
         [NotNullWhen(true)] out StructDefinition? result,
@@ -783,25 +783,25 @@ public partial class StatementCompiler
 
             if (@struct.Template is null)
             {
-                if (!genericParameterCount.HasValue)
+                if (!templateParameterCount.HasValue)
                 {
                     match.IsGenericParameterCountMatches = true;
                 }
                 else
                 {
-                    match.Errors.Add(new PossibleDiagnostic($"Struct `{@struct.Identifier}` doesn't have generic parameters")
+                    match.Errors.Add(new PossibleDiagnostic($"Struct `{@struct.Identifier}` doesn't have template parameters")
                         .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct `{@struct.Identifier}` defined here", @struct.Location)));
                 }
             }
             else
             {
-                if (genericParameterCount.HasValue && genericParameterCount.Value == @struct.Template.Parameters.Length)
+                if (templateParameterCount.HasValue && templateParameterCount.Value == @struct.Template.Parameters.Length)
                 {
                     match.IsGenericParameterCountMatches = true;
                 }
                 else
                 {
-                    match.Errors.Add(new PossibleDiagnostic($"Wrong number of generic parameters used for struct `{@struct.Identifier}`: expected {@struct.Template.Parameters.Length} used {genericParameterCount ?? 0}")
+                    match.Errors.Add(new PossibleDiagnostic($"Wrong number of template parameters used for struct `{@struct.Identifier}`: expected {@struct.Template.Parameters.Length} used {templateParameterCount ?? 0}")
                         .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct `{@struct.Identifier}` defined here", @struct.Location)));
                 }
             }
@@ -1554,7 +1554,7 @@ public partial class StatementCompiler
                             Value = stringInstance.Value.Length + 1,
                             Location = stringInstance.Location,
                             SaveValue = true,
-                            Type = BuiltinType.I32,
+                            Type = ArrayLengthType,
                         }),
                         Location = value.Location,
                         SaveValue = value.SaveValue,
@@ -1751,7 +1751,7 @@ public partial class StatementCompiler
     {
         switch (type.FinalValue)
         {
-            case GenericType:
+            case UnresolvedTemplateType:
             case StructType:
             case FunctionType:
             case ArrayType:
@@ -2117,7 +2117,7 @@ public partial class StatementCompiler
                 }
                 inlined = new CompiledFunctionTypeExpression(returnTypeInlined, parameters.AsImmutableUnsafe(), v.HasClosure, v.Location);
                 break;
-            case CompiledGenericTypeExpression v:
+            case CompiledUnresolvedTemplateTypeExpression v:
                 inlined = v;
                 break;
             case CompiledPointerTypeExpression v:
@@ -2129,14 +2129,14 @@ public partial class StatementCompiler
                 inlined = new CompiledReferenceTypeExpression(toInlined2, v.Location);
                 break;
             case CompiledStructTypeExpression v:
-                Dictionary<string, CompiledTemplateArgumentExpression> typeArguments = new(v.TypeArguments.Count);
-                foreach (KeyValuePair<string, CompiledTemplateArgumentExpression> i in v.TypeArguments)
+                Dictionary<string, CompiledTemplateArgumentExpression> templateArguments = new(v.TemplateArguments.Count);
+                foreach (KeyValuePair<string, CompiledTemplateArgumentExpression> i in v.TemplateArguments)
                 {
                     throw new NotImplementedException();
                     //if (!Inline(i.Value, context, out CompiledTypeExpression? iInlined, out error)) return false;
-                    //typeArguments[i.Key] = iInlined;
+                    //templateArguments[i.Key] = iInlined;
                 }
-                inlined = new CompiledStructTypeExpression(v.Struct, v.File, typeArguments.ToImmutableDictionary(), v.Location);
+                inlined = new CompiledStructTypeExpression(v.Struct, v.File, templateArguments.ToImmutableDictionary(), v.Location);
                 break;
             default: throw new UnreachableException();
         }
@@ -2836,7 +2836,7 @@ public partial class StatementCompiler
         Block v => FindControlFlowUsage(v.Statements, true),
         KeywordCallStatement v => FindControlFlowUsage(v, inDepth),
         WhileLoopStatement v => FindControlFlowUsage(v.Body, true),
-        ForLoopStatement v => FindControlFlowUsage(v.Body.Statements, true),
+        ForLoopStatement v => FindControlFlowUsage(v.Body, true),
         IfBranchStatement v => FindControlFlowUsage(v.Body, true) | FindControlFlowUsage(v.Else, true),
         ElseBranchStatement v => FindControlFlowUsage(v.Body, true),
 
@@ -3284,7 +3284,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        CompiledFunction? found = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, functionCall.Function.Template) && TypeArgumentsEquals(v.TypeArguments, functionCall.Function.TypeArguments));
+        CompiledFunction? found = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, functionCall.Function.Template) && TemplateArgumentsEquals(v.TemplateArguments, functionCall.Function.TemplateArguments));
 
         if (found is null)
         {
@@ -3518,14 +3518,14 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (context.Frames.Last.Function.TypeArguments is null)
+        if (context.Frames.Last.Function.TemplateArguments is null)
         {
             value = CompiledValue.Null;
             error = new PossibleDiagnostic($"no", expression);
             return false;
         }
 
-        if (!context.Frames.Last.Function.TypeArguments.TryGetValue(expression.Parameter.Content, out CompiledTemplateArgument? compiledTemplateArgument))
+        if (!context.Frames.Last.Function.TemplateArguments.TryGetValue(expression.Parameter.Content, out CompiledTemplateArgument? compiledTemplateArgument))
         {
             value = CompiledValue.Null;
             error = new PossibleDiagnostic($"no", expression);
@@ -3633,7 +3633,7 @@ public partial class StatementCompiler
         value = default;
         runtimeStatements = default;
 
-        CompiledFunction? found = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && TypeArgumentsEquals(v.TypeArguments, null));
+        CompiledFunction? found = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && TemplateArgumentsEquals(v.TemplateArguments, null));
 
         if (found is null)
         {
@@ -3652,7 +3652,7 @@ public partial class StatementCompiler
         value = default;
         runtimeStatements = default;
 
-        CompiledFunction? found = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && TypeArgumentsEquals(v.TypeArguments, null));
+        CompiledFunction? found = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && TemplateArgumentsEquals(v.TemplateArguments, null));
 
         if (found is null)
         {
@@ -4032,7 +4032,7 @@ public partial class StatementCompiler
         ArrayType v => FindSize(v, out size, out error, runtime),
         FunctionType v => FindSize(v, out size, out error, runtime),
         StructType v => FindSize(v, out size, out error, runtime),
-        GenericType v => FindSize(v, out size, out error, runtime),
+        UnresolvedTemplateType v => FindSize(v, out size, out error, runtime),
         BuiltinType v => FindSize(v, out size, out error, runtime),
         AliasType v => FindSize(v, out size, out error, runtime),
         EnumType v => FindSize(v, out size, out error, runtime),
@@ -4094,7 +4094,7 @@ public partial class StatementCompiler
         error = null;
         return true;
     }
-    static bool FindSize(GenericType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
+    static bool FindSize(UnresolvedTemplateType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
         error = new PossibleDiagnostic($"Generic type doesn't have a size");
@@ -4149,7 +4149,7 @@ public partial class StatementCompiler
         CompiledArrayTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledFunctionTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledStructTypeExpression v => FindSize(v, out size, out error, runtime),
-        CompiledGenericTypeExpression v => FindSize(v, out size, out error, runtime),
+        CompiledUnresolvedTemplateTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledBuiltinTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledAliasTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledEnumTypeExpression v => FindSize(v, out size, out error, runtime),
@@ -4208,7 +4208,7 @@ public partial class StatementCompiler
         error = null;
         return true;
     }
-    static bool FindSize(CompiledGenericTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
+    static bool FindSize(CompiledUnresolvedTemplateTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
         error = new PossibleDiagnostic($"Generic type doesn't have a size", type);
@@ -4282,10 +4282,10 @@ public partial class StatementCompiler
         CompiledArrayTypeExpression v => (v.Length is null || v.ComputedLength.HasValue) ? StatementComplexity.None : GetStatementComplexity(v.Length),
         CompiledBuiltinTypeExpression => StatementComplexity.None,
         CompiledFunctionTypeExpression v => GetStatementComplexity(v.ReturnType) | v.Parameters.Select(GetStatementComplexity).Aggregate(StatementComplexity.None, (a, b) => a | b),
-        CompiledGenericTypeExpression => StatementComplexity.Bruh,
+        CompiledUnresolvedTemplateTypeExpression => StatementComplexity.Bruh,
         CompiledPointerTypeExpression v => GetStatementComplexity(v.To),
         CompiledReferenceTypeExpression v => GetStatementComplexity(v.To),
-        CompiledStructTypeExpression v => v.TypeArguments.Values.Select(GetStatementComplexity).Aggregate(StatementComplexity.None, (a, b) => a | b),
+        CompiledStructTypeExpression v => v.TemplateArguments.Values.Select(GetStatementComplexity).Aggregate(StatementComplexity.None, (a, b) => a | b),
         _ => throw new NotImplementedException(statement.GetType().ToString()),
     };
 
@@ -4370,10 +4370,10 @@ public partial class StatementCompiler
                 foreach (CompiledStatement v2 in Visit(v.ReturnType)) yield return v2;
                 foreach (CompiledStatement v2 in Visit(v.Parameters)) yield return v2;
                 break;
-            case CompiledGenericTypeExpression:
+            case CompiledUnresolvedTemplateTypeExpression:
                 break;
             case CompiledStructTypeExpression v:
-                foreach (CompiledStatement v2 in Visit(v.TypeArguments.Values)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.TemplateArguments.Values)) yield return v2;
                 break;
             case CompiledArrayTypeExpression v:
                 foreach (CompiledStatement v2 in Visit(v.Of)) yield return v2;
@@ -4823,9 +4823,9 @@ public partial class StatementCompiler
                 type = new FunctionType(returnType, parameters.AsImmutableUnsafe(), v.HasClosure);
                 return true;
             }
-            case CompiledGenericTypeExpression v:
+            case CompiledUnresolvedTemplateTypeExpression v:
             {
-                type = v.Definition is null ? new GenericType(v.Definition ?? Token.CreateAnonymous(v.Identifier), v.File) : new GenericType(v.Definition, v.File);
+                type = v.Definition is null ? new UnresolvedTemplateType(v.Definition ?? new PhantomToken(v.Identifier), v.File) : new UnresolvedTemplateType(v.Definition, v.File);
                 return true;
             }
             case CompiledPointerTypeExpression v:
@@ -4842,17 +4842,17 @@ public partial class StatementCompiler
             }
             case CompiledStructTypeExpression v:
             {
-                Dictionary<string, CompiledTemplateArgument> typeArguments = new(v.TypeArguments.Count);
-                foreach (KeyValuePair<string, CompiledTemplateArgumentExpression> item in v.TypeArguments)
+                Dictionary<string, CompiledTemplateArgument> templateArguments = new(v.TemplateArguments.Count);
+                foreach (KeyValuePair<string, CompiledTemplateArgumentExpression> item in v.TemplateArguments)
                 {
                     switch (item.Value)
                     {
                         case CompiledTemplateArgumentTypeExpression w:
                         {
                             if (!CompileType(w.Value, out GeneralType? itemV, out error, ignoreValues)) return false;
-                            typeArguments.Add(item.Key, new CompiledTemplateArgumentType()
+                            templateArguments.Add(item.Key, new CompiledTemplateArgumentType()
                             {
-                                Definition = (v.Struct.Definition.Template ?? throw new UnreachableException()).TryGetTypeArgumentIndex(item.Key, out int i) ? v.Struct.Definition.Template.Parameters[i] : throw new UnreachableException(),
+                                Definition = (v.Struct.Definition.Template ?? throw new UnreachableException()).TryGetTemplateArgumentIndex(item.Key, out int i) ? v.Struct.Definition.Template.Parameters[i] : throw new UnreachableException(),
                                 Value = itemV,
                             });
                             break;
@@ -4864,7 +4864,7 @@ public partial class StatementCompiler
                         default: throw new UnreachableException();
                     }
                 }
-                type = new StructType(v.Struct, v.File, typeArguments.ToImmutableDictionary());
+                type = new StructType(v.Struct, v.File, templateArguments.ToImmutableDictionary());
                 return true;
             }
             default: throw new UnreachableException();

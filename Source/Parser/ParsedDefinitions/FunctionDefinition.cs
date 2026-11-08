@@ -80,17 +80,17 @@ public class FunctionDefinition : FunctionThingDefinition,
         return result.ToString();
     }
 
-    public override string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments = null)
+    public override string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? templateArguments = null)
     {
         StringBuilder result = new();
-        result.Append(Type.ToString(typeArguments));
+        result.Append(Type.ToString(templateArguments));
         result.Append(' ');
         result.Append(Identifier.ToString());
         result.Append('(');
         for (int i = 0; i < Parameters.Length; i++)
         {
             if (i > 0) result.Append(", ");
-            result.Append(Parameters[i].Type.ToString(typeArguments));
+            result.Append(Parameters[i].Type.ToString(templateArguments));
         }
         result.Append(')');
         return result.ToString();

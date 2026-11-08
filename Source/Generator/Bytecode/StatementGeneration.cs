@@ -11,7 +11,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     InstructionLabel LabelForDefinition(TemplateInstance<IHaveInstructionOffset> definition)
     {
-        if (DefinitionLabels.TryGetValue(v => Utils.ReferenceEquals(v.Template, definition.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, definition.TypeArguments), out InstructionLabel? label))
+        if (DefinitionLabels.TryGetValue(v => Utils.ReferenceEquals(v.Template, definition.Template) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, definition.TemplateArguments), out InstructionLabel? label))
         {
             return label;
         }
@@ -22,7 +22,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
 
     InstructionLabel LabelForDefinition<T>(TemplateInstance<T> definition) where T : IHaveInstructionOffset
-        => LabelForDefinition(TemplateInstance.New<IHaveInstructionOffset>(definition.Template, definition.TypeArguments));
+        => LabelForDefinition(TemplateInstance.New<IHaveInstructionOffset>(definition.Template, definition.TemplateArguments));
 
     void GenerateDeallocator(CompiledCleanup cleanup)
     {
@@ -30,7 +30,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             return;
         }
-        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Deallocator.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Deallocator.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Deallocator.Template) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, cleanup.Deallocator.TemplateArguments));
         if (f is null)
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Function `{cleanup.Deallocator.Template.ToReadable()}` wasn't compiled", cleanup));
@@ -87,7 +87,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         }
 
-        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Deinitializer.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Deinitializer.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Deinitializer.Template) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, cleanup.Deinitializer.TemplateArguments));
         if (f is null)
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Function `{cleanup.Deinitializer.Template.ToReadable()}` wasn't compiled", cleanup));
@@ -121,7 +121,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         ArrayType v => GenerateSize(v, result, out error),
         FunctionType v => GenerateSize(v, result, out error),
         StructType v => GenerateSize(v, result, out error),
-        GenericType v => GenerateSize(v, result, out error),
+        UnresolvedTemplateType v => GenerateSize(v, result, out error),
         BuiltinType v => GenerateSize(v, result, out error),
         AliasType v => GenerateSize(v, result, out error),
         EnumType v => GenerateSize(v, result, out error),
@@ -177,7 +177,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(size, result.BitWidth()));
         return true;
     }
-    bool GenerateSize(GenericType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
+    bool GenerateSize(UnresolvedTemplateType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
     bool GenerateSize(BuiltinType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (!FindSize(type, out int size, out error))
@@ -204,7 +204,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledArrayTypeExpression v => GenerateSize(v, result, out error),
         CompiledFunctionTypeExpression v => GenerateSize(v, result, out error),
         CompiledStructTypeExpression v => GenerateSize(v, result, out error),
-        CompiledGenericTypeExpression v => GenerateSize(v, result, out error),
+        CompiledUnresolvedTemplateTypeExpression v => GenerateSize(v, result, out error),
         CompiledBuiltinTypeExpression v => GenerateSize(v, result, out error),
         CompiledAliasTypeExpression v => GenerateSize(v, result, out error),
         CompiledEnumTypeExpression v => GenerateSize(v, result, out error),
@@ -278,7 +278,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(size, result.BitWidth()));
         return true;
     }
-    bool GenerateSize(CompiledGenericTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
+    bool GenerateSize(CompiledUnresolvedTemplateTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
     bool GenerateSize(CompiledBuiltinTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (!FindSize(new BuiltinType(type.Type), out int size, out error))
@@ -490,7 +490,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForFunctionCall_MSIL(CompiledExternalFunctionCall caller, bool isTailCall)
     {
-        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Declaration) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Declaration) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, null));
         if (f is null)
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Function `{caller.Declaration.ToReadable()}` wasn't compiled", caller));
@@ -568,7 +568,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForFunctionCall(CompiledFunctionCall caller)
     {
-        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, caller.Function.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Function.Template) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, caller.Function.TemplateArguments));
         if (f is null)
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Function `{caller.Function.Template.ToReadable()}` wasn't compiled", caller));
@@ -726,7 +726,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             AddComment($"Call {caller.Function.Template.ToReadable()} {{");
 
-            GeneralType returnType = GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments);
+            GeneralType returnType = GeneralType.TryInsertTemplateParameters(caller.Function.Template.Type, caller.Function.TemplateArguments);
             int rStart = -(ScopeSizes.Last - BasePointerSize + (FindSize(returnType, out int w, out _) ? w : 0));
 
             if (caller.Function.Template.ReturnSomething)
@@ -1623,7 +1623,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForStatement(CompiledConstructorCall constructorCall)
     {
-        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, constructorCall.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, constructorCall.Function.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, constructorCall.Function.Template) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, constructorCall.Function.TemplateArguments));
         if (f is null)
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Function `{constructorCall.Function.Template.ToReadable()}` wasn't compiled", constructorCall));
@@ -1737,7 +1737,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 PushFrom(new AddressOffset(
                     new AddressRegisterPointer(reg.Register),
                     fieldOffset
-                    ), FindSize(GeneralType.TryInsertTypeParameters(fieldDefinition.Type, structPointerType.TypeArguments), fieldDefinition.Definition));
+                    ), FindSize(GeneralType.TryInsertTemplateParameters(fieldDefinition.Type, structPointerType.TemplateArguments), fieldDefinition.Definition));
             }
             return;
         }
@@ -2881,12 +2881,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
     }
 
-    void GenerateCodeForFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, CompiledBlock body)
+    void GenerateCodeForFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, CompiledBlock body)
     {
-        if (GeneratedFunctions.Any(v => Utils.ReferenceEquals(v.Template, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments))) return;
-        GeneratedFunctions.Add(TemplateInstance.New(function, typeArguments));
+        if (GeneratedFunctions.Any(v => Utils.ReferenceEquals(v.Template, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments))) return;
+        GeneratedFunctions.Add(TemplateInstance.New(function, templateArguments));
 
-        InstructionLabel label = LabelForDefinition(TemplateInstance.New(function, typeArguments));
+        InstructionLabel label = LabelForDefinition(TemplateInstance.New(function, templateArguments));
         Code.MarkLabel(label);
 
         if (function is IExposeable exposeable && exposeable.ExposedFunctionName is not null)
@@ -2903,7 +2903,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
         else
         {
-            CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+            CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments));
             if (f is null)
             {
                 Diagnostics.Add(DiagnosticAt.Internal($"function {function.ToReadable()} not compiled", function));
@@ -2915,7 +2915,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         }
 
-        TypeArguments.Clear();
+        TemplateArguments.Clear();
         CompiledParameters.Clear();
         CompiledLocalVariables.Clear();
         ReturnInstructions.Clear();
@@ -2923,7 +2923,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         HasCapturedGlobalVariables = functionFlags.HasFlag(FunctionFlags.CapturesGlobalVariables);
         int savedInstructionLabelCount = CompiledInstructionLabels.Count;
 
-        if (typeArguments is not null) TypeArguments.AddRange(typeArguments);
+        if (templateArguments is not null) TemplateArguments.AddRange(templateArguments);
         CompiledParameters.AddRange(function.Parameters);
 
         if (function is IHaveCompiledType functionWithType)
@@ -2954,9 +2954,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 Address = ReturnValueAddress.Offset,
                 BasePointerRelative = true,
                 Kind = StackElementKind.Internal,
-                Size = FindSize(GeneralType.TryInsertTypeParameters(returnType.Type, typeArguments), function),
+                Size = FindSize(GeneralType.TryInsertTemplateParameters(returnType.Type, templateArguments), function),
                 Identifier = "Return Value",
-                Type = GeneralType.TryInsertTypeParameters(returnType.Type, typeArguments),
+                Type = GeneralType.TryInsertTemplateParameters(returnType.Type, templateArguments),
             });
         }
 
@@ -2993,7 +2993,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         for (int i = 0; i < CompiledParameters.Count; i++)
         {
             CompiledParameter p = CompiledParameters[i];
-            GeneralType pType = GeneralType.TryInsertTypeParameters(p.Type, typeArguments);
+            GeneralType pType = GeneralType.TryInsertTemplateParameters(p.Type, templateArguments);
 
             if (!GetParameterAddress(p, 0, out Address? address, out PossibleDiagnostic? error))
             {
@@ -3054,7 +3054,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             IsValid = true,
             Function = function,
-            TypeArguments = TypeArguments.ToImmutableDictionary(),
+            TemplateArguments = TemplateArguments.ToImmutableDictionary(),
             Instructions = (instructionsStart, Code.Offset),
             FrameInstructions = (frameInstructionsStart, frameInstructionsEnd),
         });
@@ -3064,7 +3064,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             CompiledInstructionLabels.Pop();
         }
 
-        TypeArguments.Clear();
+        TemplateArguments.Clear();
         CompiledParameters.Clear();
         CompiledLocalVariables.Clear();
         ReturnInstructions.Clear();
@@ -3146,7 +3146,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             IsValid = true,
             Function = null,
             IsTopLevelStub = true,
-            TypeArguments = TypeArguments.ToImmutableDictionary(),
+            TemplateArguments = TemplateArguments.ToImmutableDictionary(),
             Instructions = (instructionsStart, Code.Offset),
             FrameInstructions = (frameInstructionsStart, frameInstructionsEnd),
         });
@@ -3186,9 +3186,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     foreach (CompiledFunction function in compilerResult.Functions)
                     {
                         if (!Utils.ReferenceEquals(undefinedOffset.Called.Template, function.Function)
-                            || !StatementCompiler.TypeArgumentsEquals(undefinedOffset.Called.TypeArguments, function.TypeArguments))
+                            || !StatementCompiler.TemplateArgumentsEquals(undefinedOffset.Called.TemplateArguments, function.TemplateArguments))
                         { continue; }
-                        GenerateCodeForFunction(function.Function, function.TypeArguments, function.Body);
+                        GenerateCodeForFunction(function.Function, function.TemplateArguments, function.Body);
                         goto ok;
                     }
 
@@ -3348,7 +3348,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         foreach (CompiledFunction function in compilerResult.Functions)
         {
             if (function.Function is IExposeable exposeable && exposeable.ExposedFunctionName is not null)
-            { GenerateCodeForFunction(function.Function, function.TypeArguments, function.Body); }
+            { GenerateCodeForFunction(function.Function, function.TemplateArguments, function.Body); }
         }
 
         while (UndefinedFunctionOffsets.Count > 0)
@@ -3364,9 +3364,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 foreach (CompiledFunction function in compilerResult.Functions)
                 {
                     if (!Utils.ReferenceEquals(undefinedOffset.Called.Template, function.Function)
-                        || !StatementCompiler.TypeArgumentsEquals(undefinedOffset.Called.TypeArguments, function.TypeArguments))
+                        || !StatementCompiler.TemplateArgumentsEquals(undefinedOffset.Called.TemplateArguments, function.TemplateArguments))
                     { continue; }
-                    GenerateCodeForFunction(function.Function, function.TypeArguments, function.Body);
+                    GenerateCodeForFunction(function.Function, function.TemplateArguments, function.Body);
                     goto ok;
                 }
 
@@ -3424,7 +3424,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     continue;
                 }
 
-                CompiledFunction? e = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, f) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
+                CompiledFunction? e = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, f) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, null));
                 if (e is null)
                 {
                     Diagnostics.Add(DiagnosticAt.Internal($"Function `{f.ToReadable()}` wasn't compiled", f));

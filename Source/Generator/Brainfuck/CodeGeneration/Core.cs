@@ -139,16 +139,16 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
         readonly CodeHelper Code;
         readonly DebugInformation? DebugInfo;
         readonly ICompiledFunctionDefinition Function;
-        readonly ImmutableDictionary<string, CompiledTemplateArgument>? TypeArguments;
+        readonly ImmutableDictionary<string, CompiledTemplateArgument>? TemplateArguments;
 
-        public DebugFunctionBlock(CodeHelper code, DebugInformation? debugInfo, ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
+        public DebugFunctionBlock(CodeHelper code, DebugInformation? debugInfo, ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments)
         {
             Code = code;
             DebugInfo = debugInfo;
             InstructionStart = code.Length;
 
             Function = function;
-            TypeArguments = typeArguments;
+            TemplateArguments = templateArguments;
         }
 
         void IDisposable.Dispose()
@@ -161,7 +161,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
                 Instructions = (InstructionStart, Code.Length),
                 FrameInstructions = (InstructionStart, Code.Length),
                 IsValid = true,
-                TypeArguments = TypeArguments,
+                TemplateArguments = TemplateArguments,
             });
         }
     }
@@ -250,7 +250,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
     readonly struct GeneratorStackFrame
     {
-        public ImmutableDictionary<string, CompiledTemplateArgument>? SavedTypeArguments { get; init; }
+        public ImmutableDictionary<string, CompiledTemplateArgument>? SavedTemplateArguments { get; init; }
         public ImmutableArray<ControlFlowBlock> SavedBreaks { get; init; }
         public ImmutableArray<BrainfuckVariable> SavedVariables { get; init; }
     }
@@ -316,12 +316,12 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
     CodeSnapshot SnapshotCode() => new(this);
     void RestoreCode(CodeSnapshot snapshot) => snapshot.Restore(this);
 
-    GeneratorStackFrame PushStackFrame(ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
+    GeneratorStackFrame PushStackFrame(ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments)
     {
-        Dictionary<string, CompiledTemplateArgument>? savedTypeArguments = null;
+        Dictionary<string, CompiledTemplateArgument>? savedTemplateArguments = null;
 
-        if (typeArguments is not null)
-        { SetTypeArguments(typeArguments, out savedTypeArguments); }
+        if (templateArguments is not null)
+        { SetTemplateArguments(templateArguments, out savedTemplateArguments); }
 
         ImmutableArray<ControlFlowBlock> savedBreaks = Breaks.ToImmutableArray();
         Breaks.Clear();
@@ -340,7 +340,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
         {
             SavedBreaks = savedBreaks,
             SavedVariables = savedVariables,
-            SavedTypeArguments = savedTypeArguments?.ToImmutableDictionary(),
+            SavedTemplateArguments = savedTemplateArguments?.ToImmutableDictionary(),
         };
     }
     void PopStackFrame(GeneratorStackFrame frame)
@@ -352,30 +352,30 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
         Breaks.Set(frame.SavedBreaks);
 
-        if (frame.SavedTypeArguments is not null)
-        { SetTypeArguments(frame.SavedTypeArguments); }
+        if (frame.SavedTemplateArguments is not null)
+        { SetTemplateArguments(frame.SavedTemplateArguments); }
     }
 
     DebugInfoBlock DebugBlock(ILocated location) => new(Code, DebugInfo, location.Location.Position, location.Location.File);
     DebugInfoBlock DebugBlock(IPositioned position, Uri file) => new(Code, DebugInfo, position, file);
 
-    DebugFunctionBlock FunctionBlock(CompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) => new(
+    DebugFunctionBlock FunctionBlock(CompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments) => new(
         Code,
         DebugInfo,
         function,
-        typeArguments);
+        templateArguments);
 
-    DebugFunctionBlock FunctionBlock(CompiledOperatorDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) => new(
+    DebugFunctionBlock FunctionBlock(CompiledOperatorDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments) => new(
         Code,
         DebugInfo,
         function,
-        typeArguments);
+        templateArguments);
 
-    DebugFunctionBlock FunctionBlock(CompiledGeneralFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) => new(
+    DebugFunctionBlock FunctionBlock(CompiledGeneralFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments) => new(
         Code,
         DebugInfo,
         function,
-        typeArguments);
+        templateArguments);
 
     #region Addressing Helpers
 
@@ -749,8 +749,8 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
         VariableDefinition implicitReturnValueVariable = new(
             ImmutableArray<AttributeUsage>.Empty,
             ImmutableArray<Tokenizing.Token>.Empty,
-            new TypeInstanceSimple(Tokenizing.Token.CreateAnonymous("u8"), compilerResult.File),
-            Tokenizing.Token.CreateAnonymous(ReturnVariableName),
+            new TypeInstanceSimple(new Tokenizing.PhantomToken("u8"), compilerResult.File),
+            new Tokenizing.PhantomToken(ReturnVariableName),
             null,
             compilerResult.File
         );

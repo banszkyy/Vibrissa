@@ -39,7 +39,7 @@ public static partial class Stringifier
         }
         builder.Append(')');
     }
-    public static void Stringify(CompiledGenericTypeExpression type, BuilderBase builder, StringifyContext context = default)
+    public static void Stringify(CompiledUnresolvedTemplateTypeExpression type, BuilderBase builder, StringifyContext context = default)
     {
         builder.Append(type.Identifier);
     }
@@ -56,26 +56,26 @@ public static partial class Stringifier
     public static void Stringify(CompiledStructTypeExpression type, BuilderBase builder, StringifyContext context = default)
     {
         builder.Append(type.Struct.Identifier);
-        if (!type.TypeArguments.IsEmpty)
+        if (!type.TemplateArguments.IsEmpty)
         {
             if (type.Struct.Definition.Template is null)
             {
                 throw new UnreachableException();
             }
-            if (!type.Struct.Definition.Template.OrderTypeArguments(type.TypeArguments, out ImmutableArray<CompiledTemplateArgumentExpression> typeArguments))
+            if (!type.Struct.Definition.Template.OrderTemplateArguments(type.TemplateArguments, out ImmutableArray<CompiledTemplateArgumentExpression> templateArguments))
             {
                 throw new UnreachableException();
             }
 
             builder.Append('<');
-            for (int i = 0; i < typeArguments.Length; i++)
+            for (int i = 0; i < templateArguments.Length; i++)
             {
                 if (i > 0)
                 {
                     builder.Append(',');
                     builder.Space();
                 }
-                Stringify(typeArguments[i], builder);
+                Stringify(templateArguments[i], builder);
             }
             builder.Append('>');
         }
@@ -89,7 +89,7 @@ public static partial class Stringifier
             case CompiledBuiltinTypeExpression v: Stringify(v, builder, context); break;
             case CompiledEnumTypeExpression v: Stringify(v, builder, context); break;
             case CompiledFunctionTypeExpression v: Stringify(v, builder, context); break;
-            case CompiledGenericTypeExpression v: Stringify(v, builder, context); break;
+            case CompiledUnresolvedTemplateTypeExpression v: Stringify(v, builder, context); break;
             case CompiledPointerTypeExpression v: Stringify(v, builder, context); break;
             case CompiledReferenceTypeExpression v: Stringify(v, builder, context); break;
             case CompiledStructTypeExpression v: Stringify(v, builder, context); break;

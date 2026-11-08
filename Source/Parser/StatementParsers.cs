@@ -367,10 +367,11 @@ public sealed partial class Parser
             }
         }
 
-        if (!ExpectBlock(out Block? block))
+        OrderedDiagnosticCollection statementDiagnostics2 = new();
+        if (!ExpectStatement(out Statement? block, statementDiagnostics2))
         {
-            block = new MissingBlock(lastPosition.After(), File);
-            error ??= DiagnosticAt.Error($"Expected block", block, false);
+            block = new MissingStatement(lastPosition.After(), File);
+            error ??= DiagnosticAt.Error($"Expected a statement", block, false).WithSuberrors(statementDiagnostics2.Compile());
         }
 
         Diagnostics.Add(error);

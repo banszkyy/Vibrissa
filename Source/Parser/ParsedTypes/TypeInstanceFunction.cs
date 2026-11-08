@@ -48,15 +48,15 @@ public class TypeInstanceFunction : TypeInstance, IEquatable<TypeInstanceFunctio
     public override int GetHashCode() => HashCode.Combine((byte)2, FunctionReturnType, FunctionParameterTypes);
 
     public override string ToString() => $"{FunctionReturnType}({string.Join(", ", FunctionParameterTypes)})";
-    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments)
+    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? templateArguments)
     {
         StringBuilder result = new();
-        result.Append(FunctionReturnType.ToString(typeArguments));
+        result.Append(FunctionReturnType.ToString(templateArguments));
         result.Append('(');
         for (int i = 0; i < FunctionParameterTypes.Length; i++)
         {
             if (i > 0) result.Append(", ");
-            result.Append(FunctionParameterTypes[i].ToString(typeArguments));
+            result.Append(FunctionParameterTypes[i].ToString(templateArguments));
         }
         result.Append(')');
         return result.ToString();

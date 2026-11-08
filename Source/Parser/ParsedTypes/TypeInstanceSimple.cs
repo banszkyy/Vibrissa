@@ -15,26 +15,26 @@ public class TypeInstanceSimple : TypeInstance,
     public CompiledTypeExpression? CompiledTypeExpression { get; set; }
 
     public Token Identifier { get; }
-    TokenPair? TypeArgumentsBrackets { get; }
-    public ImmutableArray<TemplateArgumentExpression>? TypeArguments { get; }
+    TokenPair? TemplateArgumentsBrackets { get; }
+    public ImmutableArray<TemplateArgumentExpression>? TemplateArguments { get; }
     public object? Reference { get; set; }
 
-    public override Position Position => TypeArguments is null
+    public override Position Position => TemplateArguments is null
         ? Identifier.Position
-        : new Position(Identifier).Union(TypeArguments).Union(TypeArgumentsBrackets);
+        : new Position(Identifier).Union(TemplateArguments).Union(TemplateArgumentsBrackets);
 
     public TypeInstanceSimple(Token identifier, Uri file) : base(file)
     {
         Identifier = identifier;
-        TypeArguments = null;
-        TypeArgumentsBrackets = null;
+        TemplateArguments = null;
+        TemplateArgumentsBrackets = null;
     }
 
-    public TypeInstanceSimple(Token identifier, Uri file, ImmutableArray<TemplateArgumentExpression> typeArguments, TokenPair typeArgumentsBrackets) : base(file)
+    public TypeInstanceSimple(Token identifier, Uri file, ImmutableArray<TemplateArgumentExpression> templateArguments, TokenPair templateArgumentsBrackets) : base(file)
     {
         Identifier = identifier;
-        TypeArguments = typeArguments;
-        TypeArgumentsBrackets = typeArgumentsBrackets;
+        TemplateArguments = templateArguments;
+        TemplateArgumentsBrackets = templateArgumentsBrackets;
     }
 
     public override bool Equals(object? obj) => obj is TypeInstanceSimple other && Equals(other);
@@ -44,62 +44,62 @@ public class TypeInstanceSimple : TypeInstance,
         if (other is null) return false;
         if (Identifier.Content != other.Identifier.Content) return false;
 
-        if (!TypeArguments.HasValue) return other.TypeArguments is null;
-        if (!other.TypeArguments.HasValue) return false;
+        if (!TemplateArguments.HasValue) return other.TemplateArguments is null;
+        if (!other.TemplateArguments.HasValue) return false;
 
-        if (TypeArguments.Value.Length != other.TypeArguments.Value.Length) return false;
-        for (int i = 0; i < TypeArguments.Value.Length; i++)
+        if (TemplateArguments.Value.Length != other.TemplateArguments.Value.Length) return false;
+        for (int i = 0; i < TemplateArguments.Value.Length; i++)
         {
-            if (!TypeArguments.Value[i].Equals(other.TypeArguments.Value[i]))
+            if (!TemplateArguments.Value[i].Equals(other.TemplateArguments.Value[i]))
             { return false; }
         }
         return true;
     }
 
-    public override int GetHashCode() => HashCode.Combine((byte)3, Identifier, TypeArguments);
+    public override int GetHashCode() => HashCode.Combine((byte)3, Identifier, TemplateArguments);
 
     public static TypeInstanceSimple CreateAnonymous(string name, Uri file)
-        => new(Token.CreateAnonymous(name), file);
+        => new(new PhantomToken(name), file);
 
-    public static TypeInstanceSimple CreateAnonymous(string name, Uri file, ImmutableArray<Token>? typeArguments)
+    public static TypeInstanceSimple CreateAnonymous(string name, Uri file, ImmutableArray<Token>? templateArguments)
     {
-        if (typeArguments == null)
+        if (templateArguments == null)
         {
-            return new TypeInstanceSimple(Token.CreateAnonymous(name), file);
+            return new TypeInstanceSimple(new PhantomToken(name), file);
         }
         else
         {
-            TemplateArgumentExpression[] genericTypesConverted = new TemplateArgumentExpression[typeArguments.Value.Length];
-            for (int i = 0; i < typeArguments.Value.Length; i++)
+            TemplateArgumentExpression[] templateTypesConverted = new TemplateArgumentExpression[templateArguments.Value.Length];
+            for (int i = 0; i < templateArguments.Value.Length; i++)
             {
-                genericTypesConverted[i] = new TemplateArgumentExpressionType(CreateAnonymous(typeArguments.Value[i].Content, file), file);
+                templateTypesConverted[i] = new TemplateArgumentExpressionType(CreateAnonymous(templateArguments.Value[i].Content, file), file);
             }
-            return new TypeInstanceSimple(Token.CreateAnonymous(name), file, genericTypesConverted.ToImmutableArray(), TokenPair.CreateAnonymous("<", ">"));
+            return new TypeInstanceSimple(new PhantomToken(name), file, templateTypesConverted.ToImmutableArray(), TokenPair.CreateAnonymous("<", ">"));
         }
     }
 
     public override string ToString()
     {
-        if (TypeArguments is null) return Identifier.Content;
-        return $"{Identifier.Content}<{string.Join(", ", TypeArguments)}>";
+        if (TemplateArguments is null) return Identifier.Content;
+        return $"{Identifier.Content}<{string.Join(", ", TemplateArguments)}>";
     }
-    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments)
+    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? templateArguments)
     {
         string identifier = Identifier.Content;
-        if (typeArguments is not null && typeArguments.TryGetValue(Identifier.Content, out CompiledTemplateArgument? replaced))
+        if (templateArguments is not null && templateArguments.TryGetValue(Identifier.Content, out CompiledTemplateArgument? replaced))
         { identifier = replaced.ToString(); }
 
-        if (!TypeArguments.HasValue)
+        if (!TemplateArguments.HasValue)
         { return identifier; }
 
         StringBuilder result = new(identifier);
         result.Append('<');
-        for (int i = 0; i < TypeArguments.Value.Length; i++)
+        for (int i = 0; i < TemplateArguments.Value.Length; i++)
         {
             if (i > 0) result.Append(", ");
-            result.Append(TypeArguments.Value[i] switch
+            result.Append(TemplateArguments.Value[i] switch
             {
-                TemplateArgumentExpressionType v => v.Value.ToString(typeArguments),
+                TemplateArgumentExpressionType v => v.Value.ToString(templateArguments),
                 TemplateArgumentExpressionValue v => v.Value.ToString(),
                 _ => throw new UnreachableException(),
             });

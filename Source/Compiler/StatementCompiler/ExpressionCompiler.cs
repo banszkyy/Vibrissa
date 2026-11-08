@@ -64,7 +64,7 @@ public partial class StatementCompiler
         compiledArguments = result.ToImmutable();
         return true;
     }
-    bool CompileArguments(ImmutableArray<ArgumentExpression>? arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
+    bool CompileArguments(ImmutableArray<ArgumentExpression>? arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
     {
         compiledArguments = ImmutableArray<CompiledArgument>.Empty;
 
@@ -75,7 +75,7 @@ public partial class StatementCompiler
             CompiledParameter parameter = compiledFunction.Parameters[i + alreadyPassed];
             ArgumentExpression? argument = arguments.HasValue ? arguments.Value[i] : null;
             CompiledExpression? compiledArgumentExpression = compiledArgumentExpressions[i];
-            GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
+            GeneralType parameterType = GeneralType.TryInsertTemplateParameters(parameter.Type, templateArguments);
 
             if (parameterType.Is<PointerType>() &&
                 parameter.Definition.Modifiers.Any(v => v.Content == ModifierKeywords.This) &&
@@ -97,10 +97,10 @@ public partial class StatementCompiler
 
             using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
             {
-                TypeArguments = typeArguments ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
-                IsTemplateInstance = typeArguments is not null,
+                TemplateArguments = templateArguments ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
+                IsTemplateInstance = templateArguments is not null,
                 IsTemplate = compiledFunction.Definition.IsTemplate,
-                TypeParameters = compiledFunction.Definition.Template?.Parameters ?? ImmutableArray<Token>.Empty,
+                TemplateParameters = compiledFunction.Definition.Template?.Parameters ?? ImmutableArray<Token>.Empty,
                 CompiledParameters = ImmutableArray<CompiledParameter>.Empty,
                 InstructionLabels = ImmutableArray<CompiledLabelDeclaration>.Empty,
                 Scopes = new(),
@@ -171,7 +171,7 @@ public partial class StatementCompiler
             {
                 CompiledParameter parameter = compiledFunction.Parameters[compiledArgumentExpressions.Length + i + alreadyPassed];
                 Expression? argument = parameter.Definition.DefaultValue;
-                GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
+                GeneralType parameterType = GeneralType.TryInsertTemplateParameters(parameter.Type, templateArguments);
 
                 if (argument is null)
                 {
@@ -183,10 +183,10 @@ public partial class StatementCompiler
 
                 using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
                 {
-                    TypeArguments = typeArguments ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
-                    IsTemplateInstance = typeArguments is not null,
+                    TemplateArguments = templateArguments ?? ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
+                    IsTemplateInstance = templateArguments is not null,
                     IsTemplate = compiledFunction.Definition.IsTemplate,
-                    TypeParameters = compiledFunction.Definition.Template?.Parameters ?? ImmutableArray<Token>.Empty,
+                    TemplateParameters = compiledFunction.Definition.Template?.Parameters ?? ImmutableArray<Token>.Empty,
                     CompiledParameters = ImmutableArray<CompiledParameter>.Empty,
                     InstructionLabels = ImmutableArray<CompiledLabelDeclaration>.Empty,
                     Scopes = new(),
@@ -275,7 +275,7 @@ public partial class StatementCompiler
     bool CompileFunctionCall<TFunction>(Expression caller, ImmutableArray<CompiledExpression> compiledArgumentExpressions, ImmutableArray<ArgumentExpression> argumentExpressions, FunctionQueryResult<TFunction> _callee, [NotNullWhen(true)] out CompiledExpression? compiledStatement)
         where TFunction : ICompiledFunctionDefinition, IExternalFunctionDefinition, ICompiledDefinition<FunctionThingDefinition>
     {
-        (TFunction callee, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments) = _callee;
+        (TFunction callee, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments) = _callee;
         _callee.ReplaceArgumentsIfNeeded(ref compiledArgumentExpressions);
 
         if (_callee.Function.Definition.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
@@ -285,7 +285,7 @@ public partial class StatementCompiler
         Frames.Last.CapturesGlobalVariables = null;
 
         compiledStatement = null;
-        SetStatementType(caller, GeneralType.TryInsertTypeParameters(callee.Type, typeArguments));
+        SetStatementType(caller, GeneralType.TryInsertTemplateParameters(callee.Type, templateArguments));
 
         if (!callee.Definition.CanUse(caller.File))
         {
@@ -307,7 +307,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (!CompileArguments(argumentExpressions, compiledArgumentExpressions, callee, typeArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
+        if (!CompileArguments(argumentExpressions, compiledArgumentExpressions, callee, templateArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
 
         if (callee.ExternalFunctionName is not null)
         {
@@ -323,7 +323,7 @@ public partial class StatementCompiler
             }
         }
 
-        CompileFunction(callee, typeArguments);
+        CompileFunction(callee, templateArguments);
 
         if ((Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating) || Settings.OptimizationDiagnostics)
             && TryEvaluate(callee, compiledArguments, new EvaluationContext(), out CompiledValue? returnValue, out ImmutableArray<RuntimeStatement2> runtimeStatements, out PossibleDiagnostic? evaluateError))
@@ -353,7 +353,7 @@ public partial class StatementCompiler
                     {
                         Location = caller.Location,
                         SaveValue = caller.SaveValue,
-                        Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
+                        Type = GeneralType.TryInsertTemplateParameters(callee.Type, templateArguments),
                     };
                     return true;
                 }
@@ -369,7 +369,7 @@ public partial class StatementCompiler
                         Value = returnValue.Value,
                         Location = caller.Location,
                         SaveValue = caller.SaveValue,
-                        Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
+                        Type = GeneralType.TryInsertTemplateParameters(callee.Type, templateArguments),
                     };
                     return true;
                 }
@@ -379,7 +379,7 @@ public partial class StatementCompiler
         if ((Settings.Optimizations.HasFlag(OptimizationSettings.FunctionInlining) || Settings.OptimizationDiagnostics) &&
             callee.Definition.IsInline)
         {
-            CompiledFunction? f = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, callee) && TypeArgumentsEquals(v.TypeArguments, typeArguments));
+            CompiledFunction? f = GeneratedFunctions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, callee) && TemplateArgumentsEquals(v.TemplateArguments, templateArguments));
             if (f is not null)
             {
                 InlineContext inlineContext = new()
@@ -459,7 +459,7 @@ public partial class StatementCompiler
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function inlined", caller));
 
-                        if (!CanCastImplicitly(statementWithValue, GeneralType.TryInsertTypeParameters(callee.Type, typeArguments), out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
+                        if (!CanCastImplicitly(statementWithValue, GeneralType.TryInsertTemplateParameters(callee.Type, templateArguments), out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
                         { Diagnostics.Add(castError.ToError(statementWithValue)); }
                         statementWithValue = assignedValue;
 
@@ -499,9 +499,9 @@ public partial class StatementCompiler
         compiledStatement = new CompiledFunctionCall()
         {
             Arguments = compiledArguments,
-            Function = TemplateInstance.New<ICompiledFunctionDefinition>(callee, typeArguments),
+            Function = TemplateInstance.New<ICompiledFunctionDefinition>(callee, templateArguments),
             Location = caller.Location,
-            Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
+            Type = GeneralType.TryInsertTemplateParameters(callee.Type, templateArguments),
             SaveValue = caller.SaveValue,
         };
         return true;
@@ -516,9 +516,9 @@ public partial class StatementCompiler
         {
             _identifier.AnalyzedType = TokenAnalyzedType.Keyword;
 
-            if (anyCall.TypeArguments is not null)
+            if (anyCall.TemplateArguments is not null)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Type arguments are not allowed for `{StatementKeywords.Sizeof}`", anyCall.TypeArguments));
+                Diagnostics.Add(DiagnosticAt.Error($"Template arguments are not allowed for `{StatementKeywords.Sizeof}`", anyCall.TemplateArguments));
             }
 
             if (anyCall.Arguments.Arguments.Length != 1)
@@ -534,11 +534,11 @@ public partial class StatementCompiler
                 argument = argumentExpression.Value;
             }
 
-            TypeInstance typeArgument;
+            TypeInstance templateArgument;
 
             if (argument is IdentifierExpression identifierExpression)
             {
-                typeArgument = new TypeInstanceSimple(identifierExpression.Identifier, identifierExpression.File);
+                templateArgument = new TypeInstanceSimple(identifierExpression.Identifier, identifierExpression.File);
             }
             else
             {
@@ -546,7 +546,7 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (!CompileStatement(typeArgument, out CompiledTypeExpression? compiledTypeArgument, Diagnostics))
+            if (!CompileStatement(templateArgument, out CompiledTypeExpression? compiledTemplateArgument, Diagnostics))
             {
                 return false;
             }
@@ -562,7 +562,7 @@ public partial class StatementCompiler
 
             compiledStatement = new CompiledSizeof()
             {
-                Of = compiledTypeArgument,
+                Of = compiledTemplateArgument,
                 Location = argument.Location,
                 Type = resultType,
                 SaveValue = anyCall.SaveValue,
@@ -576,18 +576,18 @@ public partial class StatementCompiler
         if (anyCall.ToFunctionCall(out FunctionCallExpression? functionCall))
         {
             bool success = true;
-            ImmutableArray<CompiledTemplateArgument>? compiledTypeArguments = null;
-            if (functionCall.TypeArguments?.Arguments is not null)
+            ImmutableArray<CompiledTemplateArgument>? compiledTemplateArguments = null;
+            if (functionCall.TemplateArguments?.Arguments is not null)
             {
-                if (!CompileExpression(functionCall.TypeArguments.Arguments, out ImmutableArray<GeneralType> compiledTypeArguments0))
+                if (!CompileExpression(functionCall.TemplateArguments.Arguments, out ImmutableArray<GeneralType> compiledTemplateArguments0))
                 {
                     success = false;
                 }
                 else
                 {
-                    compiledTypeArguments = compiledTypeArguments0.Select((v, i) => new CompiledTemplateArgumentType()
+                    compiledTemplateArguments = compiledTemplateArguments0.Select((v, i) => new CompiledTemplateArgumentType()
                     {
-                        Definition = new MissingToken(TokenType.Identifier, functionCall.TypeArguments.Arguments[i].Position),
+                        Definition = new MissingToken(TokenType.Identifier, functionCall.TemplateArguments.Arguments[i].Position),
                         Value = v,
                     } as CompiledTemplateArgument).ToImmutableArray();
                 }
@@ -621,7 +621,7 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, compiledTypeArguments, anyCall.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out functionError, AddCompilable))
+            if (GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, compiledTemplateArguments, anyCall.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out functionError, AddCompilable))
             {
                 if (anyCall.Expression is IdentifierExpression _identifier2)
                 { _identifier2.AnalyzedType = TokenAnalyzedType.FunctionName; }
@@ -663,9 +663,9 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (anyCall.TypeArguments is not null)
+        if (anyCall.TemplateArguments is not null)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Type arguments are not allowed here", anyCall.TypeArguments));
+            Diagnostics.Add(DiagnosticAt.Error($"Template arguments are not allowed here", anyCall.TemplateArguments));
         }
 
         {
@@ -1086,7 +1086,7 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (!CompileArguments(@operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), argumentExpressions, operatorDefinition.Function, operatorDefinition.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
+            if (!CompileArguments(@operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), argumentExpressions, operatorDefinition.Function, operatorDefinition.TemplateArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
 
             if (operatorDefinition.Function.ExternalFunctionName is not null)
             {
@@ -1102,7 +1102,7 @@ public partial class StatementCompiler
 
             compiledStatement = new CompiledFunctionCall()
             {
-                Function = TemplateInstance.New<ICompiledFunctionDefinition>(operatorDefinition.Function, operatorDefinition.TypeArguments),
+                Function = TemplateInstance.New<ICompiledFunctionDefinition>(operatorDefinition.Function, operatorDefinition.TemplateArguments),
                 Arguments = compiledArguments,
                 Location = @operator.Location,
                 SaveValue = @operator.SaveValue,
@@ -1283,10 +1283,10 @@ public partial class StatementCompiler
 
         using (StackAuto<CompiledFrame> frame = Frames.PushAuto(new CompiledFrame()
         {
-            TypeArguments = Frames.Last.TypeArguments,
+            TemplateArguments = Frames.Last.TemplateArguments,
             IsTemplateInstance = Frames.Last.IsTemplateInstance,
             IsTemplate = Frames.Last.IsTemplate,
-            TypeParameters = Frames.Last.TypeParameters,
+            TemplateParameters = Frames.Last.TemplateParameters,
             CompiledParameters = compiledParameters.ToImmutable(),
             InstructionLabels = localInstructionLabels.ToImmutable(),
             Scopes = new(),
@@ -1383,7 +1383,7 @@ public partial class StatementCompiler
                 compiledParameters.Insert(0, new CompiledParameter(PointerType.Any, new ParameterDefinition(
                     ImmutableArray<Token>.Empty,
                     null!,
-                    Token.CreateAnonymous("closure"),
+                    new PhantomToken("closure"),
                     null,
                     null,
                     lambdaStatement.File
@@ -1641,7 +1641,7 @@ public partial class StatementCompiler
                         Type = arrayType3.Length is null && expectedType is ArrayType ? new ArrayType(arrayType3.Of, new CompiledConstantValue()
                         {
                             Value = Encoding.UTF8.GetByteCount(stringLiteral.Value) + 1,
-                            Type = BuiltinType.I32,
+                            Type = ArrayLengthType,
                             Location = literal.Location,
                             SaveValue = true,
                         }) : expectedType,
@@ -1664,7 +1664,7 @@ public partial class StatementCompiler
                         Type = arrayType4.Length is null && expectedType is ArrayType ? new ArrayType(arrayType4.Of, new CompiledConstantValue()
                         {
                             Value = stringLiteral.Value.Length + 1,
-                            Type = BuiltinType.I32,
+                            Type = ArrayLengthType,
                             Location = literal.Location,
                             SaveValue = true,
                         }) : expectedType,
@@ -1954,7 +1954,7 @@ public partial class StatementCompiler
 
         if (GetParameter(variable.Content, out CompiledParameter? param, out PossibleDiagnostic? parameterNotFoundError))
         {
-            GeneralType paramType = GeneralType.TryInsertTypeParameters(param.Type, Frames.Last.TypeArguments);
+            GeneralType paramType = GeneralType.TryInsertTemplateParameters(param.Type, Frames.Last.TemplateArguments);
 
             if (variable.Content != StatementKeywords.This)
             { variable.AnalyzedType = TokenAnalyzedType.ParameterName; }
@@ -1992,11 +1992,11 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (Frames.Count > 0 && Frames.Last.TypeArguments.TryGetValue(variable.Content, out CompiledTemplateArgument? typeArgument))
+        if (Frames.Count > 0 && Frames.Last.TemplateArguments.TryGetValue(variable.Content, out CompiledTemplateArgument? templateArgument))
         {
-            SetStatementReference(variable, typeArgument);
+            SetStatementReference(variable, templateArgument);
 
-            if (typeArgument is CompiledTemplateArgumentValue templateArgumentValue)
+            if (templateArgument is CompiledTemplateArgumentValue templateArgumentValue)
             {
                 variable.AnalyzedType = TokenAnalyzedType.ConstantName;
                 SetStatementType(variable, BuiltinType.Create(templateArgumentValue.Value.Type));
@@ -2013,16 +2013,16 @@ public partial class StatementCompiler
             }
             else
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Template parameter `{typeArgument.Definition}` is not a value", variable));
+                Diagnostics.Add(DiagnosticAt.Error($"Template parameter `{templateArgument.Definition}` is not a value", variable));
                 return false;
             }
         }
 
-        if (Frames.Count > 0 && Frames.Last.TypeParameters.TryGetValue(v => v.Content == variable.Content, out Token? genericParameter))
+        if (Frames.Count > 0 && Frames.Last.TemplateParameters.TryGetValue(v => v.Content == variable.Content, out Token? templateParameter))
         {
             compiledStatement = new CompiledTemplateParameterAccess()
             {
-                Parameter = genericParameter,
+                Parameter = templateParameter,
                 Type = BuiltinType.Any,
                 Location = variable.Location,
                 SaveValue = variable.SaveValue,
@@ -2030,11 +2030,11 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (GenericParameters.Count > 0 && GenericParameters.Last.TryGetValue(v => v.Content == variable.Content, out genericParameter))
+        if (GenericParameters.Count > 0 && GenericParameters.Last.TryGetValue(v => v.Content == variable.Content, out templateParameter))
         {
             compiledStatement = new CompiledTemplateParameterAccess()
             {
-                Parameter = genericParameter,
+                Parameter = templateParameter,
                 Type = BuiltinType.Any,
                 Location = variable.Location,
                 SaveValue = variable.SaveValue,
@@ -2098,7 +2098,7 @@ public partial class StatementCompiler
 
                 FunctionType functionType = new(compiledFunction.Function.Type, compiledFunction.Function.Parameters.ToImmutableArray(v => v.Type), false);
 
-                GeneralType v = GeneralType.TryInsertTypeParameters(functionType, compiledFunction.TypeArguments);
+                GeneralType v = GeneralType.TryInsertTemplateParameters(functionType, compiledFunction.TemplateArguments);
                 if (v is FunctionType w) functionType = w;
 
                 compiledFunction.Function.AddReference(variable);
@@ -2110,7 +2110,7 @@ public partial class StatementCompiler
                 {
                     compiledStatement = new CompiledFunctionReference()
                     {
-                        Function = TemplateInstance.New<ICompiledFunctionDefinition>(compiledFunction.Function, compiledFunction.TypeArguments),
+                        Function = TemplateInstance.New<ICompiledFunctionDefinition>(compiledFunction.Function, compiledFunction.TemplateArguments),
                         Type = functionType,
                         Location = variable.Location,
                         SaveValue = variable.SaveValue,
@@ -2119,7 +2119,7 @@ public partial class StatementCompiler
                 }
                 else
                 {
-                    functionError = new PossibleDiagnostic($"To take the address of a generic function, all type parameters must be assigned", variable);
+                    functionError = new PossibleDiagnostic($"To take the address of a template function, all template parameters must be assigned", variable);
                 }
             }
         }
@@ -2331,9 +2331,12 @@ public partial class StatementCompiler
                 continue;
             }
 
-            GeneralType type = GeneralType.InsertTypeParameters(_field.Type, structType.TypeArguments);
+            SetStatementReference(item, _field);
+            _field.AddReference(new IdentifierExpression(item.MemberIdentifier, item.File));
 
-            if (!CompileExpression(item.Value, out CompiledExpression? _value, type)) return false;
+            GeneralType type = GeneralType.InsertTemplateParameters(_field.Type, structType.TemplateArguments);
+
+            if (!CompileExpression(item.Value, out CompiledExpression? _value, type)) continue;
 
             if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
             {
@@ -2521,7 +2524,7 @@ public partial class StatementCompiler
         }
 
         if (!CompileExpression(constructorCall.ToInstantiation(), out CompiledExpression? _object)) return false;
-        if (!CompileArguments(constructorCall.Arguments.Arguments, compiledArgumentExpressions, initializer.Function, initializer.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments, 1)) return false;
+        if (!CompileArguments(constructorCall.Arguments.Arguments, compiledArgumentExpressions, initializer.Function, initializer.TemplateArguments, out ImmutableArray<CompiledArgument> compiledArguments, 1)) return false;
         if (!CompileInitialization(structType, constructorCall.Initialization, out ImmutableArray<CompiledInitializationItem> initialization)) return false;
 
         Frames.Last.CapturesGlobalVariables = null;
@@ -2648,7 +2651,7 @@ public partial class StatementCompiler
                         Frames.LastRef.IsMsilCompatible = false;
                     }
 
-                    GeneralType functionType = GeneralType.TryInsertTypeParameters(new FunctionType(methodResult.Function.Type, methodResult.Function.Parameters.ToImmutableArray(v => v.Type), false), methodResult.TypeArguments);
+                    GeneralType functionType = GeneralType.TryInsertTemplateParameters(new FunctionType(methodResult.Function.Type, methodResult.Function.Parameters.ToImmutableArray(v => v.Type), false), methodResult.TemplateArguments);
 
                     if (functionType.AllGenericsDefined())
                     {
@@ -2660,7 +2663,7 @@ public partial class StatementCompiler
                         Diagnostics.Add(DiagnosticAt.Warning($"This will take the raw address of `{methodResult.Function.ToReadable()}` without saving the reference to the object", new Location(field.Identifier.Position, field.File)));
                         compiledStatement = new CompiledFunctionReference()
                         {
-                            Function = TemplateInstance.New<ICompiledFunctionDefinition>(methodResult.Function, methodResult.TypeArguments),
+                            Function = TemplateInstance.New<ICompiledFunctionDefinition>(methodResult.Function, methodResult.TemplateArguments),
                             Type = functionType,
                             Location = field.Location,
                             SaveValue = field.SaveValue,
@@ -2669,7 +2672,7 @@ public partial class StatementCompiler
                     }
                     else
                     {
-                        methodError = new PossibleDiagnostic($"Cannot take the address of a generic function", field);
+                        methodError = new PossibleDiagnostic($"Cannot take the address of a template function", field);
                     }
                 }
             }
@@ -2689,7 +2692,7 @@ public partial class StatementCompiler
             Object = prev,
             Location = field.Location,
             SaveValue = field.SaveValue,
-            Type = GeneralType.TryInsertTypeParameters(compiledField.Type, structType.TypeArguments),
+            Type = GeneralType.TryInsertTemplateParameters(compiledField.Type, structType.TemplateArguments),
         };
         return true;
     }

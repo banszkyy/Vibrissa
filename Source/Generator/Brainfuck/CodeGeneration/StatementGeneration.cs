@@ -17,7 +17,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     {
         if (cleanup.Deinitializer is not null)
         {
-            GenerateCodeForFunction(cleanup.Deinitializer.Template, ImmutableArray.Create(CompiledArgument.Wrap(value)), cleanup.Deinitializer.TypeArguments, value);
+            GenerateCodeForFunction(cleanup.Deinitializer.Template, ImmutableArray.Create(CompiledArgument.Wrap(value)), cleanup.Deinitializer.TemplateArguments, value);
 
             if (cleanup.Deinitializer.Template.ReturnSomething)
             { Stack.Pop(); }
@@ -27,7 +27,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         {
             if (cleanup.Deallocator is not null)
             {
-                GenerateCodeForFunction(cleanup.Deallocator.Template, ImmutableArray.Create(CompiledArgument.Wrap(value)), cleanup.Deallocator.TypeArguments, value);
+                GenerateCodeForFunction(cleanup.Deallocator.Template, ImmutableArray.Create(CompiledArgument.Wrap(value)), cleanup.Deallocator.TemplateArguments, value);
             }
         }
     }
@@ -254,7 +254,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         ArrayType v => GenerateSize(v, result, out error),
         FunctionType v => GenerateSize(v, result, out error),
         StructType v => GenerateSize(v, result, out error),
-        GenericType v => GenerateSize(v, result, out error),
+        UnresolvedTemplateType v => GenerateSize(v, result, out error),
         BuiltinType v => GenerateSize(v, result, out error),
         AliasType v => GenerateSize(v, result, out error),
         EnumType v => GenerateSize(v, result, out error),
@@ -318,7 +318,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         Code.AddValue(result, size);
         return true;
     }
-    bool GenerateSize(GenericType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
+    bool GenerateSize(UnresolvedTemplateType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
     bool GenerateSize(BuiltinType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (!FindSize(type, out int size, out error))
@@ -336,7 +336,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CompiledArrayTypeExpression v => GenerateSize(v, result, out error),
         CompiledFunctionTypeExpression v => GenerateSize(v, result, out error),
         CompiledStructTypeExpression v => GenerateSize(v, result, out error),
-        CompiledGenericTypeExpression v => GenerateSize(v, result, out error),
+        CompiledUnresolvedTemplateTypeExpression v => GenerateSize(v, result, out error),
         CompiledBuiltinTypeExpression v => GenerateSize(v, result, out error),
         CompiledAliasTypeExpression v => GenerateSize(v, result, out error),
         CompiledEnumTypeExpression v => GenerateSize(v, result, out error),
@@ -410,7 +410,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         Code.AddValue(result, size);
         return true;
     }
-    bool GenerateSize(CompiledGenericTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
+    bool GenerateSize(CompiledUnresolvedTemplateTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => throw new InvalidOperationException($"Generic type doesn't have a size");
     bool GenerateSize(CompiledBuiltinTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (!FindSize(new BuiltinType(type.Type), out int size, out error))
@@ -1579,9 +1579,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
         switch (functionCall.Function.Template)
         {
-            case CompiledFunctionDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TypeArguments, functionCall); break;
-            case CompiledOperatorDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TypeArguments, functionCall); break;
-            case CompiledGeneralFunctionDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TypeArguments, functionCall); break;
+            case CompiledFunctionDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TemplateArguments, functionCall); break;
+            case CompiledOperatorDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TemplateArguments, functionCall); break;
+            case CompiledGeneralFunctionDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TemplateArguments, functionCall); break;
             default: throw new UnreachableException(functionCall.Function.Template.GetType().Name);
         }
 
@@ -1641,7 +1641,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     void GenerateCodeForStatement(CompiledConstructorCall constructorCall)
     {
         using DebugInfoBlock debugBlock = DebugBlock(constructorCall);
-        GenerateCodeForConstructor(constructorCall.Function.Template, constructorCall.Arguments, constructorCall.Function.TypeArguments, constructorCall);
+        GenerateCodeForConstructor(constructorCall.Function.Template, constructorCall.Arguments, constructorCall.Function.TemplateArguments, constructorCall);
         if (!constructorCall.Initialization.IsEmpty) throw new NotImplementedException();
     }
     void GenerateCodeForStatement(CompiledString statement, GeneralType? expectedType = null)
@@ -2706,26 +2706,26 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         return true;
     }
 
-    void GenerateCodeForFunction(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated caller)
+    void GenerateCodeForFunction(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, ILocated caller)
     {
         if (!AllowFunctionInlining ||
             !IsFunctionInlineable(function.Definition, parameters))
         {
-            GenerateCodeForFunction_(function, parameters, typeArguments, caller);
+            GenerateCodeForFunction_(function, parameters, templateArguments, caller);
             return;
         }
 
-        GenerateCodeForFunction_(function, parameters, typeArguments, caller);
+        GenerateCodeForFunction_(function, parameters, templateArguments, caller);
     }
 
-    void GenerateCodeForParameterPassing(ICompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, Stack<BrainfuckVariable> compiledParameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
+    void GenerateCodeForParameterPassing(ICompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, Stack<BrainfuckVariable> compiledParameters, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments)
     {
         for (int i = 0; i < parameters.Length; i++)
         {
             CompiledArgument passed = parameters[i];
             CompiledParameter defined = function.Parameters[i];
 
-            GeneralType definedType = GeneralType.TryInsertTypeParameters(defined.Type, typeArguments);
+            GeneralType definedType = GeneralType.TryInsertTemplateParameters(defined.Type, templateArguments);
             GeneralType passedType = passed.Type;
 
             definedType = GeneralType.TryInsertConstants(definedType, passedType);
@@ -2852,7 +2852,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
             {
                 CompiledVariableDefinition variableDeclaration = defined.Definition.ToVariable(definedType, passed);
-                using (TypeArgumentsScope g = SetTypeArgumentsScope(typeArguments))
+                using (TemplateArgumentsScope g = SetTemplateArgumentsScope(templateArguments))
                 { PrecompileVariable(compiledParameters, variableDeclaration, false, definedType); }
 
                 BrainfuckVariable? compiledParameter = null;
@@ -2887,16 +2887,16 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         }
     }
 
-    void GenerateCodeForFunction_(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated callerPosition)
+    void GenerateCodeForFunction_(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, ILocated callerPosition)
     {
-        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(typeArguments)}` not found", function.Definition));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(templateArguments)}` not found", function.Definition));
             return;
         }
 
-        using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
+        using DebugFunctionBlock debugFunction = FunctionBlock(function, templateArguments);
 
         if (function.ExternalFunctionName == ExternalFunctionNames.StdOut)
         {
@@ -2923,14 +2923,14 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         {
             int address = Stack.PushVirtual(1, callerPosition);
             Code.SetPointer(address);
-            if (GeneralType.TryInsertTypeParameters(function.Type, typeArguments).SameAs(BasicType.Void))
+            if (GeneralType.TryInsertTemplateParameters(function.Type, templateArguments).SameAs(BasicType.Void))
             {
                 Code += ',';
                 Code.ClearValue(address);
             }
             else
             {
-                if (FindSize(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), function.Definition) != 1)
+                if (FindSize(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments), function.Definition) != 1)
                 {
                     Diagnostics.Add(DiagnosticAt.Error($"Function with attribute `[{AttributeConstants.ExternalIdentifier}(\"{ExternalFunctionNames.StdIn}\")]` must have a return type with size of 1", function.Definition.Type, function.File));
                     return;
@@ -2953,7 +2953,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             return;
         }
 
-        using IDisposableProgress<string>? progressLabel = Logger?.Label(LogType.Debug, $"Generating function `{function.ToReadable(typeArguments)}`");
+        using IDisposableProgress<string>? progressLabel = Logger?.Label(LogType.Debug, $"Generating function `{function.ToReadable(templateArguments)}`");
 
         BrainfuckVariable? returnVariable = null;
 
@@ -2965,16 +2965,16 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 InitialValue = null,
                 IsGlobal = false,
                 Location = function.Definition.Location,
-                Type = GeneralType.TryInsertTypeParameters(function.Type, typeArguments),
-                TypeExpression = CompiledTypeExpression.CreateAnonymous(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), function.Definition),
+                Type = GeneralType.TryInsertTemplateParameters(function.Type, templateArguments),
+                TypeExpression = CompiledTypeExpression.CreateAnonymous(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments), function.Definition),
                 Cleanup = new CompiledCleanup()
                 {
-                    TrashType = GeneralType.TryInsertTypeParameters(function.Type, typeArguments),
+                    TrashType = GeneralType.TryInsertTemplateParameters(function.Type, templateArguments),
                     Location = function.Definition.Location,
                 },
                 Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, ImmutableArray<Tokenizing.Token>.Empty, new MissingTypeInstance(function.Definition), new MissingToken(TokenType.Identifier, function.Definition.Position), null, function.File),
             };
-            returnVariable = new BrainfuckVariable(Stack.PushVirtual(FindSize(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), function.Definition), callerPosition), false, false, null, FindSize(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), function.Definition), variableDeclaration);
+            returnVariable = new BrainfuckVariable(Stack.PushVirtual(FindSize(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments), function.Definition), callerPosition), false, false, null, FindSize(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments), function.Definition), variableDeclaration);
         }
 
         if (!IxMaxResursiveDepthReached(function, callerPosition))
@@ -2984,9 +2984,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
         CurrentMacro.Push(function);
 
-        GenerateCodeForParameterPassing(function, parameters, compiledParameters, typeArguments);
+        GenerateCodeForParameterPassing(function, parameters, compiledParameters, templateArguments);
 
-        GeneratorStackFrame frame = PushStackFrame(typeArguments);
+        GeneratorStackFrame frame = PushStackFrame(templateArguments);
         CompiledVariables.PushIf(returnVariable);
         CompiledVariables.PushRange(compiledParameters);
 
@@ -3074,16 +3074,16 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForFunction(CompiledOperatorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated callerPosition)
+    void GenerateCodeForFunction(CompiledOperatorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, ILocated callerPosition)
     {
-        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(typeArguments)}` not found", function.Definition));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(templateArguments)}` not found", function.Definition));
             return;
         }
 
-        using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
+        using DebugFunctionBlock debugFunction = FunctionBlock(function, templateArguments);
 
         if (function.ExternalFunctionName == ExternalFunctionNames.StdOut)
         {
@@ -3140,7 +3140,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             return;
         }
 
-        using IDisposableProgress<string>? progressLabel = Logger?.Label(LogType.Debug, $"Generating function `{function.ToReadable(typeArguments)}`");
+        using IDisposableProgress<string>? progressLabel = Logger?.Label(LogType.Debug, $"Generating function `{function.ToReadable(templateArguments)}`");
 
         BrainfuckVariable? returnVariable = null;
 
@@ -3171,9 +3171,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
         CurrentMacro.Push(function);
 
-        GenerateCodeForParameterPassing(function, parameters, compiledParameters, typeArguments);
+        GenerateCodeForParameterPassing(function, parameters, compiledParameters, templateArguments);
 
-        GeneratorStackFrame frame = PushStackFrame(typeArguments);
+        GeneratorStackFrame frame = PushStackFrame(templateArguments);
         CompiledVariables.PushIf(returnVariable);
         CompiledVariables.PushRange(compiledParameters);
 
@@ -3261,16 +3261,16 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForFunction(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, ILocated callerPosition)
+    void GenerateCodeForFunction(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, ILocated callerPosition)
     {
-        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(typeArguments)}` not found", function.Definition));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(templateArguments)}` not found", function.Definition));
             return;
         }
 
-        using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
+        using DebugFunctionBlock debugFunction = FunctionBlock(function, templateArguments);
 
         if (function.Definition.ParameterCount != parameters.Length)
         {
@@ -3297,7 +3297,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 },
                 Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, ImmutableArray<Tokenizing.Token>.Empty, new MissingTypeInstance(function.Definition), new MissingToken(TokenType.Identifier, function.Definition.Position), null, function.File),
             };
-            GeneralType returnType = GeneralType.TryInsertTypeParameters(function.Type, typeArguments);
+            GeneralType returnType = GeneralType.TryInsertTemplateParameters(function.Type, templateArguments);
             returnVariable = new BrainfuckVariable(Stack.PushVirtual(FindSize(returnType, function.Definition), callerPosition), false, false, null, FindSize(returnType, function.Definition), variableDeclaration);
         }
 
@@ -3308,9 +3308,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
         CurrentMacro.Push(function);
 
-        GenerateCodeForParameterPassing(function, parameters, compiledParameters, typeArguments);
+        GenerateCodeForParameterPassing(function, parameters, compiledParameters, templateArguments);
 
-        GeneratorStackFrame frame = PushStackFrame(typeArguments);
+        GeneratorStackFrame frame = PushStackFrame(templateArguments);
         CompiledVariables.PushIf(returnVariable);
         CompiledVariables.PushRange(compiledParameters);
 
@@ -3365,16 +3365,16 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForConstructor(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, CompiledConstructorCall caller)
+    void GenerateCodeForConstructor(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, CompiledConstructorCall caller)
     {
-        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(typeArguments)}` not found", function.Definition));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function `{function.ToReadable(templateArguments)}` not found", function.Definition));
             return;
         }
 
-        using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
+        using DebugFunctionBlock debugFunction = FunctionBlock(function, templateArguments);
 
         if (function.Definition.ParameterCount - 1 != parameters.Length)
         {
@@ -3388,7 +3388,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             return;
         }
 
-        using IDisposableProgress<string>? progressLabel = Logger?.Label(LogType.Debug, $"Generating function `{function.ToReadable(typeArguments)}`");
+        using IDisposableProgress<string>? progressLabel = Logger?.Label(LogType.Debug, $"Generating function `{function.ToReadable(templateArguments)}`");
 
         if (!IxMaxResursiveDepthReached(function, caller))
         { return; }
@@ -3454,7 +3454,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             CompiledArgument passed = parameters[i - 1];
             CompiledParameter defined = function.Parameters[i];
 
-            GeneralType definedType = GeneralType.TryInsertTypeParameters(defined.Type, typeArguments);
+            GeneralType definedType = GeneralType.TryInsertTemplateParameters(defined.Type, templateArguments);
             GeneralType passedType = passed.Type;
 
             if (!passedType.SameAs(definedType))
@@ -3511,7 +3511,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             }
         }
 
-        GeneratorStackFrame frame = PushStackFrame(typeArguments);
+        GeneratorStackFrame frame = PushStackFrame(templateArguments);
         CompiledVariables.PushRange(compiledParameters);
 
         ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(f.Body));

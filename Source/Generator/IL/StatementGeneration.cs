@@ -75,7 +75,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             { return; }
         }
 
-        if (!EmitFunction(cleanup.Deinitializer.Template, cleanup.Deinitializer.TypeArguments, out DynamicMethod? function))
+        if (!EmitFunction(cleanup.Deinitializer.Template, cleanup.Deinitializer.TemplateArguments, out DynamicMethod? function))
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{cleanup.Deinitializer}`", cleanup));
             successful = false;
@@ -583,7 +583,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             return;
         }
 
-        if (!EmitFunction(statement.Function.Template, statement.Function.TypeArguments, out DynamicMethod? function))
+        if (!EmitFunction(statement.Function.Template, statement.Function.TemplateArguments, out DynamicMethod? function))
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement, false));
             successful = false;
@@ -1539,7 +1539,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     void EmitStatement(CompiledConstructorCall statement, ILProxy il, ref bool successful, LocalBuilder? destination = null)
     {
-        if (!EmitFunction(statement.Function.Template, statement.Function.TypeArguments, out DynamicMethod? function))
+        if (!EmitFunction(statement.Function.Template, statement.Function.TemplateArguments, out DynamicMethod? function))
         {
             Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement));
             successful = false;
@@ -2143,7 +2143,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     {
         error = null;
 
-        result = GeneratedStructTypes.FirstOrDefault(v => v.Type.Equals(type) && Utils.SequenceEquals(v.Type.TypeArguments, type.TypeArguments, (a, b) => a.Equals(b))).Value;
+        result = GeneratedStructTypes.FirstOrDefault(v => v.Type.Equals(type) && Utils.SequenceEquals(v.Type.TemplateArguments, type.TemplateArguments, (a, b) => a.Equals(b))).Value;
         if (result is not null) return true;
 
         if (!type.AllGenericsDefined())
@@ -2336,12 +2336,12 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
 
     readonly Stack<ICompiledFunctionDefinition> EmittingFunctionsStack = new();
-    bool EmitFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
+    bool EmitFunction(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
     {
         dynamicMethod = null;
 
         // FIXME
-        if (FunctionBuilders.TryGetValue(v => Utils.ReferenceEquals(v.Template, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments), out dynamicMethod))
+        if (FunctionBuilders.TryGetValue(v => Utils.ReferenceEquals(v.Template, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments), out dynamicMethod))
         {
             // Recursive call
             return true;
@@ -2358,19 +2358,19 @@ public partial class CodeGeneratorForIL : CodeGenerator
             throw new StackOverflowException();
         }
 
-        CompiledBlock? body = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments))?.Body;
+        CompiledBlock? body = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments))?.Body;
 
         if (body is null)
         {
             return false;
         }
 
-        if (!EmitFunctionSignature(function, typeArguments, out dynamicMethod))
+        if (!EmitFunctionSignature(function, templateArguments, out dynamicMethod))
         {
             return false;
         }
 
-        FunctionBuilders.Add((new TemplateInstance<ICompiledFunctionDefinition>(function, typeArguments), dynamicMethod));
+        FunctionBuilders.Add((new TemplateInstance<ICompiledFunctionDefinition>(function, templateArguments), dynamicMethod));
 
         ImmutableArray<CompiledParameter> savedCompiledParameters = CompiledParameters.ToImmutableArray();
         CompiledParameters.Set(function.Parameters);
@@ -2380,7 +2380,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         bool successful = true;
         EmitFunctionBody(body.Statements, il, ref successful);
 
-        if (!EmitDefaultValue(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), il, out PossibleDiagnostic? defaultValueError))
+        if (!EmitDefaultValue(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments), il, out PossibleDiagnostic? defaultValueError))
         {
             Diagnostics.Add(defaultValueError.ToError(body.Location.After(), false));
             successful = false;
@@ -2393,7 +2393,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!successful)
         {
-            FunctionBuilders.Remove(v => StatementCompiler.TypeArgumentsEquals(v.Function.TypeArguments, typeArguments));
+            FunctionBuilders.Remove(v => StatementCompiler.TemplateArgumentsEquals(v.Function.TemplateArguments, templateArguments));
             return false;
         }
 
@@ -2410,10 +2410,10 @@ public partial class CodeGeneratorForIL : CodeGenerator
         return true;
     }
 
-    bool EmitFunctionSignature(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
+    bool EmitFunctionSignature(ICompiledFunctionDefinition function, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments, [NotNullWhen(true)] out DynamicMethod? dynamicMethod)
     {
         dynamicMethod = null;
-        if (!ToType(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), out Type? returnType, out PossibleDiagnostic? returnTypeError))
+        if (!ToType(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments), out Type? returnType, out PossibleDiagnostic? returnTypeError))
         {
             Diagnostics.Add(returnTypeError.ToError());
             return false;
@@ -2421,7 +2421,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         Type[] parameterTypes = new Type[function.Parameters.Length];
         for (int i = 0; i < function.Parameters.Length; i++)
         {
-            if (!ToType(GeneralType.TryInsertTypeParameters(function.Parameters[i].Type, typeArguments), out parameterTypes[i]!, out PossibleDiagnostic? parameterTypesError))
+            if (!ToType(GeneralType.TryInsertTemplateParameters(function.Parameters[i].Type, templateArguments), out parameterTypes[i]!, out PossibleDiagnostic? parameterTypesError))
             {
                 Diagnostics.Add(parameterTypesError.ToError());
                 return false;
@@ -2467,10 +2467,10 @@ public partial class CodeGeneratorForIL : CodeGenerator
             ReferenceType => true,
             AliasType v => ScanForPointer(v.Value),
             EnumType v => ScanForPointer(v.Definition.Type),
-            StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTypeParameters(field.Type, v.TypeArguments))),
+            StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTemplateParameters(field.Type, v.TemplateArguments))),
             ArrayType v => ScanForPointer(v.Of),
             FunctionType => true,
-            GenericType => true,
+            UnresolvedTemplateType => true,
             TupleType v => v.Items.Any(v => ScanForPointer(v)),
             _ => throw new UnreachableException(),
         };
@@ -2484,9 +2484,9 @@ public partial class CodeGeneratorForIL : CodeGenerator
         if (stack.Any(v => v.Equals(type))) return true;
         using StackAuto<GeneralType> _ = stack.PushAuto(type);
 
-        if (type is GenericType)
+        if (type is UnresolvedTemplateType)
         {
-            error = new PossibleDiagnostic($"Can't marshal a generic type (like wtf bro what is this)");
+            error = new PossibleDiagnostic($"Can't marshal a template type (like wtf bro what is this)");
             return false;
         }
 
@@ -2503,7 +2503,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             ReferenceType v => ScanForPointer(v.To), // Top-level pointers are okay
             AliasType v => ScanForPointer(v.Value),
             EnumType v => ScanForPointer(v.Definition.Type),
-            StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTypeParameters(field.Type, v.TypeArguments))),
+            StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTemplateParameters(field.Type, v.TemplateArguments))),
             ArrayType v => ScanForPointer(v.Of),
             TupleType v => v.Items.Any(v => ScanForPointer(v)),
             _ => throw new UnreachableException(),
@@ -2535,7 +2535,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             return false;
         }
 
-        if (!EmitFunction(function.Function, function.TypeArguments, out DynamicMethod? builder)) return false;
+        if (!EmitFunction(function.Function, function.TemplateArguments, out DynamicMethod? builder)) return false;
         if (!WrapWithMarshaling(builder, out DynamicMethod? marshaledBuilder)) return false;
 
         for (int i = 0; i < function.Function.Parameters.Length; i++)

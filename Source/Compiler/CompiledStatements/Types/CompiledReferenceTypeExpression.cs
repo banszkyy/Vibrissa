@@ -31,8 +31,5 @@ public class CompiledReferenceTypeExpression : CompiledTypeExpression,
     public override int GetHashCode() => HashCode.Combine(To);
     public override string ToString() => $"{To}&";
 
-    public static CompiledReferenceTypeExpression CreateAnonymous(ReferenceType type, ILocated location)
-    {
-        return new(CreateAnonymous(type.To, location), location.Location);
-    }
+    public static CompiledReferenceTypeExpression CreateAnonymous(ReferenceType type, ILocated location) => new(CreateAnonymous(type.To, location), location.Location);
 }

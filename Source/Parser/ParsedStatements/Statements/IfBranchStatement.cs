@@ -7,6 +7,8 @@ public class IfBranchStatement : BranchStatementBase
     public Expression Condition { get; }
     public ElseBranchStatement? Else { get; }
 
+    public override Position Position => new(Keyword, Body, Else);
+
     public IfBranchStatement(
         Token keyword,
         Expression condition,

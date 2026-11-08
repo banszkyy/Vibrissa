@@ -128,7 +128,7 @@ public class RuntimeException : LanguageException
                     result.Append(')');
 
                     break;
-                case GenericType v:
+                case UnresolvedTemplateType v:
                     if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
                     result.Append(v.ToString());
 
@@ -151,11 +151,11 @@ public class RuntimeException : LanguageException
                     if (colored) result.SetGraphics(Ansi.BrightForegroundGreen);
                     result.Append(v.Struct.Identifier);
 
-                    if (!v.TypeArguments.IsEmpty)
+                    if (!v.TemplateArguments.IsEmpty)
                     {
                         if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);
                         result.Append('<');
-                        result.Append(string.Join(", ", v.TypeArguments.Values));
+                        result.Append(string.Join(", ", v.TemplateArguments.Values));
                         result.Append('>');
                     }
                     else if (v.Struct.Definition.Template is not null)
@@ -383,7 +383,7 @@ public class RuntimeException : LanguageException
             { result.AppendJoin(' ', value.ToArray()); }
         }
 
-        void AppendScope(CallTraceItem tracedScope, ImmutableDictionary<string, CompiledTemplateArgument>? typeArguments)
+        void AppendScope(CallTraceItem tracedScope, ImmutableDictionary<string, CompiledTemplateArgument>? templateArguments)
         {
             if (DebugInformation.IsEmpty) return;
             ImmutableArray<ScopeInformation> scopes = DebugInformation.GetScopes(tracedScope.InstructionPointer);
@@ -412,7 +412,7 @@ public class RuntimeException : LanguageException
                     // result.Append(')');
                     // result.Append(' ');
                     // if (colored) result.ResetStyle();
-                    AppendType(GeneralType.TryInsertTypeParameters(item.Type, typeArguments));
+                    AppendType(GeneralType.TryInsertTemplateParameters(item.Type, templateArguments));
                     result.Append(' ');
                     if (item.Kind == StackElementKind.Internal)
                     {
@@ -429,7 +429,7 @@ public class RuntimeException : LanguageException
                     {
                         result.Append(" = ");
                         if (colored) result.ResetStyle();
-                        AppendValue(range, GeneralType.TryInsertTypeParameters(item.Type, typeArguments), 0);
+                        AppendValue(range, GeneralType.TryInsertTemplateParameters(item.Type, templateArguments), 0);
                     }
                     if (colored) result.ResetStyle();
                     result.Append(';');
@@ -515,7 +515,7 @@ public class RuntimeException : LanguageException
                                 if (item.Identifier != function.Parameters[j].Identifier) continue;
                                 if (item.Valid != 0 && !item.Valid.Contains(callTraceItem.InstructionPointer)) continue;
                                 result.Append(" = ");
-                                AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), GeneralType.TryInsertTypeParameters(item.Type, frame.TypeArguments), 0);
+                                AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), GeneralType.TryInsertTemplateParameters(item.Type, frame.TemplateArguments), 0);
                                 f = true;
                                 break;
                             }
@@ -578,7 +578,7 @@ public class RuntimeException : LanguageException
 
                     result.AppendLine();
 
-                    if (details) AppendScope(CallTrace[i], callStack[i].TypeArguments);
+                    if (details) AppendScope(CallTrace[i], callStack[i].TemplateArguments);
                 }
             }
         }

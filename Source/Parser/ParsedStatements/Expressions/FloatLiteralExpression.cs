@@ -13,12 +13,6 @@ public class FloatLiteralExpression : LiteralExpression
         Value = value;
     }
 
-    public static FloatLiteralExpression CreateAnonymous(float value, Position position, Uri file) => new(
-        value,
-        Token.CreateAnonymous(value.ToString(), TokenType.LiteralFloat, position),
-        file
-    );
-
     public override string ToString()
     {
         StringBuilder result = new();

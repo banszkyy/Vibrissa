@@ -51,11 +51,11 @@ public class ShortOperatorCall : AssignmentStatement, IReferenceableTo<CompiledO
         LiteralExpression one = IntLiteralExpression.CreateAnonymous(1, Operator.Position, File);
         BinaryOperatorCallExpression operatorCall = Operator.Content switch
         {
-            "++" => new BinaryOperatorCallExpression(Token.CreateAnonymous("+", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
-            "--" => new BinaryOperatorCallExpression(Token.CreateAnonymous("-", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
+            "++" => new BinaryOperatorCallExpression(new PhantomToken("+", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
+            "--" => new BinaryOperatorCallExpression(new PhantomToken("-", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
             _ => throw new NotImplementedException(),
         };
-        Token assignmentToken = Token.CreateAnonymous("=", TokenType.Operator, Operator.Position);
+        Token assignmentToken = new PhantomToken("=", TokenType.Operator, Operator.Position);
         return new SimpleAssignmentStatement(assignmentToken, Target, operatorCall, File);
     }
 }

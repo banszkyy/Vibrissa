@@ -54,7 +54,7 @@ public class GeneralFunctionDefinition : FunctionThingDefinition,
         return result.ToString();
     }
 
-    public override string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments = null)
+    public override string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? templateArguments = null)
     {
         StringBuilder result = new();
         result.Append(Identifier.ToString());
@@ -62,7 +62,7 @@ public class GeneralFunctionDefinition : FunctionThingDefinition,
         for (int i = 0; i < Parameters.Length; i++)
         {
             if (i > 0) result.Append(", ");
-            result.Append(Parameters[i].Type.ToString(typeArguments));
+            result.Append(Parameters[i].Type.ToString(templateArguments));
         }
         result.Append(')');
         return result.ToString();

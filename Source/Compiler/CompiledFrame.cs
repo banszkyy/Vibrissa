@@ -4,8 +4,8 @@ namespace LanguageCore.Compiler;
 
 class CompiledFrame
 {
-    public required ImmutableDictionary<string, CompiledTemplateArgument> TypeArguments { get; init; }
-    public required ImmutableArray<Token> TypeParameters { get; init; }
+    public required ImmutableDictionary<string, CompiledTemplateArgument> TemplateArguments { get; init; }
+    public required ImmutableArray<Token> TemplateParameters { get; init; }
     public required bool IsTemplateInstance { get; init; }
     public required bool IsTemplate { get; init; }
     public required ImmutableArray<CompiledParameter> CompiledParameters { get; init; }
@@ -20,8 +20,8 @@ class CompiledFrame
 
     public static CompiledFrame Empty => new()
     {
-        TypeArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
-        TypeParameters = ImmutableArray<Token>.Empty,
+        TemplateArguments = ImmutableDictionary<string, CompiledTemplateArgument>.Empty,
+        TemplateParameters = ImmutableArray<Token>.Empty,
         IsTemplateInstance = false,
         IsTemplate = false,
         CompiledParameters = ImmutableArray<CompiledParameter>.Empty,

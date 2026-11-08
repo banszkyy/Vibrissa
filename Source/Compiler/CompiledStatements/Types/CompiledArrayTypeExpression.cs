@@ -55,9 +55,5 @@ public class CompiledArrayTypeExpression : CompiledTypeExpression,
     public override int GetHashCode() => HashCode.Combine(Of, Length);
     public override string ToString() => $"{Of}[{Length?.ToString()}]";
 
-    public static CompiledArrayTypeExpression CreateAnonymous(ArrayType type, ILocated location)
-    {
-        return new(CreateAnonymous(type.Of, location), type.Length, location.Location
-        );
-    }
+    public static CompiledArrayTypeExpression CreateAnonymous(ArrayType type, ILocated location) => new(CreateAnonymous(type.Of, location), type.Length, location.Location);
 }

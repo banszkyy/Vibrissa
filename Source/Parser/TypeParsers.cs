@@ -121,14 +121,14 @@ public sealed partial class Parser
                 if (type is not TypeInstanceSimple)
                 { throw new NotImplementedException(); }
 
-                List<TemplateArgumentExpression> genericTypes = new();
+                List<TemplateArgumentExpression> templateArguments = new();
                 Token? angleBracketEnd;
 
                 while (true)
                 {
-                    if (ExpectType(AllowedType.FunctionPointer, out TypeInstance? typeParameter))
+                    if (ExpectType(AllowedType.FunctionPointer, out TypeInstance? templateArgumentType))
                     {
-                        genericTypes.Add(new TemplateArgumentExpressionType(typeParameter, File));
+                        templateArguments.Add(new TemplateArgumentExpressionType(templateArgumentType, File));
 
                         if (ExpectOperator(">", out angleBracketEnd))
                         { break; }
@@ -147,9 +147,9 @@ public sealed partial class Parser
                         if (ExpectOperator(","))
                         { continue; }
                     }
-                    else if (ExpectAnyExpression(out Expression? expressionParameter))
+                    else if (ExpectAnyExpression(out Expression? templateArgumentValue))
                     {
-                        genericTypes.Add(new TemplateArgumentExpressionValue(expressionParameter, File));
+                        templateArguments.Add(new TemplateArgumentExpressionValue(templateArgumentValue, File));
 
                         if (ExpectOperator(">", out angleBracketEnd))
                         { break; }
@@ -175,7 +175,7 @@ public sealed partial class Parser
                     }
                 }
 
-                type = new TypeInstanceSimple(possibleType, File, genericTypes.ToImmutableArray(), new TokenPair(angleBracketStart, angleBracketEnd));
+                type = new TypeInstanceSimple(possibleType, File, templateArguments.ToImmutableArray(), new TokenPair(angleBracketStart, angleBracketEnd));
                 withGenerics = true;
             }
             else if (!withGenerics && ExpectOperator("(", out Token? bracketStart))

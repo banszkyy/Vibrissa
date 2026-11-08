@@ -349,7 +349,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             if (i >= index) continue;
             CompiledParameter parameter = CompiledParameters[i];
-            if (!FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), out int size, out PossibleDiagnostic? _error))
+            if (!FindSize(GeneralType.TryInsertTemplateParameters(parameter.Type, TemplateArguments), out int size, out PossibleDiagnostic? _error))
             {
                 error = new PossibleDiagnostic($"Cannot get the size of parameter `{parameter.Identifier}`", parameter.Definition, _error.Populated(parameter.Definition.Type));
                 return false;
@@ -1042,7 +1042,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             foreach (CompiledParameter parameter in CompiledParameters)
             {
-                sum += FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), parameter.Definition);
+                sum += FindSize(GeneralType.TryInsertTemplateParameters(parameter.Type, TemplateArguments), parameter.Definition);
             }
 
             return sum;

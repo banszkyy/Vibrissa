@@ -24,7 +24,7 @@ public abstract class TypeInstance :
         if (a is null && b is null) return true;
         if (a is null || b is null) return false;
         if (a is not TypeInstanceSimple a2) return false;
-        if (a2.TypeArguments is not null) return false;
+        if (a2.TemplateArguments is not null) return false;
         return a2.Identifier.Content == b;
     }
     public static bool operator !=(TypeInstance? a, string? b) => !(a == b);
@@ -44,5 +44,5 @@ public abstract class TypeInstance :
 
     public abstract override int GetHashCode();
     public abstract override string ToString();
-    public virtual string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments) => ToString();
+    public virtual string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? templateArguments) => ToString();
 }

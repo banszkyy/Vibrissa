@@ -90,17 +90,17 @@ public class CompiledFunctionDefinition :
         return result.ToString();
     }
 
-    public string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments = null)
+    public string ToReadable(IReadOnlyDictionary<string, CompiledTemplateArgument>? templateArguments = null)
     {
         StringBuilder result = new();
-        result.Append(GeneralType.TryInsertTypeParameters(Type, typeArguments).ToString());
+        result.Append(GeneralType.TryInsertTemplateParameters(Type, templateArguments).ToString());
         result.Append(' ');
         result.Append(Identifier);
         result.Append('(');
         for (int i = 0; i < Parameters.Length; i++)
         {
             if (i > 0) result.Append(", ");
-            result.Append(GeneralType.TryInsertTypeParameters(Parameters[i].Type, typeArguments).ToString());
+            result.Append(GeneralType.TryInsertTemplateParameters(Parameters[i].Type, templateArguments).ToString());
         }
         result.Append(')');
         return result.ToString();

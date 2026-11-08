@@ -31,8 +31,5 @@ public class CompiledPointerTypeExpression : CompiledTypeExpression,
     public override int GetHashCode() => HashCode.Combine(To);
     public override string ToString() => $"{To}*";
 
-    public static CompiledPointerTypeExpression CreateAnonymous(PointerType type, ILocated location)
-    {
-        return new(CreateAnonymous(type.To, location), location.Location);
-    }
+    public static CompiledPointerTypeExpression CreateAnonymous(PointerType type, ILocated location) => new(CreateAnonymous(type.To, location), location.Location);
 }

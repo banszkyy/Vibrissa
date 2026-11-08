@@ -11,7 +11,7 @@ public class NewInstanceExpression :
     public TypeInstance Type { get; }
     public InitializationExpression? Initialization { get; }
 
-    public override Position Position => new(Keyword, Type);
+    public override Position Position => new(Keyword, Type, Initialization);
 
     public NewInstanceExpression(
         Token keyword,

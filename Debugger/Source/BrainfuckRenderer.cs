@@ -161,12 +161,12 @@ public class BrainfuckRenderer
                     for (int i = 0; i < v.Struct.Definition.Template.Parameters.Length; i++)
                     {
                         if (i > 0) t.Write(", ");
-                        WriteType(ref t, v.TypeArguments[v.Struct.Definition.Template.Parameters[i].Content]);
+                        WriteType(ref t, v.TemplateArguments[v.Struct.Definition.Template.Parameters[i].Content]);
                     }
                     t.Write('>');
                 }
                 break;
-            case GenericType v:
+            case UnresolvedTemplateType v:
                 t.Write(v.Identifier, AnsiColor.Yellow);
                 break;
             case TupleType v:
@@ -215,7 +215,7 @@ public class BrainfuckRenderer
                         Tokenizing.TokenAnalyzedType.ParameterName => AnsiColor.White,
                         Tokenizing.TokenAnalyzedType.Statement => AnsiColor.BrightMagenta,
                         Tokenizing.TokenAnalyzedType.BuiltinType => AnsiColor.BrightGreen,
-                        Tokenizing.TokenAnalyzedType.TypeParameter => AnsiColor.BrightGreen,
+                        Tokenizing.TokenAnalyzedType.TemplateParameterType => AnsiColor.BrightGreen,
                         Tokenizing.TokenAnalyzedType.ConstantName => AnsiColor.White,
                         _ => tokens[i].TokenType switch
                         {
@@ -528,7 +528,7 @@ public class BrainfuckRenderer
                         t.Write(compiledFunction.Parameters[j].Definition.Modifiers[k].Content, AnsiColor.Blue);
                         t.Write(' ');
                     }
-                    WriteType(ref t, GeneralType.TryInsertTypeParameters(compiledFunction.Parameters[j].Type, function.TypeArguments));
+                    WriteType(ref t, GeneralType.TryInsertTemplateParameters(compiledFunction.Parameters[j].Type, function.TemplateArguments));
                     t.Write(' ');
                     t.Write(compiledFunction.Parameters[j].Identifier);
                 }

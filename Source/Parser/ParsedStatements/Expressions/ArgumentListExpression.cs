@@ -28,12 +28,5 @@ public class ArgumentListExpression : Statement
         file
     );
 
-    public static ArgumentListExpression CreateAnonymous(Uri file) => new(
-        ImmutableArray<ArgumentExpression>.Empty,
-        ImmutableArray<Token>.Empty,
-        TokenPair.CreateAnonymous("(", ")"),
-        file
-    );
-
     public override string ToString() => $"({string.Join(", ", Arguments)})";
 }

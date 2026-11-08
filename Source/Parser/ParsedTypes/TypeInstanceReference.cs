@@ -33,7 +33,7 @@ public class TypeInstanceReference : TypeInstance, IEquatable<TypeInstanceRefere
     public override int GetHashCode() => HashCode.Combine((byte)5, To);
 
     public override string ToString() => $"{To}{Operator}";
-    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? typeArguments) => $"{To.ToString(typeArguments)}{Operator}";
+    public override string ToString(IReadOnlyDictionary<string, CompiledTemplateArgument>? templateArguments) => $"{To.ToString(templateArguments)}{Operator}";
 
-    public static TypeInstanceReference CreateAnonymous(TypeInstance to, Uri file) => new(to, Token.CreateAnonymous("&", TokenType.Operator), file);
+    public static TypeInstanceReference CreateAnonymous(TypeInstance to, Uri file) => new(to, new PhantomToken("&", TokenType.Operator), file);
 }

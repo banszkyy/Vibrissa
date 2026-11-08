@@ -15,7 +15,7 @@ public class IntLiteralExpression : LiteralExpression
 
     public static IntLiteralExpression CreateAnonymous(int value, Position position, Uri file) => new(
         value,
-        Token.CreateAnonymous(value.ToString(), TokenType.LiteralNumber, position),
+        new PhantomToken(value.ToString(), TokenType.LiteralNumber, position),
         file
     );
 

@@ -17,7 +17,7 @@ public partial class StatementCompiler
             CompiledExpression compiledArgumentExpression = compiledArgumentExpressions[i];
             GeneralType parameterType = function.Parameters[i];
 
-            if (!CanCastImplicitly(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
+            if (!IsAssignable(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
             { Diagnostics.Add(error.ToError(compiledArgumentExpression)); }
             compiledArgumentExpression = assignedArgument;
 
@@ -70,7 +70,7 @@ public partial class StatementCompiler
 
         ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(compiledArgumentExpressions.Length);
 
-        for (int i = 0; i < compiledArgumentExpressions.Length; i++)
+        for (int i = 0; i < Math.Min(compiledArgumentExpressions.Length, arguments?.Length ?? compiledArgumentExpressions.Length); i++)
         {
             CompiledParameter parameter = compiledFunction.Parameters[i + alreadyPassed];
             ArgumentExpression? argument = arguments.HasValue ? arguments.Value[i] : null;
@@ -90,7 +90,7 @@ public partial class StatementCompiler
                 };
             }
 
-            if (!CanCastImplicitly(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
+            if (!IsAssignable(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
             { Diagnostics.Add(error.ToError(compiledArgumentExpression)); }
 
             compiledArgumentExpression = assignedArgument;
@@ -197,7 +197,7 @@ public partial class StatementCompiler
                     if (!CompileExpression(argument, out compiledArgument, parameterType)) return false;
                 }
 
-                if (!CanCastImplicitly(compiledArgument, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
+                if (!IsAssignable(compiledArgument, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
                 { Diagnostics.Add(error.ToError(argument)); }
                 compiledArgument = assignedArgument;
 
@@ -291,19 +291,6 @@ public partial class StatementCompiler
         {
             Diagnostics.Add(DiagnosticAt.Error($"Function `{callee.ToReadable()}` could not be called due to its protection level", caller)
                 .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function `{callee.ToReadable()}` defined here", callee.Location)));
-            return false;
-        }
-
-        int partial = 0;
-        for (int i = 0; i < callee.Definition.Parameters.Length; i++)
-        {
-            if (callee.Definition.Parameters[i].DefaultValue is null) partial = i + 1;
-            else break;
-        }
-
-        if (compiledArgumentExpressions.Length < partial)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function `{callee.ToReadable()}`: required {callee.Definition.ParameterCount} passed {compiledArgumentExpressions.Length}", caller));
             return false;
         }
 
@@ -459,7 +446,7 @@ public partial class StatementCompiler
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function inlined", caller));
 
-                        if (!CanCastImplicitly(statementWithValue, GeneralType.TryInsertTemplateParameters(callee.Type, templateArguments), out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
+                        if (!IsAssignable(statementWithValue, GeneralType.TryInsertTemplateParameters(callee.Type, templateArguments), out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
                         { Diagnostics.Add(castError.ToError(statementWithValue)); }
                         statementWithValue = assignedValue;
 
@@ -551,22 +538,22 @@ public partial class StatementCompiler
                 return false;
             }
 
-            GeneralType resultType = SizeofStatementType;
-            if (expectedType is not null &&
-                CanCastImplicitly(resultType, expectedType, out _, out _))
-            {
-                resultType = expectedType;
-            }
-
-            SetStatementType(anyCall, resultType);
-
             compiledStatement = new CompiledSizeof()
             {
                 Of = compiledTemplateArgument,
                 Location = argument.Location,
-                Type = resultType,
+                Type = SizeofStatementType,
                 SaveValue = anyCall.SaveValue,
             };
+            SetStatementType(anyCall, SizeofStatementType);
+
+            if (expectedType is not null &&
+                IsAssignable(compiledStatement, expectedType, out CompiledExpression? assigned, out _, out _))
+            {
+                compiledStatement = assigned;
+            }
+
+            SetStatementType(anyCall, compiledStatement.Type);
             return true;
         }
 
@@ -595,7 +582,7 @@ public partial class StatementCompiler
 
             if (!CompileExpression(functionCall.MethodArguments.Select(v => v.Value), out compiledArgumentExpressions))
             {
-                if (GetFunction(GetFunctions(), "function", CompiledFunctionDefinition.ToReadable(functionCall.Identifier.Content, null, null), new FunctionQuery<CompiledFunctionDefinition, string, string, object>()
+                if (GetFunction(GetFunctions(), "function", CompiledFunctionDefinition.ToReadable(functionCall.Identifier.Content, null, null), new FunctionQuery<CompiledFunctionDefinition, object>()
                 {
                     ArgumentCount = functionCall.MethodArguments.Length,
                     Arguments = null,
@@ -603,7 +590,6 @@ public partial class StatementCompiler
                     Identifier = functionCall.Identifier.Content,
                     Converter = v => BuiltinType.Any,
                     AddCompilable = null,
-                    IdentifierMatcher = null,
                     ReturnType = null,
                 }, out FunctionQueryResult<CompiledFunctionDefinition>? result2, out _))
                 {
@@ -710,22 +696,6 @@ public partial class StatementCompiler
 
         if (!CompileArguments(anyCall.Arguments.Arguments, compiledArgumentExpressions, functionType, out ImmutableArray<CompiledArgument> compiledArguments))
         {
-            Diagnostics.AddRange(functionError?.ToError(anyCall).ReduceNonTelling());
-            return false;
-        }
-
-        PossibleDiagnostic? argumentError = null;
-        if (!Utils.SequenceEquals(compiledArguments, functionType.Parameters, (argument, parameter) =>
-        {
-            if (CanCastImplicitly(argument.Type, parameter, out argumentError, out _))
-            { return true; }
-
-            argumentError = argumentError.TrySetLocation(argument);
-
-            return false;
-        }))
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller `...({string.Join(", ", compiledArguments.Select(v => v.Type))})` doesn't match with callee `{functionType}`", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
             Diagnostics.AddRange(functionError?.ToError(anyCall).ReduceNonTelling());
             return false;
         }
@@ -1000,15 +970,6 @@ public partial class StatementCompiler
             }
 
         OK:
-
-            if (expectedType is not null &&
-                CanCastImplicitly(resultType, expectedType, out _, out _))
-            {
-                resultType = expectedType;
-            }
-
-            SetStatementType(@operator, resultType);
-
             compiledStatement = new CompiledBinaryOperatorCall()
             {
                 Operator = @operator.Operator.Content,
@@ -1018,6 +979,14 @@ public partial class StatementCompiler
                 Location = @operator.Location,
                 SaveValue = @operator.SaveValue,
             };
+
+            if (expectedType is not null &&
+                IsAssignable(compiledStatement, expectedType, out CompiledExpression? assigned, out _, out _))
+            {
+                compiledStatement = assigned;
+            }
+
+            SetStatementType(@operator, compiledStatement.Type);
 
             if (leftType.Is<PointerType>() && rightType.Is<PointerType>()
                 && @operator.Operator.Content is not BinaryOperatorCallExpression.CompEQ and not BinaryOperatorCallExpression.CompNEQ)
@@ -2083,7 +2052,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (GetFunction(variable.Content, expectedType, out FunctionQueryResult<CompiledFunctionDefinition>? compiledFunction, out PossibleDiagnostic? functionError, AddCompilable))
+        if (GetFunction(variable.Content, expectedType, variable.File, out FunctionQueryResult<CompiledFunctionDefinition>? compiledFunction, out PossibleDiagnostic? functionError, AddCompilable))
         {
             if (compiledFunction.Function.Definition.Block is null)
             {
@@ -2338,7 +2307,7 @@ public partial class StatementCompiler
 
             if (!CompileExpression(item.Value, out CompiledExpression? _value, type)) continue;
 
-            if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
+            if (!IsAssignable(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
             {
                 Diagnostics.Add(castError2.ToError(item.Value));
             }
@@ -2631,7 +2600,7 @@ public partial class StatementCompiler
                 },
                 "function",
                 CompiledFunctionDefinition.ToReadable(field.Identifier.Content, null, null),
-                FunctionQuery.Create<CompiledFunctionDefinition, string, string>(field.Identifier.Content) with
+                FunctionQuery.Create<CompiledFunctionDefinition>(field.Identifier.Content, relevantFile: field.File) with
                 {
                     Object = new ReferenceType(prevType),
                 },
@@ -2916,17 +2885,24 @@ public partial class StatementCompiler
     bool CompileExpression(ManagedTypeCastExpression typeCast, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
     {
         compiledStatement = null;
-        if (!CompileType(typeCast.Type, out GeneralType? targetType, Diagnostics))
+        if (!CompileStatement(typeCast.Type, out CompiledTypeExpression? targetTypeExpression, Diagnostics))
         {
             return false;
         }
+
+        if (!CompileType(targetTypeExpression, out GeneralType? targetType, out PossibleDiagnostic? typeError))
+        {
+            Diagnostics.Add(typeError.ToError(targetTypeExpression));
+            return false;
+        }
+
         SetStatementType(typeCast, targetType);
 
         if (!CompileExpression(typeCast.Expression, out CompiledExpression? prev, targetType)) return false;
 
         if (prev.Type.Equals(targetType))
         {
-            // Diagnostics.Add(Diagnostic.Hint($"Redundant type conversion", typeCast.Type, typeCast.File));
+            Diagnostics.Add(DiagnosticAt.Hint($"Redundant type conversion", typeCast.Type));
             compiledStatement = prev;
             return true;
         }
@@ -2959,7 +2935,7 @@ public partial class StatementCompiler
             {
                 Value = prev,
                 Type = targetType,
-                TypeExpression = CompiledTypeExpression.CreateAnonymous(targetType, typeCast.Type),
+                TypeExpression = targetTypeExpression,
                 Allocator = null,
                 Location = typeCast.Location,
                 SaveValue = typeCast.SaveValue,
@@ -2975,7 +2951,7 @@ public partial class StatementCompiler
             {
                 Value = prev,
                 Type = targetType,
-                TypeExpression = CompiledTypeExpression.CreateAnonymous(targetType, typeCast.Type.Location),
+                TypeExpression = targetTypeExpression,
                 Allocator = null,
                 Location = typeCast.Location,
                 SaveValue = typeCast.SaveValue,
@@ -2991,7 +2967,7 @@ public partial class StatementCompiler
             Allocator = null,
             Location = typeCast.Location,
             SaveValue = typeCast.SaveValue,
-            TypeExpression = CompiledTypeExpression.CreateAnonymous(targetType, typeCast.Location),
+            TypeExpression = targetTypeExpression,
         };
         return true;
     }

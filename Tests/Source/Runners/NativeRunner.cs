@@ -6,7 +6,7 @@ using LanguageCore.Native.Generator;
 
 namespace LanguageCore.Tests;
 
-static class NativeRunner
+public static class NativeRunner
 {
     public readonly struct AssemblyResult : IResult
     {

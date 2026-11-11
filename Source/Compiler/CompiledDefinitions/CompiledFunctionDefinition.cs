@@ -56,7 +56,7 @@ public class CompiledFunctionDefinition :
         if (Definition.IsExported)
         { result.Append("export "); }
 
-        result.Append(Type.ToString());
+        result.Append(Type);
         result.Append(' ');
 
         result.Append(Identifier);
@@ -74,7 +74,8 @@ public class CompiledFunctionDefinition :
             for (int i = 0; i < Parameters.Length; i++)
             {
                 if (i > 0) result.Append(", ");
-                result.Append(Parameters[i].Type.ToString());
+                result.Append(Parameters[i].Type);
+                result.Append(Parameters[i].Definition.SpreadOperator);
             }
         }
         result.Append(')');
@@ -82,7 +83,7 @@ public class CompiledFunctionDefinition :
         if (Definition.Block is not null)
         {
             result.Append(' ');
-            result.Append(Definition.Block.ToString());
+            result.Append(Definition.Block);
         }
         else
         { result.Append(';'); }
@@ -101,6 +102,7 @@ public class CompiledFunctionDefinition :
         {
             if (i > 0) result.Append(", ");
             result.Append(GeneralType.TryInsertTemplateParameters(Parameters[i].Type, templateArguments).ToString());
+            result.Append(Parameters[i].Definition.SpreadOperator);
         }
         result.Append(')');
         return result.ToString();

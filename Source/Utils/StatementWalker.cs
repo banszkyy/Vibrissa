@@ -33,6 +33,12 @@ public static partial class StatementWalker
                 foreach (ISmallNode statement in EnumerateNodes(haveType.Type, predicate))
                 { yield return statement; }
             }
+
+            if (item.Block is not null)
+            {
+                foreach (ISmallNode statement in EnumerateNodes(item.Block, predicate))
+                { yield return statement; }
+            }
         }
 
         foreach (EnumDefinition enumDefinition in parserResult.EnumDefinitions.IsDefault ? ImmutableArray<EnumDefinition>.Empty : parserResult.EnumDefinitions)

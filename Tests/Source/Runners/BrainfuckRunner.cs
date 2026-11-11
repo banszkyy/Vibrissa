@@ -4,7 +4,7 @@ using LanguageCore.Runtime;
 
 namespace LanguageCore.Tests;
 
-static class BrainfuckRunner
+public static class BrainfuckRunner
 {
     public readonly struct BrainfuckResult : IResult
     {

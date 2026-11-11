@@ -8,5 +8,5 @@ public class CompiledStackString : CompiledExpression
 
     public int Length => IsNullTerminated ? Value.Length + 1 : Value.Length;
 
-    public override string ToString() => $"\"{Value}\"";
+    public override string ToString() => $"\"{Value.Escape()}\"";
 }

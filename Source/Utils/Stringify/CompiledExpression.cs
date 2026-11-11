@@ -256,7 +256,7 @@ public static partial class Stringifier
     }
     public static void Stringify(CompiledRegisterAccess expression, BuilderBase builder, StringifyContext context = default)
     {
-        throw new NotImplementedException();
+        builder.Append(expression.Register.ToString());
     }
     public static void Stringify(CompiledLabelReference expression, BuilderBase builder, StringifyContext context = default)
     {

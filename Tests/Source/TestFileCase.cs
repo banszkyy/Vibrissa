@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace LanguageCore.Tests;
 
-sealed class TestFileCase
+public sealed class TestFileCase
 {
     public readonly string SourceFile;
     public readonly ExpectedResult ExpectedResult;

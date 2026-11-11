@@ -256,7 +256,7 @@ public partial class StatementCompiler
             {
                 enumType = value.Type;
             }
-            else if (!CanCastImplicitly(value, enumType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
+            else if (!IsAssignable(value, enumType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
             {
                 Diagnostics.Add(castError.ToError(value));
                 value = assignedValue;
@@ -572,6 +572,12 @@ public partial class StatementCompiler
         foreach (ParameterDefinition item in function.Parameters.Parameters)
         {
             if (!CompileType(item.Type, out GeneralType? parameterType, Diagnostics)) success = false;
+
+            if (item.SpreadOperator is not null && parameterType is not null && !parameterType.Is<ArrayType>())
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Spread parameter's type must be an array", item.SpreadOperator, item.File));
+            }
+
             parameters.Add(new CompiledParameter(parameterType ?? BuiltinType.Any, item));
         }
 
@@ -637,6 +643,12 @@ public partial class StatementCompiler
         foreach (ParameterDefinition item in function.Parameters.Parameters)
         {
             if (!CompileType(item.Type, out GeneralType? parameterType, Diagnostics)) return false;
+
+            if (item.SpreadOperator is not null)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Spread parameter is not allowed on operator definitions", item.SpreadOperator, item.File));
+            }
+
             parameters.Add(new CompiledParameter(parameterType, item));
         }
 
@@ -665,6 +677,12 @@ public partial class StatementCompiler
         foreach (ParameterDefinition item in function.Parameters.Parameters)
         {
             if (!CompileType(item.Type, out GeneralType? parameterType, Diagnostics)) return false;
+
+            if (item.SpreadOperator is not null)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Spread parameter's type must be an array", item.SpreadOperator, item.File));
+            }
+
             parameters.Add(new CompiledParameter(parameterType, item));
         }
 
@@ -717,7 +735,7 @@ public partial class StatementCompiler
         where TFunction : ICompiledFunctionDefinition, ICompiledDefinition<FunctionThingDefinition>
     {
         if (!a.Type.Equals(b.Type)) return false;
-        if (!Utils.SequenceEquals(a.Parameters.Select(v => v.Type), b.Parameters.Select(v => v.Type))) return false;
+        if (!Utils.SequenceEquals(a.Parameters, b.Parameters, (a, b) => a.Type.Equals(b.Type) && (a.Definition.SpreadOperator is null) == (b.Definition.SpreadOperator is null))) return false;
         if (!TemplateEquality(a.Definition.Template, b.Definition.Template)) return false;
         return ThingEquality(a.Definition, b.Definition);
     }

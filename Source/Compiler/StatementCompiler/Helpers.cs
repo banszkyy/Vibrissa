@@ -330,8 +330,8 @@ public partial class StatementCompiler
         Action<TemplateInstance<CompiledFunctionDefinition>>? addCompilable = null)
     {
         ImmutableArray<CompiledExpression> arguments = ImmutableArray.Create(prevType, indexType);
-        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(BuiltinFunctionIdentifiers.IndexerGet, arguments, null, relevantFile, null, addCompilable);
-        return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
+        FunctionQuery<CompiledFunctionDefinition, CompiledExpression> query = FunctionQuery.Create(BuiltinFunctionIdentifiers.IndexerGet, arguments, null, relevantFile, null, addCompilable);
+        return GetFunction(
             GetFunctions(),
             "function",
             CompiledFunctionDefinition.ToReadable(BuiltinFunctionIdentifiers.IndexerGet, arguments.Select(v => v.Type.ToString()), null),
@@ -354,8 +354,8 @@ public partial class StatementCompiler
         Action<TemplateInstance<CompiledFunctionDefinition>>? addCompilable = null)
     {
         ImmutableArray<CompiledExpression> arguments = ImmutableArray.Create(prevType, indexType, elementType);
-        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(BuiltinFunctionIdentifiers.IndexerSet, arguments, null, relevantFile, null, addCompilable);
-        return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
+        FunctionQuery<CompiledFunctionDefinition, CompiledExpression> query = FunctionQuery.Create(BuiltinFunctionIdentifiers.IndexerSet, arguments, null, relevantFile, null, addCompilable);
+        return GetFunction(
             GetFunctions(),
             "function",
             CompiledFunctionDefinition.ToReadable(BuiltinFunctionIdentifiers.IndexerSet, arguments.Select(v => v.Type.ToString()), null),
@@ -384,9 +384,9 @@ public partial class StatementCompiler
             CompilableFunctions
             .Where(v => v.Template.Definition.BuiltinFunctionName == builtinName);
 
-        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(null as string, arguments, null, relevantFile, null, addCompilable);
+        FunctionQuery<CompiledFunctionDefinition, CompiledExpression> query = FunctionQuery.Create(null as string, arguments, null, relevantFile, null, addCompilable);
 
-        return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
+        return GetFunction(
             new Functions<CompiledFunctionDefinition>()
             {
                 Compiled = builtinCompiledFunctions,
@@ -411,14 +411,14 @@ public partial class StatementCompiler
         [NotNullWhen(false)] out PossibleDiagnostic? error,
         Action<TemplateInstance<CompiledOperatorDefinition>>? addCompilable = null)
     {
-        FunctionQuery<CompiledOperatorDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledOperatorDefinition, string, string>(
+        FunctionQuery<CompiledOperatorDefinition, CompiledExpression> query = FunctionQuery.Create(
             identifier,
             arguments,
             null,
             relevantFile,
             null,
             addCompilable);
-        return GetFunction<CompiledOperatorDefinition, string, string, CompiledExpression>(
+        return GetFunction(
             GetOperators(),
             "operator",
             CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.Type.ToString()), null),
@@ -448,7 +448,7 @@ public partial class StatementCompiler
             CompilableGeneralFunctions
             .Where(v => ContextIs(v.Template, context));
 
-        return GetFunction<CompiledGeneralFunctionDefinition, string, string, GeneralType>(
+        return GetFunction(
             new Functions<CompiledGeneralFunctionDefinition>()
             {
                 Compiled = compiledGeneralFunctionsInContext,
@@ -457,7 +457,7 @@ public partial class StatementCompiler
             "general function",
             CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.ToString()), null),
 
-            FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, null, relevantFile, null, addCompilable),
+            FunctionQuery.Create(identifier, arguments, null, relevantFile, null, addCompilable),
 
             out result,
             out error
@@ -482,7 +482,7 @@ public partial class StatementCompiler
             CompilableGeneralFunctions
             .Where(v => ContextIs(v.Template, context));
 
-        return GetFunction<CompiledGeneralFunctionDefinition, string, string, CompiledExpression>(
+        return GetFunction(
             new Functions<CompiledGeneralFunctionDefinition>()
             {
                 Compiled = compiledGeneralFunctionsInContext,
@@ -491,7 +491,7 @@ public partial class StatementCompiler
             "general function",
             CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.ToString()), null),
 
-            FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, null, relevantFile, null, addCompilable),
+            FunctionQuery.Create(identifier, arguments, null, relevantFile, null, addCompilable),
 
             out result,
             out error
@@ -501,6 +501,7 @@ public partial class StatementCompiler
     bool GetFunction(
         string identifier,
         GeneralType? type,
+        Uri file,
         [NotNullWhen(true)] out FunctionQueryResult<CompiledFunctionDefinition>? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error,
         Action<TemplateInstance<CompiledFunctionDefinition>>? addCompilable = null)
@@ -508,16 +509,22 @@ public partial class StatementCompiler
         if (type is null || !type.Is(out FunctionType? functionType))
         {
             return GetFunction(
-                FunctionQuery.Create<CompiledFunctionDefinition, string, string>(identifier),
+                GetFunctions(),
+                "function",
                 CompiledFunctionDefinition.ToReadable(identifier, null, null),
+
+                FunctionQuery.Create<CompiledFunctionDefinition>(identifier, relevantFile: file),
                 out result,
                 out error
             );
         }
 
         return GetFunction(
-            FunctionQuery.Create<CompiledFunctionDefinition, string, string>(identifier, functionType.Parameters, null, null, functionType.ReturnType, addCompilable),
+            GetFunctions(),
+            "function",
             CompiledFunctionDefinition.ToReadable(identifier, functionType.Parameters.Select(v => v.ToString()), functionType.ReturnType.ToString()),
+
+            FunctionQuery.Create(identifier, functionType.Parameters, null, relevantFile: file, functionType.ReturnType, addCompilable),
             out result,
             out error
         );
@@ -533,37 +540,23 @@ public partial class StatementCompiler
         [NotNullWhen(false)] out PossibleDiagnostic? error,
         Action<TemplateInstance<CompiledFunctionDefinition>>? addCompilable = null)
     {
-        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(
+        FunctionQuery<CompiledFunctionDefinition, CompiledExpression> query = FunctionQuery.Create(
             identifier,
             arguments,
             templateArguments,
             file,
             null,
             addCompilable);
-        return GetFunction<CompiledExpression>(
-            query,
+        return GetFunction(
+            GetFunctions(),
+            "function",
             CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.Type.ToString()), null),
+
+            query,
             out result,
             out error
         );
     }
-
-    bool GetFunction<TArgument>(
-        FunctionQuery<CompiledFunctionDefinition, string, string, TArgument> query,
-        string readableName,
-
-        [NotNullWhen(true)] out FunctionQueryResult<CompiledFunctionDefinition>? result,
-        [NotNullWhen(false)] out PossibleDiagnostic? error)
-        where TArgument : notnull
-        => GetFunction<CompiledFunctionDefinition, string, string, TArgument>(
-            GetFunctions(),
-            "function",
-            readableName,
-
-            query,
-            out result,
-            out error
-        );
 
     #endregion
 
@@ -1299,7 +1292,7 @@ public partial class StatementCompiler
         Equals,
     }
 
-    public static bool CanCastImplicitly(GeneralType source, GeneralType destination, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
+    public static bool IsAssignable(GeneralType source, GeneralType destination, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
     {
         error = null;
         castLevel = CastLevel.None;
@@ -1333,7 +1326,7 @@ public partial class StatementCompiler
                         srcArray.Length is not null &&
                         !dstArray.Length.SameAs(srcArray.Length))
                     {
-                        error = new($"Can't cast an array pointer with length of `{dstArray.Length}` to an array pointer with length of `{srcArray.Length}`");
+                        error = new($"Cannot assign an array pointer with length of `{dstArray.Length}` to an array pointer with length of `{srcArray.Length}`");
                         return false;
                     }
 
@@ -1378,19 +1371,23 @@ public partial class StatementCompiler
             }
         }
 
-        error = new($"Can't cast `{source}` to `{destination}` implicitly");
+        error = new($"Cannot assign value of type `{source}` to target of type `{destination}`");
         return false;
     }
 
-    public bool CanCastImplicitly(CompiledExpression value, GeneralType destination, out CompiledExpression assignedValue, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
+    public bool IsAssignable(CompiledExpression value, GeneralType? destination, out CompiledExpression assignedValue, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
     {
         assignedValue = value;
+        error = null;
+        castLevel = CastLevel.None;
 
-        if (CanCastImplicitly(value.Type, destination, out error, out castLevel)) return true;
+        if (destination is null) return true;
+
+        if (IsAssignable(value.Type, destination, out error, out castLevel)) return true;
 
         if (destination.Is(out ReferenceType? definitionRefType))
         {
-            if (CanCastImplicitly(value.Type, definitionRefType.To, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
+            if (IsAssignable(value.Type, definitionRefType.To, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
             {
                 if (!IsLValue(value, out PossibleDiagnostic? lvalueError))
                 {
@@ -1417,7 +1414,7 @@ public partial class StatementCompiler
 
         if (value.Type.Is(out ReferenceType? valueRefType))
         {
-            if (CanCastImplicitly(valueRefType.To, destination, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
+            if (IsAssignable(valueRefType.To, destination, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
             {
                 assignedValue = new CompiledDereference()
                 {
@@ -1543,7 +1540,7 @@ public partial class StatementCompiler
                 if (destination.Is(out ArrayType? arrayType1)
                     && value.Type.Is(out PointerType? pointerType1)
                     && pointerType1.To.Is(out ArrayType? arrayType2)
-                    && CanCastImplicitly(arrayType1.Of, arrayType2.Of, out _, out _))
+                    && IsAssignable(arrayType1.Of, arrayType2.Of, out _, out _))
                 {
                     assignedValue = new CompiledStackString()
                     {
@@ -1561,7 +1558,6 @@ public partial class StatementCompiler
                         IsNullTerminated = true,
                     };
                     castLevel = CastLevel.LiteralTypeAdjusting;
-                    throw new NotImplementedException();
                 }
 
                 break;

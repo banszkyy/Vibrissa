@@ -632,7 +632,10 @@ public ref partial struct ProcessorState
 #endif
 
         int data = GetData(CurrentInstruction.Operand2);
-        SetData(CurrentInstruction.Operand1, (int)data.F32());
+        float f = data.F32();
+        if (f <= int.MinValue) SetData(CurrentInstruction.Operand1, int.MinValue);
+        else if (f >= int.MaxValue) SetData(CurrentInstruction.Operand1, int.MaxValue);
+        else SetData(CurrentInstruction.Operand1, (int)f);
 
         Step();
     }

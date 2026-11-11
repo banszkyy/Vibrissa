@@ -45,5 +45,5 @@ public class ParameterDefinition :
         File = file;
     }
 
-    public override string ToString() => $"{string.Join(' ', Modifiers)} {Type} {Identifier}".TrimStart();
+    public override string ToString() => $"{string.Join(' ', Modifiers)} {Type} {Identifier}{SpreadOperator}".TrimStart();
 }

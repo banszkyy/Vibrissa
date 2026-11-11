@@ -503,28 +503,58 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     void PopTo(AddressRegisterPointer address, int size, int offset = 0)
     {
-        int currentOffset = 0;
-        while (currentOffset < size)
+        if (address.Register == Register.StackPointer)
         {
-            foreach (BitWidth checkBitWidth in
-#if NET_STANDARD
-                CompatibilityUtils.GetEnumValues<BitWidth>().Reverse()
-#else
-                Enum.GetValues<BitWidth>().Reverse()
-#endif
-            )
+            int currentOffset = 0;
+            while (currentOffset < size)
             {
-                if (Settings.PointerBitWidth == BitWidth._64 &&
-                    checkBitWidth == BitWidth._32)
-                { continue; }
+                foreach (BitWidth checkBitWidth in
+#if NET_STANDARD
+                    CompatibilityUtils.GetEnumValues<BitWidth>().Reverse()
+#else
+                    Enum.GetValues<BitWidth>().Reverse()
+#endif
+                )
+                {
+                    if (Settings.PointerBitWidth == BitWidth._64 &&
+                        checkBitWidth == BitWidth._32)
+                    { continue; }
 
-                int checkSize = (int)checkBitWidth;
-                if (size - currentOffset < checkSize) continue;
-                if (Settings.PointerSize < checkSize) continue;
+                    int checkSize = (int)checkBitWidth;
+                    if (size - currentOffset < checkSize) continue;
+                    if (Settings.PointerSize < checkSize) continue;
 
-                PopTo(address.Register.ToPtr(currentOffset + offset, checkBitWidth), checkBitWidth);
-                currentOffset += checkSize;
-                break;
+                    PopTo(address.Register.ToPtr(size - checkSize + offset, checkBitWidth), checkBitWidth);
+                    currentOffset += checkSize;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            int currentOffset = 0;
+            while (currentOffset < size)
+            {
+                foreach (BitWidth checkBitWidth in
+#if NET_STANDARD
+                    CompatibilityUtils.GetEnumValues<BitWidth>().Reverse()
+#else
+                    Enum.GetValues<BitWidth>().Reverse()
+#endif
+                )
+                {
+                    if (Settings.PointerBitWidth == BitWidth._64 &&
+                        checkBitWidth == BitWidth._32)
+                    { continue; }
+
+                    int checkSize = (int)checkBitWidth;
+                    if (size - currentOffset < checkSize) continue;
+                    if (Settings.PointerSize < checkSize) continue;
+
+                    PopTo(address.Register.ToPtr(currentOffset + offset, checkBitWidth), checkBitWidth);
+                    currentOffset += checkSize;
+                    break;
+                }
             }
         }
     }

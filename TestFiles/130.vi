@@ -12,7 +12,7 @@ int main(int e)
         return test2() - c;
     };
 
-    return test(6);
+    return (int)test(6);
 }
 
 return main(7);

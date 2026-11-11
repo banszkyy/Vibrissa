@@ -79,6 +79,8 @@ export void normalise(float3* v)
 
 export inline float3 +(float3 a, float3 b) { return new float3(a.x + b.x, a.y + b.y, a.z + b.z); }
 export inline float3 -(float3 a, float3 b) { return new float3(a.x - b.x, a.y - b.y, a.z - b.z); }
+export inline float3 *(float3 a, float3 b) { return new float3(a.x * b.x, a.y * b.y, a.z * b.z); }
+export inline float3 /(float3 a, float3 b) { return new float3(a.x / b.x, a.y / b.y, a.z / b.z); }
 
 export inline float3 *(float3 a, float b) { return new float3(a.x * b, a.y * b, a.z * b); }
 export inline float3 /(float3 a, float b) { return new float3(a.x / b, a.y / b, a.z / b); }

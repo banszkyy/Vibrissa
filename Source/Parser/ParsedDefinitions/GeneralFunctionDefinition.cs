@@ -63,6 +63,7 @@ public class GeneralFunctionDefinition : FunctionThingDefinition,
         {
             if (i > 0) result.Append(", ");
             result.Append(Parameters[i].Type.ToString(templateArguments));
+            result.Append(Parameters[i].SpreadOperator);
         }
         result.Append(')');
         return result.ToString();

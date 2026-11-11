@@ -768,14 +768,6 @@ public partial class StatementCompiler
             }
             else
             {
-                type ??= internalConstantType;
-
-                if (!CanCastImplicitly(internalConstantType, type, out PossibleDiagnostic? castError, out _))
-                {
-                    Diagnostics.Add(castError.ToError(newVariable.Type));
-                    return false;
-                }
-
                 initialValue = new CompiledCompilerVariableAccess()
                 {
                     Identifier = newVariable.InternalConstantName,
@@ -783,6 +775,14 @@ public partial class StatementCompiler
                     SaveValue = true,
                     Type = internalConstantType,
                 };
+
+                if (!IsAssignable(initialValue, type, out CompiledExpression? assigned, out PossibleDiagnostic? castError, out _))
+                {
+                    Diagnostics.Add(castError.ToError(newVariable.Type));
+                    return false;
+                }
+
+                initialValue = assigned;
             }
         }
 
@@ -800,7 +800,7 @@ public partial class StatementCompiler
                     ? initialValue.Type
                     : GeneralType.TryInsertConstants(type, initialValue.Type);
 
-                if (!CanCastImplicitly(initialValue, type, out CompiledExpression? assignedInitialValue, out PossibleDiagnostic? castError, out _))
+                if (!IsAssignable(initialValue, type, out CompiledExpression? assignedInitialValue, out PossibleDiagnostic? castError, out _))
                 {
                     Diagnostics.Add(castError.ToError(initialValue));
                     success = false;
@@ -895,7 +895,7 @@ public partial class StatementCompiler
                 }
                 else
                 {
-                    if (!CanCastImplicitly(returnValue, Frames.Last.CurrentReturnType, out CompiledExpression? assignedReturnValue, out PossibleDiagnostic? castError, out _))
+                    if (!IsAssignable(returnValue, Frames.Last.CurrentReturnType, out CompiledExpression? assignedReturnValue, out PossibleDiagnostic? castError, out _))
                     {
                         Diagnostics.Add(castError.ToError(keywordCall.Arguments[0]));
                     }
@@ -980,7 +980,7 @@ public partial class StatementCompiler
 
             if (!CompileExpression(keywordCall.Arguments[0], out CompiledExpression? to)) return false;
 
-            if (!CanCastImplicitly(to, CompiledLabelDeclaration.Type, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
+            if (!IsAssignable(to, CompiledLabelDeclaration.Type, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
             {
                 Diagnostics.Add(castError.ToError(keywordCall.Arguments[0]));
                 return false;
@@ -1321,7 +1321,7 @@ public partial class StatementCompiler
         {
             if (!CompileExpression(value, out CompiledExpression? _value, registerKeyword.Type)) return false;
 
-            if (!CanCastImplicitly(_value, registerKeyword.Type, out _value, out PossibleDiagnostic? castError, out _))
+            if (!IsAssignable(_value, registerKeyword.Type, out _value, out PossibleDiagnostic? castError, out _))
             { Diagnostics.Add(castError.ToError(value)); }
 
             compiledStatement = new CompiledSetter()
@@ -1376,7 +1376,7 @@ public partial class StatementCompiler
 
             if (!CompileExpression(value, out CompiledExpression? _value, parameter.Type)) return false;
 
-            if (!CanCastImplicitly(_value, parameter.Type, out _value, out PossibleDiagnostic? castError, out _))
+            if (!IsAssignable(_value, parameter.Type, out _value, out PossibleDiagnostic? castError, out _))
             {
                 Diagnostics.Add(castError.ToError(value));
             }
@@ -1527,7 +1527,7 @@ public partial class StatementCompiler
             GeneralType type = GeneralType.InsertTemplateParameters(compiledField.Type, structPointerType.TemplateArguments);
             if (!CompileExpression(value, out CompiledExpression? _value, type)) return false;
 
-            if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
+            if (!IsAssignable(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
             {
                 Diagnostics.Add(castError2.ToError(value));
             }
@@ -1563,7 +1563,7 @@ public partial class StatementCompiler
             GeneralType type = GeneralType.TryInsertTemplateParameters(compiledField.Type, structType.TemplateArguments);
             if (!CompileExpression(value, out CompiledExpression? _value, type)) return false;
 
-            if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
+            if (!IsAssignable(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
             {
                 Diagnostics.Add(castError2.ToError(value));
             }
@@ -1621,7 +1621,8 @@ public partial class StatementCompiler
             {
                 if (compiledStatement2.Type.Is(out IReferenceType? referenceReturnType))
                 {
-                    if (CanCastImplicitly(_value.Type, referenceReturnType.To, out PossibleDiagnostic? castError2, out _))
+                    Debugger.Break();
+                    if (IsAssignable(_value.Type, referenceReturnType.To, out PossibleDiagnostic? castError2, out _))
                     {
                         compiledStatement = new CompiledSetter()
                         {
@@ -1672,7 +1673,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (!CanCastImplicitly(_value, itemType, out _value, out PossibleDiagnostic? castError, out _))
+        if (!IsAssignable(_value, itemType, out _value, out PossibleDiagnostic? castError, out _))
         {
             Diagnostics.Add(castError.ToError(value));
         }
@@ -1707,7 +1708,7 @@ public partial class StatementCompiler
 
         if (!CompileExpression(value, out CompiledExpression? _value, targetType)) return false;
 
-        if (!CanCastImplicitly(_value, targetType, out _value, out PossibleDiagnostic? castError, out _))
+        if (!IsAssignable(_value, targetType, out _value, out PossibleDiagnostic? castError, out _))
         {
             Diagnostics.Add(castError.ToError(value));
         }

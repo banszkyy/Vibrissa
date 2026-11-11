@@ -30,6 +30,7 @@ public class HttpSourceProvider : ISourceProviderAsync, ISourceQueryProvider
         yield return file;
     }
 
+    [SuppressMessage("Usage", "VSTHRD002")]
     public SourceProviderResultAsync TryLoad(string requestedFile, Uri? currentFile, CancellationToken cancellationToken = default)
     {
         foreach (Uri file in GetQuery(requestedFile, currentFile))

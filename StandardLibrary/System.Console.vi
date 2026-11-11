@@ -18,7 +18,7 @@ export void printf(char[] format)
     }
 }
 
-export void printf(char[] format, any[] args)
+export void printf(char[] format, any[] args...)
 {
     int l = (&format).length();
     any* offset = (&format + l + 1) as any*;
@@ -60,7 +60,7 @@ export void printf(char[] format, any[] args)
     }
 }
 
-export void printf(temp string format, any[] args)
+export void printf(temp string format, any[] args...)
 {
     int offset = &args as int;
     for (int i = 0; format[i]; i++)
@@ -94,6 +94,37 @@ export void printf(temp string format, any[] args)
             print(format[i]);
         }
     }
+}
+
+export void print(temp string message)
+{
+    for (int i = 0; message[i]; i++)
+    {
+        print(message[i]);
+    }
+}
+
+export void print(char[] message)
+{
+    for (int i = 0; message[i]; i++)
+    {
+        print(message[i]);
+    }
+}
+
+export void printline(char[] message)
+{
+    for (int i = 0; message[i]; i++)
+    {
+        print(message[i]);
+    }
+    print('\n');
+}
+
+export inline void printline(temp string message)
+{
+    print(message);
+    print('\n');
 }
 
 [External("stdout")]
@@ -210,8 +241,14 @@ export void print(bool message)
     else print("false");
 }
 
+/*
+ * Source: https://copyprogramming.com/howto/print-an-int-in-c-without-printf-or-any-functions
+ */
 export inline void print(byte message) { print(message as u8); }
 
+/*
+ * Source: https://copyprogramming.com/howto/print-an-int-in-c-without-printf-or-any-functions
+ */
 #if BRAINFUCK
 export inline void print(int message) { print(message as u8); }
 #else
@@ -297,6 +334,11 @@ export void print(i32 message)
 {
     if (message < 0)
     {
+        if (message == 0x80000000) {
+            print("-2147483648");
+            return;
+        }
+
         print('-');
         message = message * -1;
     }
@@ -309,6 +351,18 @@ export void print(i32 message)
         message -= digit * pow10;
         pow10 /= 10;
     }
+}
+
+int find_max_pow_of_10(float num)
+{
+    int result = 0;
+    num /= 10;
+    while (num >= 1)
+    {
+        result++;
+        num /= 10;
+    }
+    return result;
 }
 
 export void print(float message)
@@ -337,45 +391,41 @@ export void print(float message)
         message *= -1f;
     }
 
-    print((int)message);
-    print('.');
-    message = (message % 1f) * 10f;
-    print((int)message);
-    message = (message % 1f) * 10f;
-    if (message)
+    int pow10 = find_max_pow_of_10(message);
+
+    if (pow10 > 8) {
+        for (int i = 0; i < pow10; i++) message /= 10;
+        print(message);
+        print('E');
+        print('+');
+        print(pow10);
+        return;
+    }
+
+    pow10++;
+    while (pow10)
     {
+        i32 digit = (i32)((message / pow(10, pow10 - 1)) % 10);
+        print((char)(digit + '0'));
+        message -= digit * pow(10, pow10 - 1);
+        pow10--;
+    }
+
+    if (message != 0) {
+        print('.');
+        message = (message % 1f) * 10f;
         print((int)message);
         message = (message % 1f) * 10f;
         if (message)
         {
             print((int)message);
+            message = (message % 1f) * 10f;
+            if (message)
+            {
+                print((int)message);
+            }
         }
     }
-}
-
-export void print(temp string message)
-{
-    for (int i = 0; message[i]; i++)
-    {
-        print(message[i]);
-    }
-}
-
-export void print(char[] message)
-{
-    for (int i = 0; message[i]; i++)
-    {
-        print(message[i]);
-    }
-}
-
-export void printline(char[] message)
-{
-    for (int i = 0; message[i]; i++)
-    {
-        print(message[i]);
-    }
-    print('\n');
 }
 
 export void print<T>(List<T>* list)
@@ -436,26 +486,19 @@ export void print<T>(T[]* list, int length)
 
 export inline void printline()
 {
-    print('\r');
     print('\n');
-}
-
-export inline void printline(temp string message)
-{
-    print(message);
-    printline();
 }
 
 export inline void printline<T>(T value)
 {
     print(value);
-    printline();
+    print('\n');
 }
 
 export inline void printline<T>(T[]* array, int length)
 {
     print(array, length);
-    printline();
+    print('\n');
 }
 
 [External("stdin")]

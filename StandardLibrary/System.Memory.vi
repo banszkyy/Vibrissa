@@ -135,7 +135,7 @@ export any* alloc(int sizeNeed)
         get_header(headerPointer, &blockSize, &blockUsed);
         any* dataPointer = (headerPointer + HeaderSize) as any*;
 
-        if ((!blockUsed) && blockSize >= sizeNeed)
+        if (!blockUsed && blockSize >= sizeNeed)
         {
             int _remainingSize = blockSize - sizeNeed - HeaderSize;
 

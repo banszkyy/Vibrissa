@@ -110,6 +110,28 @@ export int pow(int base, int exp)
 }
 
 /*
+ * Returns the value of `base` to the power of `exp`
+ * 
+ * Source: https://stackoverflow.com/a/101613
+ */
+export float pow(float base, int exp)
+{
+    float result = 1;
+
+    while (1)
+    {
+        if (exp & 1)
+        { result *= base; }
+        exp = exp >> 1;
+        if (!exp)
+        { break; }
+        base *= base;
+    }
+
+    return result;
+}
+
+/*
  * Returns the absolute value of `v`
  */
 export int abs(int v)

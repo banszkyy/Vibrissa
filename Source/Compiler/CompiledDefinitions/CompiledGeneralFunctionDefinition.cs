@@ -87,6 +87,7 @@ public class CompiledGeneralFunctionDefinition :
         {
             if (i > 0) result.Append(", ");
             result.Append(GeneralType.TryInsertTemplateParameters(Parameters[i].Type, templateArguments).ToString());
+            result.Append(Parameters[i].Definition.SpreadOperator);
         }
         result.Append(')');
         return result.ToString();

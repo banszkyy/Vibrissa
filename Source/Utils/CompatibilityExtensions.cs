@@ -22,6 +22,7 @@ public static class CompatibilityExtensions
         return false;
     }
 
+    [SuppressMessage("Usage", "VSTHRD002")]
     public static T WaitForResult<T>(this System.Threading.Tasks.Task<T> task)
     {
         task.Wait();

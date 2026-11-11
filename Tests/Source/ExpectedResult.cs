@@ -4,7 +4,7 @@ using LanguageCore.Runtime;
 
 namespace LanguageCore.Tests;
 
-readonly struct ExpectedResult
+public readonly struct ExpectedResult
 {
     public readonly string StdOutput;
     public readonly int ExitCode;

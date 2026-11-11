@@ -7,29 +7,27 @@ public partial class StatementCompiler
     public static class FunctionQuery
     {
         [DebuggerStepThrough]
-        public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, GeneralType> Create<TFunction, TIdentifier, TDefinedIdentifier>(
-            TIdentifier? identifier,
-            ImmutableArray<GeneralType>? arguments = null,
+        public static FunctionQuery<TFunction, GeneralType> Create<TFunction>(
+            string? identifier,
             ImmutableArray<CompiledTemplateArgument>? templateArguments = null,
             Uri? relevantFile = null,
-            GeneralType? returnType = null,
             Action<TemplateInstance<TFunction>>? addCompilable = null)
             where TFunction : notnull
             => new()
             {
                 Identifier = identifier,
-                Arguments = arguments,
-                ArgumentCount = arguments?.Length,
+                Arguments = null,
+                ArgumentCount = null,
                 TemplateArguments = templateArguments,
                 Converter = v => v,
                 RelevantFile = relevantFile,
-                ReturnType = returnType,
+                ReturnType = null,
                 AddCompilable = addCompilable,
             };
 
         [DebuggerStepThrough]
-        public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, CompiledExpression> Create<TFunction, TIdentifier, TDefinedIdentifier>(
-            TIdentifier? identifier,
+        public static FunctionQuery<TFunction, CompiledExpression> Create<TFunction>(
+            string? identifier,
             ImmutableArray<CompiledExpression> arguments,
             ImmutableArray<CompiledTemplateArgument>? templateArguments = null,
             Uri? relevantFile = null,
@@ -49,14 +47,13 @@ public partial class StatementCompiler
             };
 
         [DebuggerStepThrough]
-        public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, GeneralType> Create<TFunction, TIdentifier, TDefinedIdentifier>(
-            TIdentifier? identifier,
+        public static FunctionQuery<TFunction, GeneralType> Create<TFunction>(
+            string? identifier,
             ImmutableArray<GeneralType> arguments,
             ImmutableArray<CompiledTemplateArgument>? templateArguments = null,
             Uri? relevantFile = null,
             GeneralType? returnType = null,
-            Action<TemplateInstance<TFunction>>? addCompilable = null,
-            FunctionQueryIdentifierMatcher<TIdentifier, TDefinedIdentifier>? identifierMatcher = null)
+            Action<TemplateInstance<TFunction>>? addCompilable = null)
             where TFunction : notnull
             => new()
             {
@@ -68,37 +65,13 @@ public partial class StatementCompiler
                 RelevantFile = relevantFile,
                 ReturnType = returnType,
                 AddCompilable = addCompilable,
-                IdentifierMatcher = identifierMatcher,
-            };
-
-        [DebuggerStepThrough]
-        public static FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, CompiledExpression> Create<TFunction, TIdentifier, TDefinedIdentifier>(
-            TIdentifier? identifier,
-            ImmutableArray<CompiledExpression> arguments,
-            ImmutableArray<CompiledTemplateArgument>? templateArguments = null,
-            Uri? relevantFile = null,
-            GeneralType? returnType = null,
-            Action<TemplateInstance<TFunction>>? addCompilable = null,
-            FunctionQueryIdentifierMatcher<TIdentifier, TDefinedIdentifier>? identifierMatcher = null)
-            where TFunction : notnull
-            => new()
-            {
-                Identifier = identifier,
-                Arguments = arguments,
-                ArgumentCount = arguments.Length,
-                TemplateArguments = templateArguments,
-                Converter = v => v.Type,
-                RelevantFile = relevantFile,
-                ReturnType = returnType,
-                AddCompilable = addCompilable,
-                IdentifierMatcher = identifierMatcher,
             };
     }
 
-    public readonly struct FunctionQuery<TFunction, TIdentifier, TDefinedIdentifier, TArgument>
+    public readonly struct FunctionQuery<TFunction, TArgument>
         where TFunction : notnull
     {
-        public TIdentifier? Identifier { get; init; }
+        public string? Identifier { get; init; }
         public Uri? RelevantFile { get; init; }
         public TArgument? Object { get; init; }
         public ImmutableArray<TArgument>? Arguments { get; init; }
@@ -107,26 +80,19 @@ public partial class StatementCompiler
         public GeneralType? ReturnType { get; init; }
         public Action<TemplateInstance<TFunction>>? AddCompilable { get; init; }
         public Func<TArgument, GeneralType> Converter { get; init; }
-        public FunctionQueryIdentifierMatcher<TIdentifier, TDefinedIdentifier>? IdentifierMatcher { get; init; }
     }
 
     public class FunctionQueryResult<TFunction> where TFunction : notnull
     {
         public required TFunction Function { get; init; }
-        public required ImmutableArray<CompiledExpression?> Arguments { get; init; }
+        public required ImmutableArray<CompiledExpression> Arguments { get; init; }
         public ImmutableDictionary<string, CompiledTemplateArgument>? TemplateArguments { get; init; }
         public bool Success { get; init; }
-        public bool DidReplaceArguments => !Arguments.IsDefault && Arguments.Any(v => v is not null);
 
         public void ReplaceArgumentsIfNeeded(ref ImmutableArray<CompiledExpression> arguments)
         {
             if (Arguments.IsDefault) return;
-            ImmutableArray<CompiledExpression>.Builder newArguments = ImmutableArray.CreateBuilder<CompiledExpression>(arguments.Length);
-            for (int i = 0; i < arguments.Length; i++)
-            {
-                newArguments.Add(Arguments[i] ?? arguments[i]);
-            }
-            arguments = newArguments.MoveToImmutable();
+            arguments = Arguments;
         }
 
         public void Deconstruct(
@@ -233,11 +199,12 @@ public partial class StatementCompiler
 
         public CastLevel ReturnTypeMatch { get; set; }
         public int UsedUpDefaultParameterValues { get; set; }
+        public bool UsedUpSpreadParameters { get; set; }
         public CastLevel? ParameterTypeMatch { get; set; }
 
         public ImmutableDictionary<string, CompiledTemplateArgument>? TemplateArguments { get; set; }
         public CompiledExpression? Object { get; set; }
-        public ImmutableArray<CompiledExpression?> Arguments { get; set; }
+        public ImmutableArray<CompiledExpression> Arguments { get; set; }
 
         public override int CompareTo(DefinitionMatch<TDefinition>? other) => CompareTo(other as FunctionMatch<TDefinition>);
         public override bool Equals(DefinitionMatch<TDefinition>? other) => Equals(other as FunctionMatch<TDefinition>);
@@ -281,6 +248,9 @@ public partial class StatementCompiler
             if (UsedUpDefaultParameterValues < other.UsedUpDefaultParameterValues) return Better;
             if (UsedUpDefaultParameterValues > other.UsedUpDefaultParameterValues) return Worse;
 
+            if (!UsedUpSpreadParameters && other.UsedUpSpreadParameters) return Better;
+            if (UsedUpSpreadParameters && !other.UsedUpSpreadParameters) return Worse;
+
             if (IsProtectionRespected && !other.IsProtectionRespected) return Better;
             if (!IsProtectionRespected && other.IsProtectionRespected) return Worse;
 
@@ -308,22 +278,21 @@ public partial class StatementCompiler
         }
     }
 
-    public delegate bool FunctionQueryIdentifierMatcher<TIdentifier, TDefinedIdentifier>(
-        TIdentifier passed,
-        TDefinedIdentifier defined,
+    public delegate bool FunctionQueryIdentifierMatcher(
+        string passed,
+        string defined,
         out int badness);
 
-    public bool GetFunction<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument>(
+    public bool GetFunction<TFunction, TArgument>(
         Functions<TFunction> functions,
         string kindName,
         string readableName,
 
-        FunctionQuery<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument> query,
+        FunctionQuery<TFunction, TArgument> query,
 
         [NotNullWhen(true)] out FunctionQueryResult<TFunction>? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
-        where TFunction : class, ICompiledFunctionDefinition, IIdentifiable<TDefinedIdentifier>, ICompiledDefinition<FunctionThingDefinition>
-        where TDefinedIdentifier : notnull, IEquatable<TPassedIdentifier>
+        where TFunction : class, ICompiledFunctionDefinition, IIdentifiable<string>, ICompiledDefinition<FunctionThingDefinition>
         where TArgument : notnull
     {
         string kindNameLower = kindName.ToLowerInvariant();
@@ -465,11 +434,10 @@ public partial class StatementCompiler
         }
     }
 
-    FunctionMatch<TFunction> GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(
+    FunctionMatch<TFunction> GetFunctionMatch<TFunction, TArgument>(
         TFunction function,
-        FunctionQuery<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument> query)
-        where TFunction : ICompiledFunctionDefinition, IIdentifiable<TDefinedIdentifier>, ICompiledDefinition<FunctionThingDefinition>
-        where TDefinedIdentifier : notnull, IEquatable<TPassedIdentifier>
+        FunctionQuery<TFunction, TArgument> query)
+        where TFunction : ICompiledFunctionDefinition, IIdentifiable<string>, ICompiledDefinition<FunctionThingDefinition>
         where TArgument : notnull
     {
         FunctionMatch<TFunction> result = new()
@@ -478,29 +446,10 @@ public partial class StatementCompiler
             Errors = new(),
         };
 
-        int partial = 0;
-        for (int i = 0; i < function.Parameters.Length; i++)
-        {
-            if (function.Parameters[i].Definition.DefaultValue is null) partial = i + 1;
-            else break;
-        }
-
         if (query.Identifier is null)
         {
             result.IsIdentifierMatched = true;
             result.IdentifierBadness = 0;
-        }
-        else if (query.IdentifierMatcher is not null)
-        {
-            if (query.IdentifierMatcher.Invoke(query.Identifier, function.Identifier, out int identifierBadness))
-            {
-                result.IsIdentifierMatched = true;
-                result.IdentifierBadness = identifierBadness;
-            }
-            else
-            {
-                result.IsIdentifierMatched = false;
-            }
         }
         else if (function.Identifier.Equals(query.Identifier))
         {
@@ -512,13 +461,9 @@ public partial class StatementCompiler
             result.IsIdentifierMatched = false;
             result.IdentifierBadness = 2;
 
-            if (query.Identifier is string _a1 &&
-                function.Identifier is Tokenizing.Token _b1)
+            if (query.Identifier.Equals(function.Identifier, StringComparison.InvariantCultureIgnoreCase))
             {
-                if (_a1.ToLowerInvariant() == _b1.Content.ToLowerInvariant())
-                {
-                    result.IdentifierBadness = 1;
-                }
+                result.IdentifierBadness = 1;
             }
 
             if (result.IdentifierBadness == 1)
@@ -537,7 +482,16 @@ public partial class StatementCompiler
 
         if (query.ArgumentCount.HasValue)
         {
-            if (query.ArgumentCount.Value < partial)
+            int requiredParameters = 0;
+            for (int i = 0; i < function.Parameters.Length; i++)
+            {
+                if (function.Parameters[i].Definition.DefaultValue is not null) break;
+                if (function.Parameters[i].Definition.SpreadOperator is not null) break;
+
+                requiredParameters = i + 1;
+            }
+
+            if (query.ArgumentCount.Value < requiredParameters)
             {
                 PossibleDiagnostic item = new($"Wrong number of arguments passed: expected {function.Parameters.Length} but passed {query.ArgumentCount.Value}");
                 if (function is FunctionThingDefinition ftd)
@@ -546,7 +500,9 @@ public partial class StatementCompiler
                 return result;
             }
 
-            if (query.ArgumentCount.Value > function.Parameters.Length)
+            bool hasSpreadParameters = function.Parameters.Any(v => v.Definition.SpreadOperator is not null);
+
+            if (!hasSpreadParameters && query.ArgumentCount.Value > function.Parameters.Length)
             {
                 PossibleDiagnostic item = new($"Wrong number of arguments passed: expected {function.Parameters.Length} but passed {query.ArgumentCount.Value}");
                 if (function is FunctionThingDefinition ftd)
@@ -556,6 +512,7 @@ public partial class StatementCompiler
             }
 
             result.UsedUpDefaultParameterValues = function.Parameters.Length - query.ArgumentCount.Value;
+            result.UsedUpSpreadParameters = hasSpreadParameters;
         }
 
         result.IsTemplateArgumentCountMatches = true;
@@ -578,38 +535,41 @@ public partial class StatementCompiler
             result.Errors.Add(new($"Cannot use function `{query.Identifier}` due it's protection level"));
         }
 
-        void GetArgumentMatch(ref CastLevel typeMatch, ref CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, TArgument passed, List<PossibleDiagnostic> errors)
+        void GetArgumentTypeMatch(ref CastLevel typeMatch, GeneralType definedType, ParameterDefinition definition, GeneralType passed, List<PossibleDiagnostic> errors)
         {
-            PossibleDiagnostic? castError;
-
-            if (passed is CompiledExpression expression)
+            if (IsAssignable(passed, definedType, out PossibleDiagnostic? castError, out CastLevel castLevel))
             {
-                if (CanCastImplicitly(expression, definedType, out CompiledExpression? assignedValue, out castError, out CastLevel castLevel))
-                {
-                    if (definition.Modifiers.Contains(ModifierKeywords.This) && castLevel == CastLevel.GotReferenceOf) castLevel = CastLevel.GotReferenceOfObject;
-
-                    compiledPassedArgument = assignedValue;
-                    if (typeMatch > castLevel) typeMatch = castLevel;
-                    return;
-                }
+                if (typeMatch > castLevel) typeMatch = castLevel;
+                return;
             }
             else
             {
-                GeneralType passedType = query.Converter.Invoke(passed);
-                if (CanCastImplicitly(passedType, definedType, out castError, out CastLevel castLevel))
-                {
-                    if (typeMatch > castLevel) typeMatch = castLevel;
-                    return;
-                }
+                typeMatch = CastLevel.None;
+                errors.Add(new PossibleDiagnostic($"Invalid argument passed to `{definition.Identifier}`", passed as ILocated, castError));
+                return;
             }
+        }
 
-            typeMatch = CastLevel.None;
-            if (castError is not null) errors.Add(new PossibleDiagnostic($"Invalid argument passed to `{definition.Identifier}`", passed as ILocated, castError));
+        void GetArgumentExpressionMatch(ref CastLevel typeMatch, out CompiledExpression? compiledPassedArgument, GeneralType definedType, ParameterDefinition definition, CompiledExpression passed, List<PossibleDiagnostic> errors)
+        {
+            if (IsAssignable(passed, definedType, out compiledPassedArgument, out PossibleDiagnostic? castError, out CastLevel castLevel))
+            {
+                if (definition.Modifiers.Contains(ModifierKeywords.This) && castLevel == CastLevel.GotReferenceOf) castLevel = CastLevel.GotReferenceOfObject;
+
+                if (typeMatch > castLevel) typeMatch = castLevel;
+                return;
+            }
+            else
+            {
+                typeMatch = CastLevel.None;
+                errors.Add(new PossibleDiagnostic($"Invalid argument passed to `{definition.Identifier}`", passed as ILocated, castError));
+                return;
+            }
         }
 
         CastLevel GetReturnTypeMatch(GeneralType target, GeneralType current, List<PossibleDiagnostic> errors)
         {
-            if (CanCastImplicitly(current, target, out PossibleDiagnostic? error, out CastLevel castLevel))
+            if (IsAssignable(current, target, out PossibleDiagnostic? error, out CastLevel castLevel))
             {
                 return castLevel;
             }
@@ -646,38 +606,157 @@ public partial class StatementCompiler
         {
             result.ParameterTypeMatch = CastLevel.Equals;
 
-            int checkCount = Math.Min(function.Parameters.Length, query.Arguments.Value.Length);
-            CompiledExpression?[] arguments = new CompiledExpression?[checkCount];
-            for (int i = 0; i < checkCount; i++)
+            int di = 0;
+            int pi = 0;
+
+            List<CompiledExpression>? arguments = null;
+
+            while (di < function.Parameters.Length)
             {
-                GeneralType defined = GeneralType.TryInsertTemplateParameters(function.Parameters[i].Type, _templateArguments);
-                TArgument passed = query.Arguments.Value[i];
+                CompiledParameter defined = function.Parameters[di];
+                GeneralType definedType = GeneralType.TryInsertTemplateParameters(defined.Type, _templateArguments);
                 CastLevel v = result.ParameterTypeMatch.Value;
 
-                if (result.ParameterTypeMatch > CastLevel.None && _templateArguments is not null)
+                if (defined.Definition.SpreadOperator is not null)
                 {
-                    if (ResolveTemplateParameters(defined, query.Converter(passed), out PossibleDiagnostic? templateResolveError, _templateArguments))
+                    if (!definedType.Is(out ArrayType? definedArrayType))
                     {
-                        defined = GeneralType.TryInsertTemplateParameters(function.Parameters[i].Type, _templateArguments);
+                        result.Errors.Add(new PossibleDiagnostic($"Invalid spread operator", new Location(defined.Definition.SpreadOperator.Position, defined.File)));
+                        break;
+                    }
+                    else if (pi >= query.Arguments.Value.Length)
+                    {
+                        arguments ??= new();
+                        arguments.Add(new CompiledList()
+                        {
+                            Location = new Location(Position.UnknownPosition, query.RelevantFile ?? throw new NotImplementedException()),
+                            SaveValue = true,
+                            Type = new ArrayType(definedArrayType.Of, new CompiledConstantValue()
+                            {
+                                Location = new Location(Position.UnknownPosition, query.RelevantFile ?? throw new NotImplementedException()),
+                                SaveValue = true,
+                                Type = ArrayLengthType,
+                                Value = 0,
+                            }),
+                            Values = ImmutableArray<CompiledExpression>.Empty,
+                        });
                     }
                     else
                     {
-                        result.Errors.Add(templateResolveError);
+                        TArgument passed = query.Arguments.Value[pi];
+                        if (result.ParameterTypeMatch > CastLevel.None && _templateArguments is not null)
+                        {
+                            if (ResolveTemplateParameters(definedType, query.Converter(passed), out PossibleDiagnostic? templateResolveError, _templateArguments))
+                            {
+                                definedType = GeneralType.TryInsertTemplateParameters(defined.Type, _templateArguments);
+                            }
+                            else
+                            {
+                                result.Errors.Add(templateResolveError);
+                            }
+                        }
+
+                        if (passed is CompiledExpression passedExpression)
+                        {
+                            List<CompiledExpression> assignedSpreadList = new();
+                            int started = pi;
+                            while (pi < query.Arguments.Value.Length)
+                            {
+                                passed = query.Arguments.Value[pi];
+                                if (passed is not CompiledExpression passedExpression0) throw new UnreachableException();
+
+                                GetArgumentExpressionMatch(ref v, out CompiledExpression? assignedArgumentItem, definedArrayType.Of, defined.Definition, passedExpression0, result.Errors);
+                                if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
+
+                                assignedSpreadList.Add(assignedArgumentItem ?? passedExpression);
+
+                                if (result.ParameterTypeMatch > CastLevel.None && _templateArguments is not null)
+                                {
+                                    if (!ResolveTemplateParameters(definedArrayType.Of, assignedArgumentItem?.Type ?? query.Converter(passed), out PossibleDiagnostic? templateResolveError, _templateArguments))
+                                    {
+                                        result.Errors.Add(templateResolveError);
+                                    }
+                                }
+                                pi++;
+                            }
+
+                            arguments ??= new();
+                            arguments.Add(new CompiledList()
+                            {
+                                Location = new Location(new Position(assignedSpreadList), passedExpression.Location.File),
+                                SaveValue = true,
+                                Type = new ArrayType(passedExpression.Type, new CompiledConstantValue()
+                                {
+                                    Location = new Location(new Position(assignedSpreadList), passedExpression.Location.File),
+                                    SaveValue = true,
+                                    Type = ArrayLengthType,
+                                    Value = assignedSpreadList.Count,
+                                }),
+                                Values = assignedSpreadList.ToImmutableArray(),
+                            });
+                        }
+                        else
+                        {
+                            throw new NotImplementedException();
+                        }
                     }
                 }
-
-                GetArgumentMatch(ref v, ref arguments[i], defined, function.Parameters[i].Definition, passed, result.Errors);
-                if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
-
-                if (result.ParameterTypeMatch > CastLevel.None && _templateArguments is not null)
+                else
                 {
-                    if (!ResolveTemplateParameters(defined, arguments[i]?.Type ?? query.Converter(passed), out PossibleDiagnostic? templateResolveError, _templateArguments))
+                    if (pi >= query.Arguments.Value.Length) break;
+
+                    TArgument passed = query.Arguments.Value[pi];
+                    if (result.ParameterTypeMatch > CastLevel.None && _templateArguments is not null)
                     {
-                        result.Errors.Add(templateResolveError);
+                        if (ResolveTemplateParameters(definedType, query.Converter(passed), out PossibleDiagnostic? templateResolveError, _templateArguments))
+                        {
+                            definedType = GeneralType.TryInsertTemplateParameters(defined.Type, _templateArguments);
+                        }
+                        else
+                        {
+                            result.Errors.Add(templateResolveError);
+                        }
+                    }
+
+                    if (passed is CompiledExpression passedExpression1)
+                    {
+                        GetArgumentExpressionMatch(ref v, out CompiledExpression? assignedArgument, definedType, defined.Definition, passedExpression1, result.Errors);
+                        if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
+
+                        arguments ??= new();
+                        arguments.Add(assignedArgument ?? passedExpression1);
+
+                        if (result.ParameterTypeMatch > CastLevel.None && _templateArguments is not null)
+                        {
+                            if (!ResolveTemplateParameters(definedType, assignedArgument?.Type ?? query.Converter(passed), out PossibleDiagnostic? templateResolveError, _templateArguments))
+                            {
+                                result.Errors.Add(templateResolveError);
+                            }
+                        }
+                        pi++;
+                    }
+                    else
+                    {
+                        GeneralType passedType = query.Converter.Invoke(passed);
+
+                        GetArgumentTypeMatch(ref v, definedType, defined.Definition, passedType, result.Errors);
+                        if (v < result.ParameterTypeMatch) result.ParameterTypeMatch = v;
+
+                        if (result.ParameterTypeMatch > CastLevel.None && _templateArguments is not null)
+                        {
+                            if (!ResolveTemplateParameters(definedType, passedType, out PossibleDiagnostic? templateResolveError, _templateArguments))
+                            {
+                                result.Errors.Add(templateResolveError);
+                            }
+                        }
+                        pi++;
                     }
                 }
+
+                di++;
             }
-            result.Arguments = arguments.AsImmutableUnsafe();
+
+            result.Arguments = arguments?.ToImmutableArray() ?? default;
         }
 
         result.TemplateArguments = _templateArguments?.ToImmutableDictionary();

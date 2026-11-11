@@ -813,7 +813,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             if (argument.Type.SameAs(parameter))
             { return true; }
 
-            if (StatementCompiler.CanCastImplicitly(argument.Type, parameter, out argumentError, out _))
+            if (StatementCompiler.IsAssignable(argument.Type, parameter, out argumentError, out _))
             { return true; }
 
             argumentError = argumentError.TrySetLocation(argument);
@@ -821,6 +821,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return false;
         }))
         {
+            Debugger.Break();
             Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller `{anyCall}` doesn't match with callee `{functionType}`", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
             return;
         }

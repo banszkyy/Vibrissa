@@ -27,5 +27,5 @@ public class CompiledParameter :
         References = new();
     }
 
-    public override string ToString() => $"{Type} {Identifier}";
+    public override string ToString() => $"{Type} {Identifier}{Definition.SpreadOperator}";
 }

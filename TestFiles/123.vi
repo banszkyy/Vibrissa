@@ -9,7 +9,7 @@ int main()
         return a + b - c;
     };
 
-    return test(6);
+    return (int)test(6);
 }
 
 return main();

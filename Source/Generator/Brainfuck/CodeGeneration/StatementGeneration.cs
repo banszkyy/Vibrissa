@@ -166,7 +166,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 GetVariable(addressGetter.Of, out BrainfuckVariable? shadowingVariable, out _) &&
                 type.Is(out PointerType? pointerType))
             {
-                if (!StatementCompiler.CanCastImplicitly(pointerType.To, shadowingVariable.Type, out PossibleDiagnostic? castError, out _))
+                if (!StatementCompiler.IsAssignable(pointerType.To, shadowingVariable.Type, out PossibleDiagnostic? castError, out _))
                 { Diagnostics.Add(castError.ToError(variableDeclaration.InitialValue)); }
 
                 variables.Push(new BrainfuckVariable(shadowingVariable.Address, true, false, null, FindSize(type, variableDeclaration), variableDeclaration)

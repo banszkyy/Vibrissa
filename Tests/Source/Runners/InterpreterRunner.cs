@@ -5,7 +5,7 @@ using LanguageCore.Runtime;
 
 namespace LanguageCore.Tests;
 
-static class InterpreterRunner
+public static class InterpreterRunner
 {
     public readonly struct MainResult : IResult
     {

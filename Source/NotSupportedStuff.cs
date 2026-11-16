@@ -1,5 +1,6 @@
 #if UNITY
 global using MemberNotNullWhenAttribute = System.Runtime.CompilerServices.MemberNotNullWhenAttribute_;
+global using Lock = _Lock;
 using System.Threading;
 
 [assembly: SuppressMessage("Design", "CS8604")]
@@ -10,7 +11,7 @@ using System.Threading;
 namespace System.Diagnostics.CodeAnalysis
 {
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class, Inherited = false)]
-    public sealed class RequiresUnreferencedCodeAttribute : Attribute
+    sealed class RequiresUnreferencedCodeAttribute : Attribute
     {
         public RequiresUnreferencedCodeAttribute(string message) { }
         public bool ExcludeStatics { get; set; }
@@ -20,7 +21,7 @@ namespace System.Diagnostics.CodeAnalysis
 
 namespace System.Runtime.InteropServices
 {
-    public static class CollectionsMarshal
+    static class CollectionsMarshal
     {
         public static Span<T> AsSpan<T>(List<T> values) => values.ToArray();
     }
@@ -28,15 +29,9 @@ namespace System.Runtime.InteropServices
 
 namespace System.Runtime.CompilerServices
 {
-    public class IsExternalInit : Attribute
-    {
-        public IsExternalInit()
-        {
+    internal static class IsExternalInit { }
 
-        }
-    }
-
-    public class RequiredMemberAttribute : Attribute
+    class RequiredMemberAttribute : Attribute
     {
         public RequiredMemberAttribute()
         {
@@ -45,7 +40,7 @@ namespace System.Runtime.CompilerServices
     }
 
     [SuppressMessage("Style", "IDE0060:Remove unused parameter")]
-    public class CompilerFeatureRequiredAttribute : Attribute
+    class CompilerFeatureRequiredAttribute : Attribute
     {
         public CompilerFeatureRequiredAttribute(string name)
         {
@@ -54,7 +49,7 @@ namespace System.Runtime.CompilerServices
     }
 
     [SuppressMessage("Style", "IDE0060:Remove unused parameter")]
-    public class MemberNotNullWhenAttribute_ : Attribute
+    class MemberNotNullWhenAttribute_ : Attribute
     {
         public MemberNotNullWhenAttribute_(bool returnValue, string memberName)
         {
@@ -66,7 +61,7 @@ namespace System.Runtime.CompilerServices
 namespace System
 {
     [Serializable]
-    public class UnreachableException : Exception
+    class UnreachableException : Exception
     {
         public UnreachableException() { }
         public UnreachableException(string message) : base(message) { }
@@ -76,7 +71,7 @@ namespace System
             Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 
-    public static class MemoryExtensions
+    static class MemoryExtensions
     {
         public ref struct SpanSplitEnumerator<T> where T : IEquatable<T>
         {
@@ -182,7 +177,7 @@ namespace System
 namespace System.Diagnostics.CodeAnalysis
 {
     [Flags]
-    public enum DynamicallyAccessedMemberTypes
+    enum DynamicallyAccessedMemberTypes
     {
         All = -1,
         None = 0,
@@ -203,24 +198,24 @@ namespace System.Diagnostics.CodeAnalysis
     }
 
     [AttributeUsage(AttributeTargets.Constructor, AllowMultiple = false, Inherited = false)]
-    public sealed class SetsRequiredMembersAttribute : Attribute
+    sealed class SetsRequiredMembersAttribute : Attribute
     {
         public SetsRequiredMembersAttribute() { }
     }
 
     [SuppressMessage("Style", "IDE0060:Remove unused parameter")]
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field | AttributeTargets.GenericParameter | AttributeTargets.Interface | AttributeTargets.Method | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue | AttributeTargets.Struct, Inherited = false)]
-    public sealed class DynamicallyAccessedMembersAttribute : Attribute
+    sealed class DynamicallyAccessedMembersAttribute : Attribute
     {
         public DynamicallyAccessedMembersAttribute(DynamicallyAccessedMemberTypes memberTypes) { }
     }
 }
 
-public readonly struct Lock
+public readonly struct _Lock
 {
     readonly object _obj;
 
-    public Lock() => _obj = new object();
+    public _Lock() => _obj = new object();
 
     public void Enter() => Monitor.Enter(_obj);
 

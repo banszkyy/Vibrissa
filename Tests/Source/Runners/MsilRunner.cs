@@ -22,12 +22,11 @@ static class MsilRunner
         CollectibleAssemblyLoadContext context = new();
         int result = RunImpl(file, input);
         context.Unload();
-        context = null!;
-        GC.Collect();
 
         return result;
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     static int RunImpl(string file, string input)
     {
         DiagnosticsCollection diagnostics = new();

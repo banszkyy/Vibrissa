@@ -42,7 +42,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!EmitFunction(cleanup.Deallocator, out DynamicMethod? function))
         {
-            Diagnostics.Add(Diagnostic.Internal($"Failed to emit function `{cleanup.Deallocator}`", cleanup));
+            //Diagnostics.Add(Diagnostic.Internal($"Failed to emit function `{cleanup.Deallocator}`", cleanup));
             successful = false;
             return;
         }
@@ -77,7 +77,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!EmitFunction(cleanup.Deinitializer.Template, cleanup.Deinitializer.TemplateArguments, out DynamicMethod? function))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{cleanup.Deinitializer}`", cleanup));
+            //Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{cleanup.Deinitializer}`", cleanup));
             successful = false;
             return;
         }
@@ -133,7 +133,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case FunctionType:
                 il.Emit(OpCodes.Ldnull);
                 return;
-            case TupleType v:
+            case TupleType:
                 throw new NotImplementedException();
             default:
                 throw new UnreachableException(statement.Type.FinalValue.GetType().Name);
@@ -585,7 +585,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!EmitFunction(statement.Function.Template, statement.Function.TemplateArguments, out DynamicMethod? function))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement, false));
+            //Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement, @break: false));
             successful = false;
             return;
         }
@@ -1541,7 +1541,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     {
         if (!EmitFunction(statement.Function.Template, statement.Function.TemplateArguments, out DynamicMethod? function))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement));
+            //Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement));
             successful = false;
             return;
         }
@@ -2349,6 +2349,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (EmittingFunctionsStack.Any(v => Utils.ReferenceEquals(v, function)))
         {
+            Diagnostics.Add(DiagnosticAt.Internal($"Cannot start emitting function `{function.ToReadable()}` which is already in progress of emitting", function));
             return false;
         }
 
@@ -2358,15 +2359,16 @@ public partial class CodeGeneratorForIL : CodeGenerator
             throw new StackOverflowException();
         }
 
-        CompiledBlock? body = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments))?.Body;
-
-        if (body is null)
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TemplateArgumentsEquals(v.TemplateArguments, templateArguments));
+        if (f is null)
         {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function `{function.ToReadable()}` not compiled", function));
             return false;
         }
 
         if (!EmitFunctionSignature(function, templateArguments, out dynamicMethod))
         {
+            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function signature of `{function.ToReadable()}`", function));
             return false;
         }
 
@@ -2378,16 +2380,21 @@ public partial class CodeGeneratorForIL : CodeGenerator
         ILProxy il = new(dynamicMethod.GetILGenerator(), Builders is not null);
 
         bool successful = true;
-        EmitFunctionBody(body.Statements, il, ref successful);
+        EmitFunctionBody(f.Body.Statements, il, ref successful);
 
-        if (!EmitDefaultValue(GeneralType.TryInsertTemplateParameters(function.Type, templateArguments), il, out PossibleDiagnostic? defaultValueError))
+        GeneralType returnType = GeneralType.TryInsertTemplateParameters(function.Type, templateArguments);
+        if (!returnType.SameAs(BasicType.Void) && !EmitDefaultValue(returnType, il, out PossibleDiagnostic? defaultValueError))
         {
-            Diagnostics.Add(defaultValueError.ToError(body.Location.After(), false));
+            Diagnostics.Add(defaultValueError.ToError(f.Body.Location.After(), false));
             successful = false;
         }
         il.Emit(OpCodes.Ret);
 
-        successful = successful && CheckCode(dynamicMethod);
+        if (successful && !CheckCode(dynamicMethod))
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Invalid code emitted for function `{function.ToReadable()}`", f.Body));
+            successful = false;
+        }
 
         CompiledParameters.Set(savedCompiledParameters);
 

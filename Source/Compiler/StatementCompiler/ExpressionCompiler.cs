@@ -2902,7 +2902,7 @@ public partial class StatementCompiler
 
         if (prev.Type.Equals(targetType))
         {
-            Diagnostics.Add(DiagnosticAt.Hint($"Redundant type conversion", typeCast.Type));
+            //Diagnostics.Add(DiagnosticAt.Hint($"Redundant type conversion", typeCast.Type));
             compiledStatement = prev;
             return true;
         }

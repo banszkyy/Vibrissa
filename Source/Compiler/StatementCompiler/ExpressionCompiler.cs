@@ -1016,7 +1016,7 @@ public partial class StatementCompiler
         }
         else if (@operator.Operator.Content == "=")
         {
-            throw new NotImplementedException();
+            throw new UnreachableException();
         }
         else
         {
@@ -2724,7 +2724,7 @@ public partial class StatementCompiler
         return modifiedStatement.Modifier.Content switch
         {
             ModifierKeywords.Temp => CompileExpression(modifiedStatement.Value, out compiledStatement, expectedType),
-            _ => throw new NotImplementedException(modifiedStatement.Modifier.Content),
+            _ => throw new UnreachableException(modifiedStatement.Modifier.Content),
         };
     }
     bool CompileExpression(ListExpression listValue, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
@@ -3001,7 +3001,7 @@ public partial class StatementCompiler
             ArgumentExpression v => CompileExpression(v, out compiledStatement, expectedType),
             AnyCallExpression v => CompileExpression(v, out compiledStatement, expectedType),
             LambdaExpression v => CompileExpression(v, out compiledStatement, expectedType),
-            _ => throw new NotImplementedException($"Expression {statement.GetType().Name} is not implemented"),
+            _ => throw new UnreachableException(statement.GetType().Name),
         };
 
         if (compiledStatement is not CompiledConstantValue

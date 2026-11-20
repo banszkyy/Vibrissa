@@ -157,7 +157,7 @@ public sealed partial class Parser
             endlessSafe.Step();
         }
 
-        packExpression = new PackExpression(values.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
+        packExpression = new PackExpression(keyword, values.DrainToImmutable(), commas.DrainToImmutable(), new TokenPair(bracketStart, bracketEnd), File);
         return true;
     }
 

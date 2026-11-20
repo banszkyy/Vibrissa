@@ -32,7 +32,6 @@ public partial class Tokenizer
     );
 
     readonly List<Token> Tokens;
-    readonly List<SimpleToken> UnicodeCharacters;
     readonly DiagnosticsCollection Diagnostics;
     readonly TokenizerSettings Settings;
     readonly Uri File;
@@ -59,7 +58,7 @@ public partial class Tokenizer
 
         EndToken(text.Length);
 
-        return new TokenizerResult(NormalizeTokens(Tokens, Settings).ToImmutableArray(), UnicodeCharacters.ToImmutableArray());
+        return new TokenizerResult(NormalizeTokens(Tokens, Settings).ToImmutableArray());
     }
 
     TokenizerResult TokenizeInternal(PreprocessorResult preprocessorResult)
@@ -68,14 +67,19 @@ public partial class Tokenizer
         int k = 0;
         for (int i = 0; i < preprocessorResult.Text.Length; i++)
         {
-            if (k < preprocessorResult.TrimmedRanges.Length && preprocessorResult.TrimmedRanges[k].Index == j)
+            if (k < preprocessorResult.TrimmedRanges.Length && preprocessorResult.TrimmedRanges[k].Position.AbsoluteRange.Contains(j))
             {
                 TrimmedRange trimmedRange = preprocessorResult.TrimmedRanges[k];
 
-                Tokens.Add(new Token(TokenType.PreprocessSkipped, string.Empty, new Position(new Range<SinglePosition>(new SinglePosition(CurrentLine, CurrentColumn), new SinglePosition(CurrentLine + trimmedRange.Lines, 1)), new Range<int>(j, j + trimmedRange.Absolute))));
+                foreach (TrimmedLine trimmedLine in trimmedRange.Lines)
+                {
+                    if (trimmedLine.Position.AbsoluteRange.Size() == 0) continue;
+                    Tokens.Add(new Token(TokenType.PreprocessSkipped, trimmedLine.Text, trimmedLine.Position));
+                    j += trimmedLine.Text.Length;
+                    CurrentLine++;
+                }
 
-                j += trimmedRange.Absolute;
-                CurrentLine += trimmedRange.Lines;
+                CurrentColumn = 0;
                 k++;
             }
 
@@ -85,7 +89,7 @@ public partial class Tokenizer
 
         EndToken(j);
 
-        return new TokenizerResult(NormalizeTokens(Tokens, Settings).ToImmutableArray(), UnicodeCharacters.ToImmutableArray());
+        return new TokenizerResult(NormalizeTokens(Tokens, Settings).ToImmutableArray());
     }
 
     Tokenizer(TokenizerSettings settings, Uri file, DiagnosticsCollection diagnostics)
@@ -95,7 +99,6 @@ public partial class Tokenizer
         CurrentLine = 0;
 
         Tokens = new();
-        UnicodeCharacters = new();
         Diagnostics = diagnostics;
 
         Settings = settings;

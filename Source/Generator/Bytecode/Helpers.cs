@@ -419,7 +419,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case AddressRuntimePointer v: PopTo(v, size); break;
             case AddressRuntimeIndex v: PopTo(v, size); break;
             case AddressAbsolute v: PopTo(v, size); break;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException(address.Simplify().GetType().Name);
         }
     }
 
@@ -637,7 +637,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case AddressRegisterPointer v: PushFrom(v, size); break;
             case AddressRuntimePointer v: PushFrom(v, size); break;
             case AddressRuntimeIndex v: PushFrom(v, size); break;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException(address.Simplify().GetType().Name);
         }
     }
 
@@ -998,7 +998,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledElementAccess v => FindFirstReference(v),
         CompiledFieldAccess v => FindFirstReference(v),
         CompiledFunctionCall v => FindFirstReference(v),
-        _ => throw new NotImplementedException()
+        _ => throw new UnreachableException(value.GetType().Name)
     };
     CompiledExpression? FindFirstReference(CompiledFunctionCall functionCall)
     {

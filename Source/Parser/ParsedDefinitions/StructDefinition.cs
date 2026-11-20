@@ -4,6 +4,7 @@ using LanguageCore.Tokenizing;
 namespace LanguageCore.Parser;
 
 public class StructDefinition :
+    INode,
     IExportable,
     IPositioned,
     ILocated,

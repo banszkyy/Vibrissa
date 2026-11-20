@@ -5,6 +5,7 @@ using LanguageCore.Tokenizing;
 namespace LanguageCore.Parser;
 
 public class EnumDefinition :
+    INode,
     IPositioned,
     IIdentifiable<Token>,
     IExportable,

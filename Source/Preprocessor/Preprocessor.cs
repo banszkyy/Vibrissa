@@ -1,6 +1,6 @@
 namespace LanguageCore;
 
-public readonly struct PreprocessorResult
+public class PreprocessorResult
 {
     public readonly string Text;
     public readonly ImmutableArray<TrimmedRange> TrimmedRanges;
@@ -28,18 +28,54 @@ enum PreprocessorEvaluationState
     Fallthrough,
 }
 
-public readonly struct TrimmedRange
+public readonly struct TrimmedLine : IPositioned
 {
-    public readonly int Index;
-    public readonly int Absolute;
-    public readonly int Lines;
+    public readonly string Text;
+    public readonly Position Position;
+    Position IPositioned.Position => Position;
 
-    public TrimmedRange(int index, int absolute, int lines)
+    public TrimmedLine(string text, Position position)
     {
-        Index = index;
-        Absolute = absolute;
+        Text = text;
+        Position = position;
+    }
+}
+
+public readonly struct TrimmedRange : IPositioned
+{
+    public readonly ImmutableArray<TrimmedLine> Lines;
+    public Position Position => new(Lines.Select(v => v as IPositioned));
+
+    public TrimmedRange(ImmutableArray<TrimmedLine> lines)
+    {
         Lines = lines;
     }
+}
+
+class TrimmingLine
+{
+    public readonly StringBuilder Text;
+    public Position Position;
+
+    public TrimmingLine()
+    {
+        Text = new StringBuilder();
+    }
+
+    public TrimmedLine Compile() => new(Text.ToString(), Position);
+}
+
+class TrimmingRange
+{
+    public readonly ImmutableArray<TrimmedLine>.Builder Lines;
+    public TrimmingLine? TrimmingLine;
+
+    public TrimmingRange()
+    {
+        Lines = ImmutableArray.CreateBuilder<TrimmedLine>();
+    }
+
+    public TrimmedRange Compile() => new(Lines.ToImmutable());
 }
 
 public class Preprocessor
@@ -48,12 +84,13 @@ public class Preprocessor
     readonly ImmutableHashSet<string> Variables;
     readonly DiagnosticsCollection? Diagnostics;
     readonly StringBuilder Result;
-    readonly ImmutableArray<TrimmedRange>.Builder TrimmedRanges;
 
     PreprocessorParseState ParseState;
     int SymbolStart;
     string? CurrentStatement;
-    TrimmedRange? TrimmingRange;
+    readonly ImmutableArray<TrimmedRange>.Builder TrimmingRanges;
+    TrimmingRange? TrimmingRange;
+    SinglePosition Position;
 
     readonly Stack<PreprocessorEvaluationState> EvaluationState;
 
@@ -63,7 +100,7 @@ public class Preprocessor
         Variables = variables;
         Diagnostics = diagnostics;
         Result = new StringBuilder();
-        TrimmedRanges = ImmutableArray.CreateBuilder<TrimmedRange>();
+        TrimmingRanges = ImmutableArray.CreateBuilder<TrimmedRange>();
 
         ParseState = PreprocessorParseState.NewLine;
         SymbolStart = -1;
@@ -72,11 +109,24 @@ public class Preprocessor
         EvaluationState.Push(PreprocessorEvaluationState.None);
     }
 
+    void UpdatePosition(char c)
+    {
+        if (c == '\n')
+        {
+            Position.Line++;
+            Position.Character = 0;
+        }
+        else
+        {
+            Position.Character++;
+        }
+    }
+
     public static PreprocessorResult Process(string input, ImmutableHashSet<string> variables, DiagnosticsCollection? diagnostics)
     {
         Preprocessor preprocessor = new(input, variables, diagnostics);
         preprocessor.ProcessImpl();
-        return new PreprocessorResult(preprocessor.Result.ToString(), preprocessor.TrimmedRanges.ToImmutable());
+        return new PreprocessorResult(preprocessor.Result.ToString(), preprocessor.TrimmingRanges.ToImmutable());
     }
 
     void ProcessImpl()
@@ -93,35 +143,35 @@ public class Preprocessor
                         CurrentStatement = null;
                         ParseState = PreprocessorParseState.NewLine;
                         HandleCharacter(i, false);
-                        continue;
+                        break;
                     }
                     else
                     {
                         CurrentStatement = null;
                         ParseState = PreprocessorParseState.None;
                         HandleCharacter(i, false);
-                        continue;
+                        break;
                     }
                 case PreprocessorParseState.NewLine:
                     if (c is '#')
                     {
                         CurrentStatement = null;
                         ParseState = PreprocessorParseState.Statement;
-                        continue;
+                        break;
                     }
                     else if (c is '\r' or '\n')
                     {
                         CurrentStatement = null;
                         ParseState = PreprocessorParseState.NewLine;
                         HandleCharacter(i, false);
-                        continue;
+                        break;
                     }
                     else
                     {
                         CurrentStatement = null;
                         ParseState = PreprocessorParseState.None;
                         HandleCharacter(i, false);
-                        continue;
+                        break;
                     }
                 case PreprocessorParseState.Statement:
                     if (SymbolStart == -1)
@@ -133,7 +183,7 @@ public class Preprocessor
                             ParseState = PreprocessorParseState.Statement;
                             HandleCharacter(i - 1, true);
                             HandleCharacter(i, true);
-                            continue;
+                            break;
                         }
                         else if (c is '\r' or '\n')
                         {
@@ -142,7 +192,7 @@ public class Preprocessor
                             SymbolStart = -1;
                             HandleCharacter(i - i, false);
                             HandleCharacter(i, false);
-                            continue;
+                            break;
                         }
                         else
                         {
@@ -151,7 +201,7 @@ public class Preprocessor
                             SymbolStart = -1;
                             HandleCharacter(i - i, false);
                             HandleCharacter(i, false);
-                            continue;
+                            break;
                         }
                     }
                     else
@@ -161,7 +211,7 @@ public class Preprocessor
                             CurrentStatement = null;
                             ParseState = PreprocessorParseState.Statement;
                             HandleCharacter(i, true);
-                            continue;
+                            break;
                         }
                         else
                         {
@@ -177,7 +227,7 @@ public class Preprocessor
                                 ParseState = PreprocessorParseState.Expression;
                             }
                             SymbolStart = -1;
-                            continue;
+                            break;
                         }
                     }
                 case PreprocessorParseState.Expression:
@@ -189,7 +239,7 @@ public class Preprocessor
                         }
                         ParseState = PreprocessorParseState.Expression;
                         HandleCharacter(i, true);
-                        continue;
+                        break;
                     }
                     else if (c is '\r' or '\n')
                     {
@@ -210,7 +260,7 @@ public class Preprocessor
                             SymbolStart = -1;
                             ParseState = PreprocessorParseState.NewLine;
                         }
-                        continue;
+                        break;
                     }
                     else
                     {
@@ -218,7 +268,7 @@ public class Preprocessor
                         CurrentStatement = null;
                         SymbolStart = -1;
                         ParseState = PreprocessorParseState.None;
-                        continue;
+                        break;
                     }
             }
         }
@@ -230,22 +280,47 @@ public class Preprocessor
 
         if (skip || EvaluationState.Any(v => v is PreprocessorEvaluationState.ConditionFalse or PreprocessorEvaluationState.Fallthrough))
         {
-            if (TrimmingRange.HasValue)
+            TrimmingRange ??= new TrimmingRange();
+
+            if (c == '\n')
             {
-                TrimmingRange = new TrimmedRange(TrimmingRange.Value.Index, i - TrimmingRange.Value.Index + 1, TrimmingRange.Value.Lines + (c is '\n' ? 1 : 0));
+                if (TrimmingRange.TrimmingLine is not null)
+                {
+                    TrimmingRange.TrimmingLine.Text.Append(c);
+                    TrimmingRange.Lines.Add(TrimmingRange.TrimmingLine.Compile());
+                }
+
+                UpdatePosition(c);
+                TrimmingRange.TrimmingLine = new TrimmingLine
+                {
+                    Position = new Position(new Range<SinglePosition>(Position), new Range<int>(i))
+                };
             }
             else
             {
-                TrimmingRange = new TrimmedRange(i, 1, 0);
+                TrimmingRange.TrimmingLine ??= new TrimmingLine()
+                {
+                    Position = new Position(new Range<SinglePosition>(Position), new Range<int>(i)),
+                };
+                UpdatePosition(c);
+                TrimmingRange.TrimmingLine.Position = new Position(new Range<SinglePosition>(TrimmingRange.TrimmingLine.Position.Range.Start, Position), new Range<int>(TrimmingRange.TrimmingLine.Position.AbsoluteRange.Start, i));
+                TrimmingRange.TrimmingLine.Text.Append(c);
             }
         }
         else
         {
-            if (TrimmingRange.HasValue)
+            UpdatePosition(c);
+
+            if (TrimmingRange is not null)
             {
-                TrimmedRanges.Add(TrimmingRange.Value);
+                if (TrimmingRange.TrimmingLine is not null)
+                {
+                    TrimmingRange.Lines.Add(TrimmingRange.TrimmingLine.Compile());
+                }
+                TrimmingRanges.Add(TrimmingRange.Compile());
+                TrimmingRange = null;
             }
-            TrimmingRange = null;
+
             Result.Append(c);
         }
     }

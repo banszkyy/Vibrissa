@@ -1186,7 +1186,7 @@ public partial class StatementCompiler
         {
             IfBranchStatement v => CompileStatement(v, out compiledStatement),
             ElseBranchStatement v => CompileStatement(v, out compiledStatement),
-            _ => throw new NotImplementedException(),
+            _ => throw new UnreachableException(branch.GetType().Name),
         };
     }
     bool CompileStatement(Block block, [NotNullWhen(true)] out CompiledStatement? compiledStatement, bool ignoreScope = false)
@@ -1286,7 +1286,7 @@ public partial class StatementCompiler
             case Block v: return CompileStatement(v, out compiledStatement);
             case InstructionLabelDeclaration v: return CompileStatement(v, out compiledStatement);
             case EmptyStatement v: return CompileStatement(v, out compiledStatement);
-            default: throw new NotImplementedException($"Statement {statement.GetType().Name} is not implemented");
+            default: throw new UnreachableException(statement.GetType().Name);
         }
     }
 

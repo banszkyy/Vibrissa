@@ -84,7 +84,7 @@ public static class RegisterExtensions
             Runtime.BitWidth._64 => InstructionOperandType.PointerRDX64,
             _ => throw new UnreachableException(),
         },
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(),
     };
 
     public static InstructionOperand ToPtr(this Register register, int offset, BitWidth dataSize) => new(offset, register.ToPtr(dataSize));
@@ -327,7 +327,7 @@ public static class RegisterExtensions
                     Runtime.BitWidth._16 => InstructionOperandType.PointerSP16,
                     Runtime.BitWidth._32 => InstructionOperandType.PointerSP32,
                     Runtime.BitWidth._64 => throw new NotImplementedException(),
-                    _ => throw new NotImplementedException(),
+                    _ => throw new UnreachableException(),
                 },
                 Register.BasePointer => bitWidth switch
                 {
@@ -335,7 +335,7 @@ public static class RegisterExtensions
                     Runtime.BitWidth._16 => InstructionOperandType.PointerBP16,
                     Runtime.BitWidth._32 => InstructionOperandType.PointerBP32,
                     Runtime.BitWidth._64 => InstructionOperandType.PointerBP64,
-                    _ => throw new NotImplementedException(),
+                    _ => throw new UnreachableException(),
                 },
                 Register.RAX => bitWidth switch
                 {

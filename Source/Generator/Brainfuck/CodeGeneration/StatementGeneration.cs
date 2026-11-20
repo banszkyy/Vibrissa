@@ -259,7 +259,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         AliasType v => GenerateSize(v, result, out error),
         EnumType v => GenerateSize(v, result, out error),
         TupleType v => GenerateSize(v, result, out error),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(type.GetType().Name),
     };
     bool GenerateSize(PointerType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
@@ -340,7 +340,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CompiledBuiltinTypeExpression v => GenerateSize(v, result, out error),
         CompiledAliasTypeExpression v => GenerateSize(v, result, out error),
         CompiledEnumTypeExpression v => GenerateSize(v, result, out error),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(type.GetType().Name),
     };
     bool GenerateSize(CompiledPointerTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
@@ -427,41 +427,43 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForSetter(CompiledSetter _statement)
     {
-        if (_statement.Target is CompiledVariableAccess targetVariable)
+        switch (_statement.Target)
         {
-            if (!GetVariable(targetVariable.Variable.Identifier, targetVariable.Variable.Location.File, out BrainfuckVariable? variable, out PossibleDiagnostic? notFoundError))
+            case CompiledVariableAccess targetVariable:
             {
-                Diagnostics.Add(notFoundError.ToError(targetVariable.Variable));
-                return;
+                if (!GetVariable(targetVariable.Variable.Identifier, targetVariable.Variable.Location.File, out BrainfuckVariable? variable, out PossibleDiagnostic? notFoundError))
+                {
+                    Diagnostics.Add(notFoundError.ToError(targetVariable.Variable));
+                    return;
+                }
+
+                GenerateCodeForSetter(variable, _statement.Value);
+                break;
             }
 
-            GenerateCodeForSetter(variable, _statement.Value);
-        }
-        else if (_statement.Target is CompiledParameterAccess targetParameter)
-        {
-            if (!GetVariable(targetParameter.Parameter.Identifier, targetParameter.Parameter.Definition.File, out BrainfuckVariable? variable, out PossibleDiagnostic? notFoundError))
+            case CompiledParameterAccess targetParameter:
             {
-                Diagnostics.Add(notFoundError.ToError(targetParameter.Parameter.Definition));
-                return;
+                if (!GetVariable(targetParameter.Parameter.Identifier, targetParameter.Parameter.Definition.File, out BrainfuckVariable? variable, out PossibleDiagnostic? notFoundError))
+                {
+                    Diagnostics.Add(notFoundError.ToError(targetParameter.Parameter.Definition));
+                    return;
+                }
+
+                GenerateCodeForSetter(variable, _statement.Value);
+                break;
             }
 
-            GenerateCodeForSetter(variable, _statement.Value);
-        }
-        else if (_statement.Target is CompiledFieldAccess targetField)
-        {
-            GenerateCodeForSetter(targetField, _statement.Value);
-        }
-        else if (_statement.Target is CompiledDereference targetDereference)
-        {
-            GenerateCodeForSetter(targetDereference, _statement.Value);
-        }
-        else if (_statement.Target is CompiledElementAccess targetElement)
-        {
-            GenerateCodeForSetter(targetElement, _statement.Value);
-        }
-        else
-        {
-            throw new NotImplementedException(_statement.Target.GetType().Name);
+            case CompiledFieldAccess targetField:
+                GenerateCodeForSetter(targetField, _statement.Value);
+                break;
+            case CompiledDereference targetDereference:
+                GenerateCodeForSetter(targetDereference, _statement.Value);
+                break;
+            case CompiledElementAccess targetElement:
+                GenerateCodeForSetter(targetElement, _statement.Value);
+                break;
+            default:
+                throw new UnreachableException(_statement.Target.GetType().Name);
         }
     }
     void GenerateCodeForSetter(CompiledFieldAccess field, CompiledExpression value)
@@ -822,7 +824,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         {
             case AddressAbsolute v: CompileSetter(v, value); break;
             case AddressOffset v: CompileSetter(v, value); break;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException(address.Simplify().GetType().Name);
         }
     }
     void CompileSetter(AddressAbsolute address, CompiledExpression value)
@@ -2275,7 +2277,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             {
                 return Stack.Push(absolute.Value);
             }
-            default: throw new NotImplementedException(address.GetType().Name);
+            default: throw new UnreachableException(address.GetType().Name);
         }
     }
     void GenerateCodeForStatement(CompiledGetReference addressGetter)
@@ -2484,7 +2486,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     {
         AddressAbsolute v => PushFrom(v, size),
         AddressOffset v => PushFrom(v, size),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(address.Simplify().GetType().Name),
     };
     StackAddress PushFrom(AddressAbsolute address, int size)
     {

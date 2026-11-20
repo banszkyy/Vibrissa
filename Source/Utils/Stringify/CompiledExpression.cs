@@ -350,7 +350,7 @@ public static partial class Stringifier
             case CompiledEnumMemberAccess v: Stringify(v, builder, context); break;
             case CompiledMeowExpression v: Stringify(v, builder, context); break;
             case CompiledPack v: Stringify(v, builder, context); break;
-            default: throw new NotImplementedException(expression.GetType().Name);
+            default: throw new UnreachableException(expression.GetType().Name);
         }
     }
 }

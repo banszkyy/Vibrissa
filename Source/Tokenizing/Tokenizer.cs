@@ -37,13 +37,6 @@ public partial class Tokenizer
             if (SavedUnicode.Length == 4)
             {
                 string unicodeChar = char.ConvertFromUtf32(Convert.ToInt32(SavedUnicode, 16));
-                UnicodeCharacters.Add(new SimpleToken(
-                        unicodeChar,
-                        new Position(
-                            new Range<SinglePosition>(new SinglePosition(CurrentLine, CurrentColumn - 6), CurrentSinglePosition),
-                            new Range<int>(offsetTotal - 6, offsetTotal)
-                        )
-                    ));
                 CurrentToken.Content.Append(unicodeChar);
                 CurrentToken.TokenType = PreparationTokenType.LiteralString;
                 SavedUnicode = null;
@@ -68,13 +61,6 @@ public partial class Tokenizer
             if (SavedUnicode.Length == 4)
             {
                 string unicodeChar = char.ConvertFromUtf32(Convert.ToInt32(SavedUnicode, 16));
-                UnicodeCharacters.Add(new SimpleToken(
-                    unicodeChar,
-                    new Position(
-                        new Range<SinglePosition>(new SinglePosition(CurrentLine, CurrentColumn - 6), CurrentSinglePosition),
-                        new Range<int>(offsetTotal - 6, offsetTotal)
-                    )
-                ));
                 CurrentToken.Content.Append(unicodeChar);
                 CurrentToken.TokenType = PreparationTokenType.LiteralCharacter;
                 SavedUnicode = null;

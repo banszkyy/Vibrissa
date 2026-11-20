@@ -25,7 +25,7 @@ public class CompiledExternalFunctionCall : CompiledExpression
         ExternalFunctionScopedSync v => v.Callback.Method.Name ?? v.Id.ToString(),
 #endif
         ExternalFunctionStub v => v.Name ?? v.Id.ToString(),
-        _ => throw new NotImplementedException(Function.GetType().Name),
+        _ => throw new UnreachableException(Function.GetType().Name),
     };
 
     public override string ToString() => $"{FunctionToString()}({string.Join(", ", Arguments.Select(v => v.ToString()))})";

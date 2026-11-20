@@ -3,6 +3,7 @@
 namespace LanguageCore.Parser;
 
 public class UsingDefinition :
+    INode,
     IPositioned,
     IInFile,
     ILocated

@@ -128,13 +128,13 @@ public struct PreparationInstructionOperand : IEquatable<PreparationInstructionO
     public static explicit operator PreparationInstructionOperand(AddressOffset address) => address.Base switch
     {
         AddressRegisterPointer registerPointer => new(registerPointer.Register.ToPtr(address.Offset * ProcessorState.StackDirection, BitWidth._32)),
-        _ => throw new NotImplementedException()
+        _ => throw new NotImplementedException(address.Base.GetType().Name)
     };
     public static explicit operator PreparationInstructionOperand(Address address) => address switch
     {
         AddressRegisterPointer registerPointer => (PreparationInstructionOperand)registerPointer,
         AddressOffset addressOffset => (PreparationInstructionOperand)addressOffset,
-        _ => throw new NotImplementedException()
+        _ => throw new NotImplementedException(address.GetType().Name)
     };
 
     public override readonly string ToString() => Kind switch

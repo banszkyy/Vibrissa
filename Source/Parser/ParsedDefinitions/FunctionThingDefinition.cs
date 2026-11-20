@@ -4,6 +4,7 @@ using LanguageCore.Tokenizing;
 namespace LanguageCore.Parser;
 
 public abstract class FunctionThingDefinition :
+    INode,
     IExportable,
     IPositioned,
     IReadable,

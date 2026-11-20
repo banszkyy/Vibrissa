@@ -411,19 +411,17 @@ export void print(float message)
         pow10--;
     }
 
-    if (message != 0) {
-        print('.');
-        message = (message % 1f) * 10f;
+    print('.');
+    message = (message % 1f) * 10f;
+    print((int)message);
+    message = (message % 1f) * 10f;
+    if (message)
+    {
         print((int)message);
         message = (message % 1f) * 10f;
         if (message)
         {
             print((int)message);
-            message = (message % 1f) * 10f;
-            if (message)
-            {
-                print((int)message);
-            }
         }
     }
 }

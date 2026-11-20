@@ -1,7 +1,8 @@
 ﻿namespace LanguageCore;
 
 public readonly struct Position :
-    IEquatable<Position>
+    IEquatable<Position>,
+    IComparable<Position>
 {
     public static Position UnknownPosition => new(new Range<SinglePosition>(SinglePosition.Undefined), new Range<int>(-1));
     public static Position Zero => new(new Range<SinglePosition>(SinglePosition.Zero), new Range<int>(0));
@@ -59,9 +60,16 @@ public readonly struct Position :
 
     public override string ToString()
     {
-        if (Range.Start == Range.End) return Range.Start.ToStringMin();
-        if (Range.Start.Line == Range.End.Line) return $"{Range.Start.Line + 1}:({Range.Start.Character}-{Range.End.Character})";
-        return $"{Range.Start.ToStringMin()}-{Range.End.ToStringMin()}";
+        if (Range.Start == Range.End) return Range.Start.ToString();
+        if (Range.Start.Line == Range.End.Line) return $"{Range.Start.Line}:({Range.Start.Character}-{Range.End.Character})";
+        return $"{Range.Start}-{Range.End}";
+    }
+
+    public string ToReadable()
+    {
+        if (Range.Start == Range.End) return Range.Start.ToReadable();
+        if (Range.Start.Line == Range.End.Line) return $"{Range.Start.Line + 1}:({Range.Start.Character + 1}-{Range.End.Character + 1})";
+        return $"{Range.Start.ToReadable()}-{Range.End.ToReadable()}";
     }
 
     public Position Before() => new(new Range<SinglePosition>(new SinglePosition(Range.Start.Line, Range.Start.Character - 1), new SinglePosition(Range.Start.Line, Range.Start.Character)), new Range<int>(AbsoluteRange.Start - 1, AbsoluteRange.Start));
@@ -74,6 +82,8 @@ public readonly struct Position :
     public bool Equals(Position other) => AbsoluteRange.Equals(other.AbsoluteRange) && Range.Equals(other.Range);
 
     public override int GetHashCode() => HashCode.Combine(AbsoluteRange, Range);
+
+    public int CompareTo(Position other) => AbsoluteRange.Start.CompareTo(other.AbsoluteRange.Start);
 
     public (Position Left, Position Right) Cut(int at)
     {

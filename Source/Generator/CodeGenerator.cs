@@ -142,7 +142,7 @@ public abstract class CodeGenerator
         AliasType v => FindSize(v, out size, out error),
         EnumType v => FindSize(v, out size, out error),
         TupleType v => FindSize(v, out size, out error),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(type.GetType().Name),
     };
     protected virtual bool FindSize(ReferenceType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {

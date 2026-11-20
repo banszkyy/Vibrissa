@@ -96,7 +96,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
         {
             if (templateParameters.ContainsKey(passedGenericType.Identifier))
             { return false; }
-            throw new NotImplementedException($"This should not be a template parameter");
+            throw new UnreachableException($"This should not be a template parameter");
         }
 
         if (defined.Is(out CompiledUnresolvedTemplateTypeExpression? definedGenericType))
@@ -203,7 +203,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
                 return structType.TemplateArguments is not null;
             }
 
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException(FinalValue.GetType().Name);
         }
     }
 
@@ -277,7 +277,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
             }
 
             default:
-                throw new NotImplementedException();
+                throw new UnreachableException(type.GetType().Name);
         }
     }
 

@@ -1740,7 +1740,7 @@ public partial class StatementCompiler
         BasicType.U32 => new CompiledValue(default(uint)),
         BasicType.I32 => new CompiledValue(default(int)),
         BasicType.F32 => new CompiledValue(default(float)),
-        _ => throw new NotImplementedException($"Type `{type}` can't have value"),
+        _ => throw new UnreachableException($"Type `{type}` can't have value"),
     };
 
     static bool GetInitialValue(GeneralType type, out CompiledValue value)
@@ -1760,7 +1760,7 @@ public partial class StatementCompiler
             case PointerType:
                 value = new CompiledValue(0);
                 return true;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException(type.FinalValue.GetType().Name);
         }
     }
 
@@ -1775,7 +1775,7 @@ public partial class StatementCompiler
         (NumericType.UnsignedInteger, BitWidth._16) => new CompiledValue(default(ushort)),
         (NumericType.UnsignedInteger, BitWidth._32) => new CompiledValue(default(uint)),
         (NumericType.UnsignedInteger, BitWidth._64) => new CompiledValue(default(ulong)),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException($"({type}, {bitWidth})"),
     };
 
     #endregion
@@ -2762,7 +2762,7 @@ public partial class StatementCompiler
                     inlined = inlinedWithValue;
                     return false;
                 }
-            default: throw new NotImplementedException(statement.GetType().Name);
+            default: throw new UnreachableException(statement.GetType().Name);
         }
     }
     static bool Inline(CompiledExpression? statement, InlineContext context, [NotNullIfNotNull(nameof(statement))] out CompiledExpression? inlined, [NotNullWhen(false)] out DiagnosticAt? error)
@@ -2803,7 +2803,7 @@ public partial class StatementCompiler
             CompiledCompilerVariableAccess v => Inline(v, context, out inlined, out error),
             CompiledPack v => Inline(v, context, out inlined, out error),
 
-            _ => throw new NotImplementedException(statement.GetType().ToString()),
+            _ => throw new UnreachableException(statement.GetType().Name),
         };
     }
 
@@ -2848,7 +2848,7 @@ public partial class StatementCompiler
         EmptyStatement => ControlFlowUsage.None,
         null => ControlFlowUsage.None,
 
-        _ => throw new NotImplementedException(statement.GetType().Name),
+        _ => throw new UnreachableException(statement.GetType().Name),
     };
     static ControlFlowUsage FindControlFlowUsage(KeywordCallStatement statement, bool inDepth = false)
     {
@@ -2869,7 +2869,7 @@ public partial class StatementCompiler
             case StatementKeywords.Crash:
                 return ControlFlowUsage.None;
 
-            default: throw new NotImplementedException(statement.ToString());
+            default: throw new UnreachableException(statement.Keyword.Content);
         }
     }
 
@@ -2908,7 +2908,7 @@ public partial class StatementCompiler
             UnaryOperatorCallExpression.UnaryPlus => +left,
             UnaryOperatorCallExpression.UnaryMinus => -left,
 
-            _ => throw new NotImplementedException($"Unknown unary operator `{@operator}`"),
+            _ => throw new UnreachableException(@operator),
         };
         return true;
     }
@@ -2943,7 +2943,7 @@ public partial class StatementCompiler
                 BinaryOperatorCallExpression.CompLEQ => new CompiledValue(left <= right),
                 BinaryOperatorCallExpression.CompGEQ => new CompiledValue(left >= right),
 
-                _ => throw new NotImplementedException($"Unknown binary operator `{@operator}`"),
+                _ => throw new UnreachableException(@operator),
             };
             return true;
         }
@@ -3620,7 +3620,7 @@ public partial class StatementCompiler
             CompiledExpressionVariableAccess => false,
             CompiledCompilerVariableAccess => false,
 
-            _ => throw new NotImplementedException(statement.GetType().ToString()),
+            _ => throw new UnreachableException(statement.GetType().Name),
         };
     }
 
@@ -3855,7 +3855,7 @@ public partial class StatementCompiler
                     return TryEvaluate(_else.Body, context, out error);
                 }
                 default:
-                    throw new NotImplementedException();
+                    throw new UnreachableException(current.GetType().Name);
             }
         }
     }
@@ -3985,7 +3985,7 @@ public partial class StatementCompiler
         CompiledGoto v => TryEvaluate(v, context, out error),
         CompiledDelete v => TryEvaluate(v, context, out error),
         CompiledIf v => TryEvaluate(v, context, out error),
-        _ => throw new NotImplementedException(statement.GetType().ToString()),
+        _ => throw new UnreachableException(statement.GetType().Name),
     };
     bool TryEvaluate(ImmutableArray<CompiledStatement> statements, EvaluationContext context, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
@@ -4033,7 +4033,7 @@ public partial class StatementCompiler
         AliasType v => FindSize(v, out size, out error, runtime),
         EnumType v => FindSize(v, out size, out error, runtime),
         TupleType v => FindSize(v, out size, out error, runtime),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(type.GetType().Name),
     };
     static bool FindSize(PointerType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
@@ -4149,7 +4149,7 @@ public partial class StatementCompiler
         CompiledBuiltinTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledAliasTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledEnumTypeExpression v => FindSize(v, out size, out error, runtime),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(type.GetType().Name),
     };
     static bool FindSize(CompiledPointerTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
@@ -4270,7 +4270,7 @@ public partial class StatementCompiler
     {
         CompiledTemplateArgumentTypeExpression v => GetStatementComplexity(v.Value),
         CompiledTemplateArgumentValueExpression v => GetStatementComplexity(v.Value),
-        _ => throw new NotImplementedException(statement.GetType().ToString()),
+        _ => throw new UnreachableException(statement.GetType().Name),
     };
 
     public static StatementComplexity GetStatementComplexity(CompiledTypeExpression statement) => statement.FinalValue switch
@@ -4282,7 +4282,7 @@ public partial class StatementCompiler
         CompiledPointerTypeExpression v => GetStatementComplexity(v.To),
         CompiledReferenceTypeExpression v => GetStatementComplexity(v.To),
         CompiledStructTypeExpression v => v.TemplateArguments.Values.Select(GetStatementComplexity).Aggregate(StatementComplexity.None, (a, b) => a | b),
-        _ => throw new NotImplementedException(statement.GetType().ToString()),
+        _ => throw new UnreachableException(statement.GetType().Name),
     };
 
     public static StatementComplexity GetStatementComplexity(CompiledExpression statement) => statement switch
@@ -4315,7 +4315,7 @@ public partial class StatementCompiler
         CompiledPack v => GetStatementComplexity(v.Values),
         CompiledEnumMemberAccess v => GetStatementComplexity(v.EnumMember.Value),
         CompiledList v => GetStatementComplexity(v.Values) | StatementComplexity.None,
-        _ => throw new NotImplementedException(statement.GetType().ToString()),
+        _ => throw new UnreachableException(statement.GetType().Name),
     };
 
     #endregion
@@ -4591,7 +4591,7 @@ public partial class StatementCompiler
             case null:
                 break;
             default:
-                throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
+                throw new UnreachableException(statement.GetType().Name);
         }
     }
 
@@ -4688,7 +4688,7 @@ public partial class StatementCompiler
             CompiledCast v => ReduceStatements(v.Value, diagnostics, didNotify),
             CompiledReinterpretation v => ReduceStatements(v.Value, diagnostics, didNotify),
             CompiledDummyExpression v => ReduceStatements(v.Statement, diagnostics, didNotify),
-            _ => throw new NotImplementedException(statementWithValue.GetType().Name),
+            _ => throw new UnreachableException(statementWithValue.GetType().Name),
         };
     }
 

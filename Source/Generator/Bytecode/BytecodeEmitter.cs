@@ -185,6 +185,17 @@ public class BytecodeEmitter
         return true;
     }
 
+    static bool DoesRegisterAffectsIt(InstructionOperand a, Register reg)
+    {
+        if (a.Type.IsImmediate()) return false;
+
+        if (a.Type is InstructionOperandType.Register) return a.Reg == reg;
+
+        if (a.Type.IsRegisterPointer()) return a.Type.RegisterOfPointer() == reg;
+
+        throw new NotImplementedException();
+    }
+
     bool OptimizeCodeAt(int i)
     {
         if (!Optimizations.HasFlag(GeneratorOptimizationSettings.BytecodeLevel)) return false;
@@ -486,6 +497,23 @@ public class BytecodeEmitter
             return true;
         }
 
+        //if (prev1.Opcode == Opcode.MathSub
+        //    && prev1.Operand1.Value == Register.StackPointer
+        //    && prev1.Operand2.Value.Type.IsImmediate()
+        //
+        //    && prev0.Opcode == Opcode.Move
+        //    && prev0.Operand1.Value.Type.IsRegisterPointer()
+        //    && prev0.Operand1.Value.Type.RegisterOfPointer() == Register.StackPointer
+        //    && !DoesRegisterAffectsIt(prev0.Operand2.Value, Register.StackPointer)
+        //
+        //    && !DoesOverlap(prev0.Operand1.Value, prev1.Operand1.Value)
+        //    && !DoesOverlap(prev0.Operand1.Value, prev1.Operand2.Value))
+        //{
+        //    Code[i - 1] = new PreparationInstruction(Opcode.MathSub, new PreparationInstructionOperand((InstructionOperand)Register.StackPointer), new PreparationInstructionOperand(InstructionOperand.Immediate(prev1.Operand2.Value.Int - (int)prev0.Operand2.Value.BitWidth, prev1.Operand2.Value.BitWidth)));
+        //    Code[i] = new PreparationInstruction(Opcode.Push, prev0.Operand2);
+        //    return true;
+        //}
+
         if (prev1.Opcode == Opcode.Push
             && prev1.Operand1.Value.BitWidth == BitWidth._64
 
@@ -533,6 +561,24 @@ public class BytecodeEmitter
             RemoveAt(i);
             return true;
         }
+
+        //if (prev1.Opcode == Opcode.PopTo32
+        //    && !DoesRegisterAffectsIt(prev1.Operand1.Value, Register.StackPointer)
+        //
+        //    && prev0.Opcode == Opcode.Push
+        //    && prev0.Operand1.Value.BitWidth == BitWidth._32
+        //    && !DoesRegisterAffectsIt(prev0.Operand1.Value, Register.StackPointer)
+        //
+        //    && prev0.Operand1.Value == prev1.Operand1.Value)
+        //{
+        //    RemoveAt(i--);
+        //    Code[i] = new PreparationInstruction(
+        //        Opcode.Move,
+        //        prev0.Operand1,
+        //        prev1.Operand1
+        //    );
+        //    return true;
+        //}
 
         return false;
     }

@@ -53,7 +53,7 @@ public class ShortOperatorCall : AssignmentStatement, IReferenceableTo<CompiledO
         {
             "++" => new BinaryOperatorCallExpression(new PhantomToken("+", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
             "--" => new BinaryOperatorCallExpression(new PhantomToken("-", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
-            _ => throw new NotImplementedException(),
+            _ => throw new UnreachableException(Operator.Content),
         };
         Token assignmentToken = new PhantomToken("=", TokenType.Operator, Operator.Position);
         return new SimpleAssignmentStatement(assignmentToken, Target, operatorCall, File);

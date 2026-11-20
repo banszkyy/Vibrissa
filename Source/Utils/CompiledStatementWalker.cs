@@ -349,7 +349,7 @@ public static partial class StatementWalker
                 break;
             }
             case CompiledTemplateParameterAccess: break;
-            default: throw new NotImplementedException(statement.GetType().Name);
+            default: throw new UnreachableException(statement.GetType().Name);
         }
     }
     public static IEnumerable<CompiledStatement> EnumerateNodes(CompiledTypeExpression? statement, Predicate<CompiledStatement> predicate, StatementWalkerOptions options = StatementWalkerOptions.None)

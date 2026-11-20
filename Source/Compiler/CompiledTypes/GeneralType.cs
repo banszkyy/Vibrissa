@@ -73,7 +73,7 @@ public abstract class GeneralType :
         {
             if (templateArguments.ContainsKey(passedGenericType.Identifier))
             { return false; }
-            throw new NotImplementedException($"This should be a template parameter");
+            throw new UnreachableException($"This should be a template parameter");
         }
 
         if (defined.Is(out UnresolvedTemplateType? definedGenericType))
@@ -209,7 +209,7 @@ public abstract class GeneralType :
                 return true;
             }
 
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException(FinalValue.GetType().Name);
         }
     }
 
@@ -298,7 +298,7 @@ public abstract class GeneralType :
                 return new TupleType(InsertTemplateParameters(tupleType.Items, templateArguments));
 
             default:
-                throw new NotImplementedException();
+                throw new UnreachableException(type.GetType().Name);
         }
     }
 

@@ -126,7 +126,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         AliasType v => GenerateSize(v, result, out error),
         EnumType v => GenerateSize(v, result, out error),
         TupleType v => GenerateSize(v, result, out error),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(type.GetType().Name),
     };
     bool GenerateSize(ReferenceType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
@@ -208,7 +208,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledBuiltinTypeExpression v => GenerateSize(v, result, out error),
         CompiledAliasTypeExpression v => GenerateSize(v, result, out error),
         CompiledEnumTypeExpression v => GenerateSize(v, result, out error),
-        _ => throw new NotImplementedException(),
+        _ => throw new UnreachableException(type.GetType().Name),
     };
     bool GenerateSize(CompiledPointerTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
@@ -1080,7 +1080,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 }
 
                 default:
-                    throw new NotImplementedException();
+                    throw new UnreachableException(@operator.Operator);
             }
         }
 
@@ -1912,7 +1912,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 Push(absolute.Value);
                 break;
             }
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException(address.Simplify().GetType().Name);
         }
     }
     void GenerateCodeForStatement(CompiledReinterpretation typeCast)
@@ -2188,7 +2188,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledBlock v: GenerateCodeForStatement(v); break;
             case CompiledLabelDeclaration v: GenerateCodeForStatement(v); break;
             case CompiledEmptyStatement: break;
-            default: throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
+            default: throw new UnreachableException(statement.GetType().Name);
         }
 
         if (startInstruction != Code.Offset && statement is not CompiledExpression and not CompiledWhileLoop and not CompiledForLoop and not CompiledBranch and not CompiledBlock and not CompiledDummyExpression and not CompiledMeowExpression)
@@ -2250,7 +2250,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledList v: GenerateCodeForStatement(v); break;
             case CompiledMeowExpression v: GenerateCodeForStatement(v); break;
             case CompiledPack v: GenerateCodeForStatement(v); break;
-            default: throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
+            default: throw new UnreachableException(statement.GetType().Name);
         }
 
         if (startInstruction != Code.Offset && statement is not CompiledDummyExpression and not CompiledMeowExpression)
@@ -2530,7 +2530,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                         break;
 
                     default:
-                        throw new NotImplementedException();
+                        throw new UnreachableException(@operator.Operator);
                 }
             }
         }

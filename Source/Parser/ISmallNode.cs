@@ -1,6 +1,6 @@
 namespace LanguageCore.Parser;
 
-public interface ISmallNode : IPositioned
+public interface ISmallNode : INode
 {
 
 }

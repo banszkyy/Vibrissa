@@ -4,6 +4,7 @@ using LanguageCore.Tokenizing;
 namespace LanguageCore.Parser;
 
 public class FieldDefinition :
+    INode,
     IPositioned,
     IInContext<StructDefinition>,
     IIdentifiable<Token>,

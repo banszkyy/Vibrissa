@@ -135,7 +135,7 @@ public static partial class Stringifier
             case ArgumentExpression v: Stringify(v, builder, context); break;
             case AnyCallExpression v: Stringify(v, builder, context); break;
             case LambdaExpression v: Stringify(v, builder, context); break;
-            default: throw new NotImplementedException(statement.GetType().Name);
+            default: throw new UnreachableException(statement.GetType().Name);
         }
     }
 }

@@ -393,7 +393,7 @@ public sealed partial class Parser
         { CurrentTokenIndex++; }
     }
 
-    static bool NeedSemicolon(Statement statement) => statement is not (
+    public static bool NeedSemicolon(Statement statement) => statement is not (
         ForLoopStatement or
         WhileLoopStatement or
         Block or

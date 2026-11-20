@@ -4,18 +4,13 @@
 public readonly struct TokenizerResult
 {
     public static TokenizerResult Empty => new(
-        ImmutableArray<Token>.Empty,
-        ImmutableArray<SimpleToken>.Empty
+        ImmutableArray<Token>.Empty
     );
 
     public readonly ImmutableArray<Token> Tokens;
-    public readonly ImmutableArray<SimpleToken> UnicodeCharacterTokens;
 
-    public TokenizerResult(
-        ImmutableArray<Token> tokens,
-        ImmutableArray<SimpleToken> unicodeCharacterTokens)
+    public TokenizerResult(ImmutableArray<Token> tokens)
     {
         Tokens = tokens;
-        UnicodeCharacterTokens = unicodeCharacterTokens;
     }
 }

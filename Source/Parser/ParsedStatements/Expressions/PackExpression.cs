@@ -4,6 +4,7 @@ namespace LanguageCore.Parser.Statements;
 
 public class PackExpression : Expression
 {
+    public Token Keyword { get; }
     public ImmutableArray<Expression> Values { get; }
     public ImmutableArray<Token> Commas { get; }
     public TokenPair Brackets { get; }
@@ -11,11 +12,13 @@ public class PackExpression : Expression
     public override Position Position => new Position(Values).Union(Brackets);
 
     public PackExpression(
+        Token keyword,
         ImmutableArray<Expression> values,
         ImmutableArray<Token> commas,
         TokenPair brackets,
         Uri file) : base(file)
     {
+        Keyword = keyword;
         Values = values;
         Commas = commas;
         Brackets = brackets;

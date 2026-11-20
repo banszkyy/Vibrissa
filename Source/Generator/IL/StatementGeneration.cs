@@ -1262,7 +1262,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             }
 
             default:
-                throw new NotImplementedException();
+                throw new UnreachableException(pointerType.To.FinalValue.GetType().Name);
 
         }
     }
@@ -1957,7 +1957,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case CompiledEnumMemberAccess v: EmitStatement(v, il, ref successful); break;
             case CompiledMeowExpression: break;
             case CompiledPack v: EmitStatement(v, il, ref successful); break;
-            default: throw new NotImplementedException(statement.GetType().Name);
+            default: throw new UnreachableException(statement.GetType().Name);
         }
     }
 

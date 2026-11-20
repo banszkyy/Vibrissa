@@ -49,7 +49,7 @@ public static partial class Stringifier
             case TypeInstanceReference v: Stringify(v, builder, context); break;
             case TypeInstanceSimple v: Stringify(v, builder, context); break;
             case TypeInstanceStackArray v: Stringify(v, builder, context); break;
-            default: throw new NotImplementedException(type.GetType().Name);
+            default: throw new UnreachableException(type.GetType().Name);
         }
     }
 }

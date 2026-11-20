@@ -165,7 +165,7 @@ public static partial class Stringifier
             case CompiledDelete v: Stringify(v, builder, context); break;
             case CompiledGoto v: Stringify(v, builder, context); break;
             case CompiledLabelDeclaration v: Stringify(v, builder, context); break;
-            default: throw new NotImplementedException(statement.GetType().Name);
+            default: throw new UnreachableException(statement.GetType().Name);
         }
     }
 }

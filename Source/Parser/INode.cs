@@ -1,6 +1,6 @@
 namespace LanguageCore.Parser;
 
-public interface IStructureNode : IPositioned
+public interface INode : IPositioned
 {
 
 }

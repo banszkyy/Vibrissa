@@ -1,8 +1,5 @@
-using System.IO;
-using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Parser.Statements;
-using LanguageCore.Tokenizing;
 
 namespace LanguageCore;
 
@@ -157,7 +154,7 @@ public static partial class Stringifier
             case Block v: Stringify(v, builder, context); break;
             case InstructionLabelDeclaration v: Stringify(v, builder, context); break;
             case EmptyStatement: break;
-            default: throw new NotImplementedException(statement.GetType().Name);
+            default: throw new UnreachableException(statement.GetType().Name);
         }
     }
 
